@@ -1,4 +1,7 @@
-** This README is unfinished and may contain outdated information **
+<h1>This README is unfinished and may contain outdated information, and the code (albeit functional for the most part) is also a work in progress that was rushed, with currently many redundancies and suboptimal solutions.</h1>
+<br>
+<br>
+
 
 # Introduction
 
@@ -562,3 +565,12 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Combine view and perspective projection matrices for less overhead?
 
+- Improve the currently inefficient z-sorting algorithm (and possibly do it per pixel)
+
+- Lines edges are frequently not rendered/invisible in certain scenarios
+
+- Include and allow user to load/save quaternion into/from scene configuration file
+
+- Write a helper function to decompose the rotation matrix into translation, scale, and rotation matrices
+
+- Currently, when instancing meshes from model to world matrices, it doesn't get decomposed into translation, rotation, and scaling parameters. Since the position information is used in my implementation of z-ordering, loading a scene like this will result in objects overlapping each other in the incorrect order. A fix to this would be decomposing the matrix into the 3 transformation matrices and extracting the parameters from each of them, or using another z-ordering approach. 

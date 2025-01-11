@@ -51,13 +51,13 @@ bool Engine::handle_events() {
 			switch (this->event.window.event) {
 				case SDL_WINDOWEVENT_RESIZED:
 					free(this->buffer);
-					std::cout << "Old width: " << this->WIDTH << std::endl;
-					std::cout << "Old height: " << this->HEIGHT << std::endl;
+					//std::cout << "Old width: " << this->WIDTH << std::endl;
+					//std::cout << "Old height: " << this->HEIGHT << std::endl;
 					this->WIDTH = this->event.window.data1;
 					this->HEIGHT = this->event.window.data2;
 
-					std::cout << "New width: " << this->WIDTH << std::endl;
-					std::cout << "New height: " << this->HEIGHT << std::endl;
+					//std::cout << "New width: " << this->WIDTH << std::endl;
+					//std::cout << "New height: " << this->HEIGHT << std::endl;
 
 					this->buffer = (uint32_t*)malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
 					for (size_t i = 0; i < this->WIDTH * this->HEIGHT; i++) {
@@ -438,6 +438,7 @@ bool Engine::handle_events() {
 					Engine::Quaternion_GetAnglesFromDirectionYP(default_camera_up, camera_up, tmp_yaw, tmp_pitch, tmp_roll);
 					std::cout << "Up pitch: " << tmp_pitch << std::endl;
 					std::cout << "Up roll: " << tmp_roll << std::endl;
+
 
 					std::cout << "Previous compounded: " << std::endl;
 					std::cout << "Camera yaw: " << camera_yaw << std::endl;
@@ -1728,9 +1729,13 @@ void Scene::save_scene(const char* scenes_folder, const char* scene_filename, co
 	json_object["camera"]["up"]["z"] = camera_up.get(3, 1);
 
 	//json_object["camera"]["rotation"] = std::vector<std::string>{ "x", "y", "z" };
-	json_object["camera"]["rotation"]["y"] = yaw;// *(180 / M_PI);
-	json_object["camera"]["rotation"]["x"] = pitch;// *(180 / M_PI);
-	json_object["camera"]["rotation"]["z"] = roll;// *(180 / M_PI);
+	//json_object["camera"]["rotation"]["y"] = yaw;// *(180 / M_PI);
+	//json_object["camera"]["rotation"]["x"] = pitch;// *(180 / M_PI);
+	//json_object["camera"]["rotation"]["z"] = roll;// *(180 / M_PI);
+
+	json_object["camera"]["rotation"]["y"] = yaw * (180 / M_PI);// *(180 / M_PI);
+	json_object["camera"]["rotation"]["x"] = pitch * (180 / M_PI);// *(180 / M_PI);
+	json_object["camera"]["rotation"]["z"] = roll * (180 / M_PI);// *(180 / M_PI);
 
 
 	std::vector<std::string> models;
@@ -1778,9 +1783,12 @@ void Scene::save_scene(const char* scenes_folder, const char* scene_filename, co
 				json_object["models"][*model]["instances"][instance->instance_name]["translation"]["z"] = instance->tz;
 
 				//json_object["models"][*model]["instances"][*instance_name]["rotation"] = std::vector<std::string>{ "x", "y", "z" };
-				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["y"] = instance->yaw;//* (180 / M_PI);
-				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["x"] = instance->pitch;//* (180 / M_PI);
-				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["z"] = instance->roll;// * (180 / M_PI);
+				//json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["y"] = instance->yaw;//* (180 / M_PI);
+				//json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["x"] = instance->pitch;//* (180 / M_PI);
+				//json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["z"] = instance->roll;// * (180 / M_PI);
+				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["y"] = instance->yaw * (180 / M_PI);
+				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["x"] = instance->pitch * (180 / M_PI);
+				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["z"] = instance->roll * (180 / M_PI);
 
 				//json_object["models"][*model]["instances"][*instance_name]["scale"] = std::vector<std::string>{ "x", "y", "z" };
 				json_object["models"][*model]["instances"][instance->instance_name]["scale"]["x"] = instance->sx;
@@ -1971,20 +1979,19 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			rotation_given = true;
 
 			// Should be described in degrees
+
 			if (this->scene_data["camera"]["rotation"].contains("y")) {
-				camera_yaw = this->scene_data["camera"]["rotation"]["y"];// *(M_PI / 180);
+				camera_yaw = this->scene_data["camera"]["rotation"]["y"] * (M_PI / 180);
 			}
 
 			if (this->scene_data["camera"]["rotation"].contains("x")) {
-				camera_pitch = this->scene_data["camera"]["rotation"]["x"];// *(M_PI / 180);
+				camera_pitch = this->scene_data["camera"]["rotation"]["x"] * (M_PI / 180);
 			}
 
 			if (this->scene_data["camera"]["rotation"].contains("z")) {
-				camera_roll = this->scene_data["camera"]["rotation"]["z"];// *(M_PI / 180);
+				camera_roll = this->scene_data["camera"]["rotation"]["z"] * (M_PI / 180);
 			}
 		}
-
-		
 
 		// If direction was given, update the direction vector
 		if (this->scene_data["camera"].contains("direction")) {
@@ -2472,9 +2479,9 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 
 			// Checks if rotation has been given for this instance, updates rotation matrix if so
 			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("rotation")) {
-				yaw = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["y"]; //* (M_PI / 180);
-				pitch = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["x"];// *(M_PI / 180);
-				roll = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["z"];// *(M_PI / 180);
+				yaw = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["y"] * (M_PI / 180);
+				pitch = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["x"] * (M_PI / 180);
+				roll = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["z"] * (M_PI / 180);
 
 				//rotation = Engine::rotationZ_matrix(rotation_z) * Engine::rotationX_matrix(rotation_x) * Engine::rotationY_matrix(rotation_y);
 				//rotation = Engine::quaternion_rotationZ_matrix(rotation_z) * Engine::quaternion_rotationX_matrix(rotation_x) * Engine::quaternion_rotationY_matrix(rotation_y);
@@ -2493,34 +2500,47 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			//std::cout << "Rotation matrix" << std::endl; rotation.print();
 
 			Mat MODEL_TO_WORLD = Mat::identity_matrix(4);
+			bool has_model_to_world = false;
 
-			/*
+			///*
 			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("model_to_world")) {
-				auto model_matrix_obj = this->scene_data["models"][model_filename]["instances"][instance_name]["model_to_world"];
-				if (model_matrix_obj.size() == 16) {
-					MODEL_TO_WORLD = Mat(
-						{
-							{model_matrix_obj[0][0], model_matrix_obj[0][1], model_matrix_obj[0][2], model_matrix_obj[0][3]},
-							{model_matrix_obj[1][0], model_matrix_obj[1][1], model_matrix_obj[1][2], model_matrix_obj[1][3]},
-							{model_matrix_obj[2][0], model_matrix_obj[2][1], model_matrix_obj[2][2], model_matrix_obj[2][3]},
-							{model_matrix_obj[3][0], model_matrix_obj[3][1], model_matrix_obj[3][2], model_matrix_obj[3][3]}
-						}, 4, 4);
+				
+				const auto model_matrix_obj = this->scene_data["models"][model_filename]["instances"][instance_name]["model_to_world"];
+				if (model_matrix_obj.size() == 4) {
+					const auto first_row = model_matrix_obj[0];
+					if (first_row.size() == 4) {
+						has_model_to_world = true;
 
-					//MODEL_TO_WORLD.print();
+						MODEL_TO_WORLD = Mat(
+							{
+								{model_matrix_obj[0][0], model_matrix_obj[0][1], model_matrix_obj[0][2], model_matrix_obj[0][3]},
+								{model_matrix_obj[1][0], model_matrix_obj[1][1], model_matrix_obj[1][2], model_matrix_obj[1][3]},
+								{model_matrix_obj[2][0], model_matrix_obj[2][1], model_matrix_obj[2][2], model_matrix_obj[2][3]},
+								{model_matrix_obj[3][0], model_matrix_obj[3][1], model_matrix_obj[3][2], model_matrix_obj[3][3]}
+							}, 4, 4);
 
-					//MODEL_TO_WORLD.print();
-					//MODEL_TO_WORLD = MODEL_TO_WORLD.transposed();
-					//MODEL_TO_WORLD.print();
-					//exit(-1);
+						MODEL_TO_WORLD.print();
+
+						//MODEL_TO_WORLD.print();
+
+						//MODEL_TO_WORLD.print();
+						//MODEL_TO_WORLD = MODEL_TO_WORLD.transposed();
+						//MODEL_TO_WORLD.print();
+						//exit(-1);
+					}
+					else {
+						throw std::runtime_error("Model-to-world matrix of invalid size given for scene '" + std::string(scene_filename) + "', model '" + std::string(model_filename) + "', instance '" + std::string(instance_name) + "'. Must be of size 16 (for a 4x4 matrix), but parsed size is " + std::to_string(model_matrix_obj.size() * first_row.size()));
+					}
+
 				}
 				else {
-					throw std::runtime_error("Model-to-world matrix of invalid size given for scene '" + std::string(scene_filename) + "', model '" + std::string(model_filename) + "', instance '" + std::string(instance_name) + "'. Must be of size 16 (for a 4x4 matrix), but parsed size is " + std::to_string(model_matrix_obj.size()));
+					throw std::runtime_error("Model-to-world matrix of invalid size given for scene '" + std::string(scene_filename) + "', model '" + std::string(model_filename) + "', instance '" + std::string(instance_name) + "'. Must be of size 16 (for a 4x4 matrix), but parsed size is " + std::to_string(model_matrix_obj.size() * model_matrix_obj[0].size()));
 				}
 			}
 			else {
 				MODEL_TO_WORLD = translation * scale * rotation;
 			}
-			*/
+			//*/
 
 			//MODEL_TO_WORLD = translation * scale * rotation;
 			//MODEL_TO_WORLD = translation * rotation * scale;
@@ -2536,7 +2556,15 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			//std::cout << "Model to world matrix" << std::endl;
 			//MODEL_TO_WORLD.print();
 
-			Instance mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], translation, rotation, scale, orientation, yaw, pitch, roll, show, this->total_instances);
+			Instance mesh_instance;
+
+			if (!has_model_to_world) {
+				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], translation, rotation, scale, orientation, yaw, pitch, roll, show, this->total_instances);
+			}
+			else {
+				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], MODEL_TO_WORLD, show, this->total_instances);
+			}
+			
 
 			if (this->total_instances == 5) {
 				printf("%f %f %f %f %f %f %f %f %f\n", mesh_instance.yaw, mesh_instance.pitch, mesh_instance.roll, mesh_instance.tx, mesh_instance.ty, mesh_instance.tz, mesh_instance.sx, mesh_instance.sy, mesh_instance.sz);

@@ -650,6 +650,8 @@ public:
 
 	bool show = true;
 
+	Instance() {};
+
 	Instance(Mesh* mesh, double tx, double ty, double tz, const Quaternion& orientation, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
 		this->TRANSLATION_MATRIX = atranslation_matrix(tx, ty, tz);
 		//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
