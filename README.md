@@ -595,3 +595,9 @@ These test files were mostly used for testing/validating the behavior of the mat
 - Explain in more detail the scene configuration file's camera parameters
 
 - Properly explain how the "default_camera_position", "default_camera_direction", "default_camera_up" vectors work and how they influence the scene and semantics, as well as how they are different from the vectors without the "default" prefix. Also properly account for them in code, as the behavior is not properly defined currently. Regardless, almost always this can, should, and will be largerly ignored
+
+- Reminder to, whenever calculating the `norm` of a 4D vector, set the last dimension to 0. Otherwise the result will be 1 unit greater than the actual norm. (In the context of graphics programming/software rendering in which that extra dimension is used to make translation and other operations easier) 
+
+- Ignore backface culling when drawing triangles (wireframe)
+
+- Unflip the z when loading the meshes an instead set the default camera direction to (0, 0, -1) instead of flipping the z during mesh loading and the default camera direction to (0, 0, 1). This would be more semantically accurate to the coordinate system and possibly avoid confusion if manipulating vertices.
