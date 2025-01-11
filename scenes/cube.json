@@ -1,0 +1,23 @@
+{
+	"scene": "cube",
+	"models": {
+		"cube.obj": {
+			"instances":
+			{
+				"1": {
+					"show": true,
+					"translation": {
+						"x": 0,
+						"y": 0,
+						"z": 1.5
+					},
+					"scale": {
+						"x": 0.6,
+						"y": 0.6,
+						"z": 0.6
+					}
+				}
+			}
+		}
+	}
+}
