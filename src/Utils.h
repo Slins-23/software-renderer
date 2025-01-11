@@ -20,4 +20,8 @@ namespace Utils {
 		double scale = pow(10, decimal_places);
 		return round(number * scale) / scale;
 	}
+
+	static double clamp(double value, double min, double max) {
+		return fmax(min, fmin(max, value));
+	}
 }

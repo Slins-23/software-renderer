@@ -325,7 +325,7 @@ Rotation angles are rounded to 3 decimal places. You can change this through the
 > Pitch: Rotation around the `x` axis
 > Roll: Rotation around the `z` axis.
 
-If include both a direction and rotation to the camera, they should logically match, otherwise it will not work properly. If this happens, I chose to override the direction with the rotation parameters.
+If including both a direction and rotation to the camera, they should logically match. When this is the case, I chose to give precedence for the direction vector, meaning that even though the rotation parameters are given, the rotation parameters will be derived from the direction vectors, so that both match regardless. So they may differ slightly even if they're correct.
 
 > `Roll` does not affect the direction vector, so it will not be overridden.
 
@@ -342,7 +342,7 @@ You can also give camera information, such as its `position`, and a `direction` 
 i.e.
 
 You can only provide either rotations (yaw, pitch, roll) or direction vectors (direction, up), or both. If only one was provided, the other one gets derived at runtime, from the one that was given.
-If you provide both, the rotation parameters get derived at runtime from the direction vectors. This means that, in the case that both are provided, they should be logically equivalent (i.e. the rotation of the default direction vectors by the respective rotation parameters should end up being virtually the same as the provided direction vectors).
+If you provide both, the rotation parameters get derived at runtime from the given direction vectors, so the given rotation parameters are not directly set. This means that, in the case that both are provided, they should be logically equivalent (i.e. the rotation of the default direction vectors by the respective rotation parameters should end up being virtually the same as the provided direction vectors).
 If none are given, the camera will start in the default position with the default direction vectors (i.e. no translation and the camera points at the center of the positive z-axis. direction: (0, 0, 1), up: (0, 1, 0))
 
 default_direction, default_up, direction, up, default_position, translation
@@ -430,7 +430,10 @@ The events are handled in the `Engine` member function `handle_events`.
 These are the available key shortcuts and actions:
 `1`: Toggles the rendering of each triangle's lines. It is turned off by default.
 `2`: Toggles the rasterization of each triangle. It is turned on by default.
+`3`: Toggles the shading of each triangle. It is turned off by default.
 `P`: Pauses/resumes the rendering.
+`T`: Prints information about the camera. Namely the camera position, direction and up vectors, rotation parameters.
+`G`: Saves the current scene metadata to a file called `tst.json` that is saved in the `models` folder. Can be modified in the variable `scene_save_name` @ `Engine.h`.
 `Keypad -`: Decreases the `FOV` by `1`.
 `Keypad +`: Increases the `FOV` by `1`.
 `[`: Scales down the `x` and `y` coordinates by the `scale_factor`, which by default is `0.05`.
@@ -444,7 +447,7 @@ These are the available key shortcuts and actions:
 `I`: Rotates camera around the `x` axis (clockwise/counter-clockwise) (up/down) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
 `L`: Rotates camera around the `y` axis (clockwise/counter-clockwise) (left/right) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
 `Q`: Rotates the camera around the `z` axis (clockwise/counter-clockwise) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
-`E`: Rotates the camera around the `z` axis (clockwise/counter-clockwise by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
+`E`: Rotates the camera around the `z` axis (clockwise/counter-clockwise) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
 `A`: Moves the camera to the left. It decreases the camera's `x` coordinate by `translation_amount`, which by default is `0.01`.
 `D`: Moves the camera to the right. It increases the camera's `x` coordinate by `translation_amount`, which by default is `0.01`.
 `W`: Moves the camera forward. It increases/decreases the camera's `z` coordinate by `translation_amount`, which by default is `0.01`.
@@ -542,7 +545,7 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Change absolute path of the scene folder/files to be relative or either?
 
-- Use the mouse to rotate the camera instead of the keyboard
+- Implement movement of the mouse to rotate the camera instead of the keyboard
 
 - Implement lighting/normals
 
@@ -601,3 +604,11 @@ These test files were mostly used for testing/validating the behavior of the mat
 - Ignore backface culling when drawing triangles (wireframe)
 
 - Unflip the z when loading the meshes an instead set the default camera direction to (0, 0, -1) instead of flipping the z during mesh loading and the default camera direction to (0, 0, 1). This would be more semantically accurate to the coordinate system and possibly avoid confusion if manipulating vertices.
+
+- Describe, in this README, the keys for rotating some given mesh instance at runtime
+
+- Fix the lighting implementation as it is not properly implemented currently. Some triangles that shouldn't be visible are, and looking in the opposite camera direction makes models invisible.
+
+- Check that deriving the yaw, pitch, and roll properly work by calling the function `Engine::Euler_GetAnglesFromDirection`
+
+- Properly handle the edge case for when vectors are antiparallel within the 3D cross product function (point in opposite directions)

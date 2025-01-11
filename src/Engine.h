@@ -1028,9 +1028,17 @@ public:
 	const uint8_t FPS = 144;
 	const uint8_t MSPERFRAME = 1000 / FPS;
 
-	const uint32_t BG_COLOR = 0x000000FF;
-	const uint32_t LINE_COLOR = 0xFF0000FF;
+	// SDL window clear/default color
 	const uint32_t CLEAR_COLOR = 0xFFFFFFFF;
+
+	// Background color
+	const uint32_t BG_COLOR = 0x000000FF;
+
+	// Line/wireframe color
+	const uint32_t LINE_COLOR = 0x00FF00FF;
+	
+	// Rasterization color
+	const uint32_t FILL_COLOR = 0xFF0000FF;
 
 	bool playing = true;
 
@@ -1206,6 +1214,7 @@ public:
 	const char* models_folder = "D:/Programming/Graphics/Prototyping/models/";
 	const char* scenes_folder = "D:/Programming/Graphics/Prototyping/scenes/";
 	const char* scene_filename = "hallway.json";
+	const char* scene_save_name = "tst.json";
 	Scene current_scene;
 
 	double ac_yaw = 0;
@@ -1273,12 +1282,10 @@ public:
 	static Mat CrossProduct3D(const Mat& v1, const Mat& v2);
 
 	static void Euler_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch);
-	static void Quaternion_GetAnglesFromQuaternionYP(const Quaternion& quaternion, double& yaw, double& pitch, double& roll);
-	static void Quaternion_GetAnglesFromQuaternionYR(const Quaternion& quaternion, double& yaw, double& pitch, double& roll);
-	static void Quaternion_GetAnglesFromDirectionYP(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
-	static void Quaternion_GetAnglesFromDirectionYR(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
+	static void Quaternion_GetAnglesFromQuaternion(const Quaternion& quaternion, double& yaw, double& pitch, double& roll);
+	static void Quaternion_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
 
-	static void EulerAngles_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll);
+	static void Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll);
 
 	static void GetRoll(const Mat& camera_direction, const Mat& camera_up, const double& yaw, const double& pitch, double& roll);
 
@@ -1286,9 +1293,6 @@ public:
 	void LookAt(const Mat& target_vector);
 	static Mat LookAt(const Mat& camera_position, const Mat& camera_direction, const Mat& camera_up);
 	static Mat LookAt(const Mat& camera_position, Mat& camera_direction, const Mat& target_vector, Mat& camera_up);
-
-	static void DoIt(const Mat& camera_direction, const Mat& camera_up, double& yaw, 
-		double& pitch, double& roll);
 
 	void close();
 };
