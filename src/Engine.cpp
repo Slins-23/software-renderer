@@ -2457,18 +2457,25 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double pitch = 0;
 			double roll = 0;
 
+			bool has_translation = false;
+			bool has_scaling = false;
+			bool has_rotation = false;
+
 			// Checks if translation has been given for this instance, updates translation matrix if so
 			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("translation")) {
+				has_translation = true;
 				translation_x = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["x"];
 				translation_y = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["y"];
 				translation_z = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["z"];
 
+				// The translation matrix holds the inverse translation from the perspective of the camera
 				translation = Engine::translation_matrix(translation_x, translation_y, translation_z);
 				//printf("Translation (X, Y, Z): %f, %f, %f\n", translation_x, translation_y, translation_z);
 			}
 
 			// Checks if scale has been given for this instance, updates scale matrix if so
 			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("scale")) {
+				has_scaling = true;
 				scale_x = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["x"];
 				scale_y = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["y"];
 				scale_z = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["z"];
@@ -2479,6 +2486,7 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 
 			// Checks if rotation has been given for this instance, updates rotation matrix if so
 			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("rotation")) {
+				has_rotation = true;
 				yaw = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["y"] * (M_PI / 180);
 				pitch = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["x"] * (M_PI / 180);
 				roll = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["z"] * (M_PI / 180);
@@ -2558,11 +2566,17 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 
 			Instance mesh_instance;
 
-			if (!has_model_to_world) {
+			// Loads from model-to-world
+			if (!has_translation && !has_scaling && !has_rotation && has_model_to_world) {
+				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], MODEL_TO_WORLD, show, this->total_instances);
+			}
+
+			// Loads from parameters
+			else if (has_translation || has_scaling || has_rotation) {
 				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], translation, rotation, scale, orientation, yaw, pitch, roll, show, this->total_instances);
 			}
-			else {
-				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], MODEL_TO_WORLD, show, this->total_instances);
+			else if (has_model_to_world) {
+				
 			}
 			
 
@@ -5115,6 +5129,19 @@ void Engine::Euler_GetAnglesFromDirection(const Mat& default_direction_vector, c
 
 double clamp(double value, double min, double max) {
 	return fmax(min, fmin(max, value));
+}
+
+void Engine::EulerAngles_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll) {
+	pitch = asin(-clamp(rotation_matrix.get(2, 3), -1, 1));
+
+	if (abs(rotation_matrix.get(2, 3) < 0.9999999)) {
+		yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
+		roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
+	}
+	else {
+		yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
+		roll = 0;
+	}
 }
 
 // Gets yaw, pitch, and roll from quaternion

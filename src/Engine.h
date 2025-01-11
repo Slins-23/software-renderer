@@ -1278,6 +1278,8 @@ public:
 	static void Quaternion_GetAnglesFromDirectionYP(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
 	static void Quaternion_GetAnglesFromDirectionYR(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
 
+	static void EulerAngles_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll);
+
 	static void GetRoll(const Mat& camera_direction, const Mat& camera_up, const double& yaw, const double& pitch, double& roll);
 
 	void LookAt();

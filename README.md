@@ -187,6 +187,23 @@ This is how they are formatted:
 ```
 {
 	"scene": "default_scene",
+	"camera": {
+		"translation": {
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		"direction": {
+			"x": 0,
+			"y": 0,
+			"z": 1
+		},
+		"up": {
+			"x": 0,
+			"y": 1,
+			"z": 0
+		}
+	},
 	"models": {
 		"cube.obj": {
 			"instances": {
@@ -324,14 +341,14 @@ You can also simply give a `translation` of `0` on all coordinates for every ins
 You can also give camera information, such as its `position`, and a `direction` vector or a `rotation` amount.
 i.e.
 
-You can only provide rotations, the direction vectors will be derived from it. You can also provide only direction vectors (camera direction and up vectors), and the rotation parameters (yaw, pitch, and roll) will be derived from them.
-If you provide both, the camera direction vectors will be directly set to the same values provided, and the rotation parameters will be set to those provided as well. This means that, in the case that both are provided, they should logically match (i.e. the rotation of the default direction vectors by the respective rotation parameters should end up being the virtually the same as the provided direction vectors).
+You can only provide either rotations (yaw, pitch, roll) or direction vectors (direction, up), or both. If only one was provided, the other one gets derived at runtime, from the one that was given.
+If you provide both, the rotation parameters get derived at runtime from the direction vectors. This means that, in the case that both are provided, they should be logically equivalent (i.e. the rotation of the default direction vectors by the respective rotation parameters should end up being virtually the same as the provided direction vectors).
 If none are given, the camera will start in the default position with the default direction vectors (i.e. no translation and the camera points at the center of the positive z-axis. direction: (0, 0, 1), up: (0, 1, 0))
 
 default_direction, default_up, direction, up, default_position, translation
 ```
 "camera": {
-	"position": {
+	"translation": {
 		"x": -0.5,
 		"y": 0.25,
 		"z": -0.1
@@ -348,7 +365,7 @@ or
 
 ```
 "camera": {
-	"position": {
+	"translation": {
 		"x": -0.5,
 		"y": 0.25,
 		"z": -0.1
@@ -573,4 +590,8 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Write a helper function to decompose the rotation matrix into translation, scale, and rotation matrices
 
-- Currently, when instancing meshes from model to world matrices, it doesn't get decomposed into translation, rotation, and scaling parameters. Since the position information is used in my implementation of z-ordering, loading a scene like this will result in objects overlapping each other in the incorrect order. A fix to this would be decomposing the matrix into the 3 transformation matrices and extracting the parameters from each of them, or using another z-ordering approach. 
+- Currently, when instancing meshes from model to world matrices, it doesn't get decomposed into translation, rotation, and scaling parameters. Since the position information is used in my implementation of z-ordering, loading a scene like this will result in objects overlapping each other in the incorrect order. A fix to this would be decomposing the matrix into the 3 transformation matrices and extracting the parameters from each of them, or using another z-ordering approach. Hence, when a scene is loaded and these parameters are present, the model-to-world matrix always gets derived from them. This means that, if loading only from model-to-world matrices, as of currently, the instance's transformation parameters are lost, and z-ordering is not properly done.
+
+- Explain in more detail the scene configuration file's camera parameters
+
+- Properly explain how the "default_camera_position", "default_camera_direction", "default_camera_up" vectors work and how they influence the scene and semantics, as well as how they are different from the vectors without the "default" prefix. Also properly account for them in code, as the behavior is not properly defined currently. Regardless, almost always this can, should, and will be largerly ignored
