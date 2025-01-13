@@ -972,8 +972,8 @@ struct Scene {
 
 	}
 
-	Scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_position, Mat& default_camera_direction, Mat& camera_direction, Mat& default_camera_up, Mat& camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, Mat& TRANSLATION_MATRIX, Mat& ROTATION_MATRIX, Mat& SCALING_MATRIX, Mat& VIEW_MATRIX, bool use_scene_camera_settings) {
-		this->load_scene(scenes_folder, scene_filename, models_folder, verbose, default_camera_position, camera_position, default_camera_direction, camera_direction, default_camera_up, camera_up, camera_yaw, camera_pitch, camera_roll, TRANSLATION_MATRIX, ROTATION_MATRIX, SCALING_MATRIX, VIEW_MATRIX, use_scene_camera_settings);
+	Scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_position, Mat& default_camera_direction, Mat& camera_direction, Mat& default_camera_up, Mat& camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, Mat& VIEW_MATRIX, bool use_scene_camera_settings) {
+		this->load_scene(scenes_folder, scene_filename, models_folder, verbose, default_camera_position, camera_position, default_camera_direction, camera_direction, default_camera_up, camera_up, camera_yaw, camera_pitch, camera_roll, VIEW_MATRIX, use_scene_camera_settings);
 	}
 	
 	/// <summary>
@@ -986,7 +986,7 @@ struct Scene {
 	///  Load scene from a JSON file in the defined scene folder, with the given name.
 	///	(`scene_filename` is just the name of the scene, do not include the extension.)
 	/// </summary>
-	void load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_position, Mat& default_camera_direction, Mat& camera_direction, Mat& default_camera_up, Mat& camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, Mat& TRANSLATION_MATRIX, Mat& ROTATION_MATRIX, Mat& SCALING_MATRIX, Mat& VIEW_MATRIX, bool use_scene_camera_settings);
+	void load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_position, Mat& default_camera_direction, Mat& camera_direction, Mat& default_camera_up, Mat& camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, Mat& VIEW_MATRIX, bool use_scene_camera_settings);
 
 	Mesh get_mesh(uint32_t mesh_id);
 	Mesh get_mesh(std::string mesh_filename);
@@ -1128,10 +1128,7 @@ public:
 	double camera_roll = 0; // Should not change camera direction
 
 	// Initial camera direction (not standard camera direction, only what it starts at, the default position is (0, 0, -1))
-	// Camera direction vector relative to world space
-
-	Quaternion q_camera_direction = Quaternion(0, 0, 0, 1);
-	Quaternion q_camera_up = Quaternion(0, 0, 0, 1);
+	
 	Quaternion q_camera = Quaternion(0, 0, 0, 1);
 
 	Mat default_camera_direction = Mat({
@@ -1142,6 +1139,7 @@ public:
 		}, 4, 1
 	);
 
+	// Camera direction vector relative to world space
 	Mat camera_direction = Mat(
 		{ 
 		{0},
@@ -1169,13 +1167,6 @@ public:
 		}, 4, 1
 	);
 
-	// For the view matrix
-	Mat SCALING_MATRIX = Mat::identity_matrix(4);
-
-	Mat ROTATION_MATRIX = Mat::identity_matrix(4);
-
-	Mat TRANSLATION_MATRIX = Mat::identity_matrix(4);
-
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
 
 
@@ -1187,19 +1178,6 @@ public:
 			{0, 0, 0, 0},
 			{0, 0, 0, 0}
 		}, 4, 4);
-
-	
-	// Only flips Y
-	/*
-	Mat PROJECTION_MATRIX = Mat(
-		{
-			{1 / (tan(FOVr / 2)), 0, 0, 0},
-			{0, -AR * (1 / (tan(FOVr / 2))), 0, 0},
-			{0, 0, -far / (far - near), (far * -near) / (far - near)},
-			{0, 0, 1, 0}
-		}
-	, 4, 4);
-	*/
 
 	// Flips Y and Z
 	Mat PROJECTION_MATRIX = Mat(

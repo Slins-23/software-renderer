@@ -9,7 +9,7 @@ int main() {
 		return -1;
 	}
 
-	engine.current_scene = Scene(engine.scenes_folder, engine.scene_filename, engine.models_folder, true, engine.default_camera_position, engine.camera_position, engine.default_camera_direction, engine.camera_direction, engine.default_camera_up, engine.camera_up, engine.camera_yaw, engine.camera_pitch, engine.camera_roll, engine.TRANSLATION_MATRIX, engine.ROTATION_MATRIX, engine.SCALING_MATRIX, engine.VIEW_MATRIX, engine.use_scene_camera_settings);
+	engine.current_scene = Scene(engine.scenes_folder, engine.scene_filename, engine.models_folder, true, engine.default_camera_position, engine.camera_position, engine.default_camera_direction, engine.camera_direction, engine.default_camera_up, engine.camera_up, engine.camera_yaw, engine.camera_pitch, engine.camera_roll, engine.VIEW_MATRIX, engine.use_scene_camera_settings);
 		
 	bool quit = false;
 	std::vector<double> frametimes;

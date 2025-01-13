@@ -674,6 +674,8 @@ bool Engine::handle_events() {
 
 					//ac_yaw += rotation_angle;
 					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
+
+					this->z_sorted = false;
 				}
 
 				/*
@@ -704,6 +706,8 @@ bool Engine::handle_events() {
 						this->camera_yaw = (2 * M_PI) + fmod(this->camera_yaw, 2 * M_PI);
 					}
 					*/
+
+					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_I:
@@ -730,6 +734,8 @@ bool Engine::handle_events() {
 						this->camera_pitch = fmod(this->camera_pitch, 2 * M_PI);
 					}
 					*/
+
+					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_K:
@@ -748,6 +754,8 @@ bool Engine::handle_events() {
 
 					//ac_pitch -= rotation_angle;
 					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
+
+					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_Q:
@@ -771,6 +779,8 @@ bool Engine::handle_events() {
 						this->camera_roll = fmod(this->camera_roll, 2 * M_PI);
 					}
 					*/
+
+					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_E:
@@ -795,6 +805,8 @@ bool Engine::handle_events() {
 						this->camera_roll = -fmod(this->camera_roll, 2 * M_PI);
 					}
 					*/
+
+					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_A:
@@ -954,7 +966,7 @@ void Scene::save_scene(const char* scenes_folder, const char* scene_filename, co
 	file.close();
 }
 
-void Scene::load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_position, Mat& default_camera_direction, Mat& camera_direction, Mat& default_camera_up, Mat& camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, Mat& TRANSLATION_MATRIX, Mat& ROTATION_MATRIX, Mat& SCALING_MATRIX, Mat& VIEW_MATRIX, bool use_scene_camera_settings) {
+void Scene::load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_position, Mat& default_camera_direction, Mat& camera_direction, Mat& default_camera_up, Mat& camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, Mat& VIEW_MATRIX, bool use_scene_camera_settings) {
 	char scene_filepath[255];
 	sprintf_s(scene_filepath, 255, "%s%s", scenes_folder, scene_filename);
 
@@ -2940,6 +2952,41 @@ next:
 	*/
 }
 
+Mat GetCenterVertex(const Instance& instance, const Mat& VIEW_MATRIX) {
+	Mat center = Mat({ {0}, {0}, {0}, {1} }, 4, 1);
+	
+	double min_x = std::numeric_limits<double>::max();
+	double max_x = std::numeric_limits<double>::lowest();
+	double min_y = std::numeric_limits<double>::max();
+	double max_y = std::numeric_limits<double>::lowest();
+	double min_z = std::numeric_limits<double>::max();
+	double max_z = std::numeric_limits<double>::lowest();
+
+	for (const Mat& vertex : instance.mesh->vertices) {
+		Mat current_instance_vertex = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX * vertex;
+		double x = current_instance_vertex.get(1, 1);
+		double y = current_instance_vertex.get(2, 1);
+		double z = current_instance_vertex.get(3, 1);
+
+		min_x = std::min(x, min_x);
+		max_x = std::max(x, max_x);
+		min_y = std::min(y, min_y);
+		max_y = std::max(y, max_y);
+		min_z = std::min(z, min_z);
+		max_z = std::max(z, max_z);
+	}
+
+	double x = (min_x + max_x) / 2;
+	double y = (min_y + max_y) / 2;
+	double z = (min_z + max_z) / 2;
+
+	center.set(x, 1, 1);
+	center.set(y, 2, 1);
+	center.set(z, 3, 1);
+
+	return center;
+}
+
 void Engine::draw() {
 	// Clears pixel buffer to the background/clear color
 	for (int i = 0; i < this->WIDTH * this->HEIGHT; i++) {
@@ -2954,29 +3001,53 @@ void Engine::draw() {
 				Instance* next_instance = &*(instance + 1);
 
 				Mat current_nearest_vertex = current_instance->TRANSLATION_MATRIX * current_instance->ROTATION_MATRIX * current_instance->SCALING_MATRIX * current_instance->mesh->vertices[0];
-				Mat next_nearest_vertex = next_instance->TRANSLATION_MATRIX * next_instance->ROTATION_MATRIX * next_instance->SCALING_MATRIX * next_instance->mesh->vertices[0];
+				current_nearest_vertex = VIEW_MATRIX * current_nearest_vertex;
 
+				Mat next_nearest_vertex = next_instance->TRANSLATION_MATRIX * next_instance->ROTATION_MATRIX * next_instance->SCALING_MATRIX * next_instance->mesh->vertices[0];
+				next_nearest_vertex = VIEW_MATRIX * next_nearest_vertex;
+
+				Mat current_center = GetCenterVertex(*current_instance, VIEW_MATRIX);
+				Mat next_center = GetCenterVertex(*next_instance, VIEW_MATRIX);
+
+				current_center = VIEW_MATRIX * current_center;
+				next_center = VIEW_MATRIX * next_center;
+
+				if (abs(current_center.get(3, 1)) < abs(current_nearest_vertex.get(3, 1))) {
+					current_nearest_vertex = current_center;
+				}
+
+				if (abs(next_center.get(3, 1)) < abs(next_nearest_vertex.get(3, 1))) {
+					next_nearest_vertex = next_center;
+				}
+
+				/*
 				for (const Mat& vertex : current_instance->mesh->vertices) {
 					Mat current_instance_vertex = current_instance->TRANSLATION_MATRIX * current_instance->ROTATION_MATRIX * current_instance->SCALING_MATRIX * vertex;
+
+					current_instance_vertex = VIEW_MATRIX * current_instance_vertex;
 
 					if (current_instance_vertex.get(3, 1) < current_nearest_vertex.get(3, 1)) {
 						current_nearest_vertex = current_instance_vertex;
 					}
 				}
+				
 
 				for (const Mat& vertex : next_instance->mesh->vertices) {
 					Mat next_instance_vertex = next_instance->TRANSLATION_MATRIX * next_instance->ROTATION_MATRIX * next_instance->SCALING_MATRIX * vertex;
+					next_instance_vertex = VIEW_MATRIX * next_instance_vertex;
 
 					if (next_instance_vertex.get(3, 1) < next_nearest_vertex.get(3, 1)) {
 						next_nearest_vertex = next_instance_vertex;
 					}
 				}
+				*/
 
 				double current_farthest_z = current_nearest_vertex.get(3, 1);
 				double next_farthest_z = next_nearest_vertex.get(3, 1);
 
 				// Swap entries
-				if (next_farthest_z > current_farthest_z) {
+				//if (abs(next_farthest_z) < abs(current_farthest_z)) {
+				if (current_center.get(3, 1) < next_center.get(3, 1)) {
 					std::swap(*current_instance, *next_instance);
 					this->z_sorted = false;
 				}
