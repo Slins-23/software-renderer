@@ -431,6 +431,8 @@ These are the available key shortcuts and actions:
 `1`: Toggles the rendering of each triangle's lines. It is turned off by default.
 `2`: Toggles the rasterization of each triangle. It is turned on by default.
 `3`: Toggles the shading of each triangle. It is turned off by default.
+`4`: Toggles the culling of each triangle. It is turned on by default.
+`5`: Toggles the z-sorting of each instance (not triangle). It is turned on by default.
 `P`: Pauses/resumes the rendering.
 `T`: Prints information about the camera. Namely the camera position, direction and up vectors, rotation parameters.
 `G`: Saves the current scene metadata to a file called `tst.json` that is saved in the `models` folder. Can be modified in the variable `scene_save_name` @ `Engine.h`.

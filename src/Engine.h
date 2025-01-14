@@ -564,14 +564,9 @@ private:
 		total_instances++;
 	}
 public:
-
-	double aclamp(double value, double min, double max) {
-		return fmax(min, fmin(max, value));
-	}
-
 	void aQuaternion_GetAnglesFromQuaternionYP(const Quaternion& quaternion, double& yaw, double& pitch, double& roll) {
 		Mat rotation_matrix = quaternion.get_rotationmatrix();
-		pitch = asin(-aclamp(rotation_matrix.get(2, 3), -1, 1));
+		pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
 
 		if (abs(rotation_matrix.get(2, 3) < 0.9999999)) {
 			yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
@@ -1001,7 +996,8 @@ struct Scene {
 
 class Engine {
 private:
-	uint32_t* buffer = nullptr;
+	uint32_t* pixel_buffer = nullptr;
+	double* depth_buffer = nullptr;
 
 	SDL_Event event;
 
@@ -1020,6 +1016,9 @@ private:
 		, 4, 4);
 	}
 
+
+	void LookAt();
+	void LookAt(const Mat& target_vector);
 public:
 	const char* TITLE = "Renderer";
 	uint16_t WIDTH = 800;
@@ -1045,6 +1044,8 @@ public:
 	// How often, in milliseconds, should the average FPS over the given time interval be printed to the console
 	double fps_update_interval = 500;
 
+	bool zsort_instances = false; // Toggle 5
+	bool cull_triangles = true; // Toggle 4
 	bool shade_triangles = false; // Toggle 3
 	bool rasterize_triangles = true; // Toggle 2
 	bool wireframe_triangles = false; // Toggle 1
@@ -1175,8 +1176,8 @@ public:
 		{
 			{this->WIDTH / 2., 0, 0, this->WIDTH / 2.},
 			{0, this->HEIGHT / 2., 0, this->HEIGHT / 2.},
-			{0, 0, 0, 0},
-			{0, 0, 0, 0}
+			{0, 0, 1, 0},
+			{0, 0, 0, 1}
 		}, 4, 4);
 
 	// Flips Y and Z
@@ -1207,10 +1208,11 @@ public:
 	void draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v3, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
 	void draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
 	void draw_line(double x1, double y1, double x2, double y2, uint32_t outline_color);
+	Mat Instance_GetCenterVertex(const Instance& instance);
 	void draw();
 	void render();
 
-	void fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, uint32_t fill_color, bool shade);
+	void fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const double& v0_originalz, const double& v1_originalz, const double& v2_originalz, uint32_t fill_color, bool shade);
  
 	static void rotateX(Instance& mesh, double radians);
 	static void rotateX(Mesh& mesh, double radians);
@@ -1267,8 +1269,7 @@ public:
 
 	static void GetRoll(const Mat& camera_direction, const Mat& camera_up, const double& yaw, const double& pitch, double& roll);
 
-	void LookAt();
-	void LookAt(const Mat& target_vector);
+
 	static Mat LookAt(const Mat& camera_position, const Mat& camera_direction, const Mat& camera_up);
 	static Mat LookAt(const Mat& camera_position, Mat& camera_direction, const Mat& target_vector, Mat& camera_up);
 

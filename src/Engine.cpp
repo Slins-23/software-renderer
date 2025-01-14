@@ -32,10 +32,12 @@ bool Engine::setup() {
 		return 0;
 	}
 
-	this->buffer = (uint32_t*) malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
+	this->pixel_buffer = (uint32_t*) malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
+	this->depth_buffer = (double*)malloc(sizeof(double) * this->WIDTH * this->HEIGHT);
 
 	for (int i = 0; i < WIDTH * HEIGHT; i++) {
-		this->buffer[i] = this->BG_COLOR;
+		this->pixel_buffer[i] = this->BG_COLOR;
+		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
 
 	return 1;
@@ -50,16 +52,20 @@ bool Engine::handle_events() {
 		case SDL_WINDOWEVENT:
 			switch (this->event.window.event) {
 			case SDL_WINDOWEVENT_RESIZED:
-				free(this->buffer);
+				free(this->pixel_buffer);
+				free(this->depth_buffer);
+
 				this->WIDTH = this->event.window.data1;
 				this->HEIGHT = this->event.window.data2;
 
 				std::cout << "Window width: " << this->WIDTH << std::endl;
 				std::cout << "Window height: " << this->HEIGHT << std::endl;
 
-				this->buffer = (uint32_t*)malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
+				this->pixel_buffer = (uint32_t*)malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
+				this->depth_buffer = (double*)malloc(sizeof(double) * this->WIDTH * this->HEIGHT);
 				for (size_t i = 0; i < this->WIDTH * this->HEIGHT; i++) {
-					this->buffer[i] = this->BG_COLOR;
+					this->pixel_buffer[i] = this->BG_COLOR;
+					this->depth_buffer[i] = std::numeric_limits<double>::max();
 				}
 
 				this->AR = (double)this->WIDTH / (double)this->HEIGHT;
@@ -79,8 +85,8 @@ bool Engine::handle_events() {
 					{
 						{this->WIDTH / 2., 0, 0, this->WIDTH / 2.},
 						{0, this->HEIGHT / 2., 0, this->HEIGHT / 2.},
-						{0, 0, 0, 0},
-						{0, 0, 0, 0}
+						{0, 0, 1, 0},
+						{0, 0, 0, 1}
 					}, 4, 4);
 
 				this->update_projection_matrix();
@@ -271,6 +277,8 @@ bool Engine::handle_events() {
 				break;
 
 			case SDL_SCANCODE_1:
+				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
+
 				if (!this->playing) break;
 				this->wireframe_triangles = !this->wireframe_triangles;
 				if (this->wireframe_triangles) {
@@ -282,6 +290,8 @@ bool Engine::handle_events() {
 
 				break;
 			case SDL_SCANCODE_2:
+				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
+
 				if (!this->playing) break;
 				this->rasterize_triangles = !this->rasterize_triangles;
 				if (this->rasterize_triangles) {
@@ -296,6 +306,8 @@ bool Engine::handle_events() {
 				}
 				break;
 			case SDL_SCANCODE_3:
+				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
+
 				if (!this->playing) break;
 				this->shade_triangles = !this->shade_triangles;
 				if (this->shade_triangles) {
@@ -308,6 +320,35 @@ bool Engine::handle_events() {
 				else {
 					std::cout << "Triangle shading: Disabled" << std::endl;
 				}
+				break;
+			case SDL_SCANCODE_4:
+				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
+
+				if (!this->playing) break;
+				this->cull_triangles = !this->cull_triangles;
+
+				if (this->cull_triangles) {
+					std::cout << "Triangle culling: Enabled" << std::endl;
+				}
+				else {
+					std::cout << "Triangle culling: Disabled" << std::endl;
+				}
+				break;
+			case SDL_SCANCODE_5:
+				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
+
+				if (!this->playing) break;
+				this->zsort_instances = !this->zsort_instances;
+
+				if (this->zsort_instances) this->z_sorted = false;
+
+				if (this->zsort_instances) {
+					std::cout << "Instance z-sorting: Enabled" << std::endl;
+				}
+				else {
+					std::cout << "Instance z-sorting: Disabled" << std::endl;
+				}
+
 				break;
 			case SDL_SCANCODE_P:
 				this->playing = !this->playing;
@@ -1525,26 +1566,18 @@ void Engine::draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v
 }
 
 void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade) {
-	const static Mat FlipZ = Mat(
-		{ 
-			{1, 0, 0, 0},
-			{0, 1, 0, 0},
-			{0, 0, 1, 0},
-			{0, 0, 0, 1}
-		}
-	, 4, 4);
-
 	Mat world_v0 = MODEL_TO_WORLD * v0;
 	Mat world_v1 = MODEL_TO_WORLD * v1;
 	Mat world_v2 = MODEL_TO_WORLD * v2;
 
 
-	v0 =  this->VIEW_MATRIX * FlipZ * MODEL_TO_WORLD * v0;
-	v1 =  this->VIEW_MATRIX * FlipZ * MODEL_TO_WORLD * v1;
-	v2 =  this->VIEW_MATRIX * FlipZ * MODEL_TO_WORLD * v2;
+	v0 =  this->VIEW_MATRIX * MODEL_TO_WORLD * v0;
+	v1 =  this->VIEW_MATRIX * MODEL_TO_WORLD * v1;
+	v2 =  this->VIEW_MATRIX * MODEL_TO_WORLD * v2;
 
 	// MODEL SPACE -> WORLD SPACE ->  NOW IN CAMERA SPACE
 
+	// Cull triangle if all vertices are further than the far plane
 	if (abs(v0.get(3, 1)) > this->far || abs(v1.get(3, 1)) > this->far || abs(v2.get(3, 1)) > this->far) {
 		return;
 	}
@@ -1669,6 +1702,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 		}
 	, 4, 1);
 
+	// Triangles get clipped, processed, then rendered
 	if (draw_outline || fill || shade) {
 		for (uint8_t n_clipped_triangle = 0; n_clipped_triangle < n_clipped_triangles; n_clipped_triangle++) {
 			Triangle starting_clipped_triangle = clipped_triangles[n_clipped_triangle];
@@ -1759,8 +1793,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 
 				bool visible = true;
 
-				// This projection matrix's z coordinate gets multiplied by the `far` plane value
-				// So the range, after the projection, of the `z` coordinate, is (0, far), not (0, 1)
+				// This projection matrix's `z` coordinate gets multiplied by the `far` plane value
+				// So, the range after the projection of the `z` coordinate is (0, far), not (0, 1)
 				// This is so that after the perspective divide, which happens in the sequence, it becomes (0, 1), already including it
 
 				v0 = this->PROJECTION_MATRIX * v0;
@@ -1784,51 +1818,71 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				v2 /= v2_originalz;
 
 
-				bool cull = false;
-				Mat vec_a = v0 - v1;
-				vec_a.normalize();
-				Mat vec_b = v2 - v1;
-				vec_b.normalize();
-				Mat triangle_normal = Engine::CrossProduct3D(vec_a, vec_b);
-				triangle_normal.normalize();
+				bool cull_triangle = false;
 
-				//Mat middle_point = v1 + (0.5 * (v0 - v1)) + (0.5 * (v2 - v1));
-
-				//Mat eye_to_triangle_dist = middle_point - camera_position;
-				Mat eye_to_triangle_dist = v1 - (camera_position);
-				eye_to_triangle_dist.normalize();
-				//double correlation = Mat::dot(triangle_normal, eye_to_triangle_dist);
-				double correlation = Mat::dot(triangle_normal, camera_direction);
-				if (correlation >= 0) {
-					cull = true;
-					continue;
-				}
-
-
-				if (shade) {
+				if (this->cull_triangles) {
 					Mat vec_a = v0 - v1;
 					vec_a.normalize();
 					Mat vec_b = v2 - v1;
 					vec_b.normalize();
 					Mat triangle_normal = Engine::CrossProduct3D(vec_a, vec_b);
 					triangle_normal.normalize();
+
+					//Mat middle_point = v1 + (0.5 * (v0 - v1)) + (0.5 * (v2 - v1));
+
+					//Mat eye_to_triangle_dist = middle_point - camera_position;
+					Mat eye_to_triangle_dist = v1 - (camera_position);
+					eye_to_triangle_dist.normalize();
+					//double correlation = Mat::dot(triangle_normal, eye_to_triangle_dist);
+					double correlation = Mat::dot(triangle_normal, camera_direction);
+					if (correlation >= 0) {
+						cull_triangle = true;
+						continue;
+					}
+				}
+
+
+				// Triangle lighting/shading happens here
+				if (shade) {
+					Mat vec_a = v0 - v1;
+					vec_a.normalize();
+					Mat vec_b = v2 - v1;
+					vec_b.normalize();
+					Mat triangle_normal = Engine::CrossProduct3D(vec_a, vec_b);
+
+					Mat a_vec_a = world_v0 - world_v1;
+					a_vec_a.normalize();
+					Mat a_vec_b = world_v2 - world_v1;
+					a_vec_b.normalize();
+					Mat world_normal = Engine::CrossProduct3D(a_vec_a, a_vec_b);
+					world_normal.normalize();
+
+					triangle_normal.normalize();
 					Mat normalized_light_source = light_source_dir / light_source_dir.norm();
 					Mat dist_vertex_to_light = v0 - light_source_pos;
 					//double distance = abs(Engine::PointDistanceToPlane(&v0, &light_source_pos, &normalized_light_source));
+					//double distance = sqrt(pow(world_v0.get(1, 1) - light_source_pos.get(1, 1), 2) + pow(world_v0.get(2, 1) - light_source_pos.get(2, 1), 2) + pow(world_v0.get(3, 1) - light_source_pos.get(3, 1), 2));
 					double distance = sqrt(pow(world_v0.get(1, 1) - light_source_pos.get(1, 1), 2) + pow(world_v0.get(2, 1) - light_source_pos.get(2, 1), 2) + pow(world_v0.get(3, 1) - light_source_pos.get(3, 1), 2));
-					//double distance = sqrt(pow(v0.get(1, 1) - light_source_pos.get(1, 1), 2) + pow(v0.get(2, 1) - light_source_pos.get(2, 1), 2) + pow(v0.get(3, 1) - light_source_pos.get(3, 1), 2));
-					double similarity = Mat::dot(normalized_light_source, triangle_normal);
+					double similarity = abs(Mat::dot(normalized_light_source, triangle_normal));
+
+					//std::cout << "Similarity: " << similarity << " | Distance: " << distance << std::endl;
 
 					//std::cout << light_intensity << std::endl;
-					if (similarity <= 0 && distance < light_reach) {
+					if (1) {
 						//double light_intensity = (1 / pow(this->light_reach, 2)) * pow(distance, 2);
 
 						//double light_intensity = abs((distance - light_reach)) * -similarity;
 						//double light_intensity = -similarity;
-						double light_intensity = -similarity;
-						double distance_multiplier = -pow(1 / light_reach * distance, 1.5) + 1;
+						//double light_intensity = -similarity;
+						double light_intensity = similarity;
+						double base_intensity = 0.3;
+						double attenuation = 1.f / (distance * distance);
+						//double distance_multiplier = light_intensity * attenuation * base_intensity;
+						//distance_multiplier = Utils::clamp(distance_multiplier, 0, 1);
 
-						light_intensity = light_intensity * distance_multiplier;
+						//light_intensity = light_intensity * distance_multiplier;
+						light_intensity = light_intensity * base_intensity * attenuation;
+						light_intensity = Utils::clamp(light_intensity, 0, 1);
 
 						uint8_t color = (uint8_t)(light_intensity * 255.0);
 
@@ -1836,7 +1890,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
 					}
 					else {
-						visible = false;
+						//visible = false;
 					}
 				}
 
@@ -1863,19 +1917,6 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				v1 = this->SCALE_MATRIX * v1;
 				v2 = this->SCALE_MATRIX * v2;
 
-				/*
-				v0.set(floor(abs(v0.get(1, 1) - 1)), 1, 1);
-				v0.set(floor(abs(v0.get(2, 1) - 1)), 2, 1);
-
-				v1.set(floor(abs(v1.get(1, 1) - 1)), 1, 1);
-				v1.set(floor(abs(v1.get(2, 1) - 1)), 2, 1);
-
-				v2.set(floor(abs(v2.get(1, 1) - 1)), 1, 1);
-				v2.set(floor(abs(v2.get(2, 1) - 1)), 2, 1);
-				*/
-
-
-
 				uint8_t alpha = 0xFF;
 				uint8_t red = rand() % 0xFF;
 				uint8_t blue = rand() % 0xFF;
@@ -1893,29 +1934,26 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				//draw_outline = true;
 				//fill = true;
 
+				// Clamps pixels to window boundaries if exceeding
+				if (v0.get(1, 1) < 0) v0.set(0, 1, 1);
+				if (v0.get(2, 1) < 0) v0.set(0, 2, 1);
+
+				if (v1.get(1, 1) < 0) v1.set(0, 1, 1);
+				if (v1.get(2, 1) < 0) v1.set(0, 2, 1);
+
+				if (v2.get(1, 1) < 0) v2.set(0, 1, 1);
+				if (v2.get(2, 1) < 0) v2.set(0, 2, 1);
+
+				if (v0.get(1, 1) >= WIDTH - 1) v0.set(WIDTH - 1, 1, 1);
+				if (v0.get(2, 1) >= HEIGHT - 1) v0.set(HEIGHT - 1, 2, 1);
+
+				if (v1.get(1, 1) >= WIDTH - 1) v1.set(WIDTH - 1, 1, 1);
+				if (v1.get(2, 1) >= HEIGHT - 1) v1.set(HEIGHT - 1, 2, 1);
+
+				if (v2.get(1, 1) >= WIDTH - 1) v2.set(WIDTH - 1, 1, 1);
+				if (v2.get(2, 1) >= HEIGHT - 1) v2.set(HEIGHT - 1, 2, 1);
+
 				if (draw_outline) {
-					///*
-
-					// Validates pixel being within window boundaries
-					if (v0.get(1, 1) < 0) v0.set(0, 1, 1);
-					if (v0.get(2, 1) < 0) v0.set(0, 2, 1);
-
-					if (v1.get(1, 1) < 0) v1.set(0, 1, 1);
-					if (v1.get(2, 1) < 0) v1.set(0, 2, 1);
-
-					if (v2.get(1, 1) < 0) v2.set(0, 1, 1);
-					if (v2.get(2, 1) < 0) v2.set(0, 2, 1);
-
-					if (v0.get(1, 1) >= WIDTH - 1) v0.set(WIDTH - 1, 1, 1);
-					if (v0.get(2, 1) >= HEIGHT - 1) v0.set(HEIGHT - 1, 2, 1);
-
-					if (v1.get(1, 1) >= WIDTH - 1) v1.set(WIDTH - 1, 1, 1);
-					if (v1.get(2, 1) >= HEIGHT - 1) v1.set(HEIGHT - 1, 2, 1);
-
-					if (v2.get(1, 1) >= WIDTH - 1) v2.set(WIDTH - 1, 1, 1);
-					if (v2.get(2, 1) >= HEIGHT - 1) v2.set(HEIGHT - 1, 2, 1);
-					//*/
-					// 
 					// Checks whether 2 of the triangle's vertices are the same, and only draws line if that is not the case (avoids drawing the same line more than once)
 					if (!is_v0_equal_v1) {
 						draw_line(
@@ -1943,12 +1981,12 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				}
 
 				if ((fill || shade) && visible) {
-					// Ignore triangle rasterization if 2 of the vertices are the same (meaning the triangle is basically a line, that is already done when the lines are drawn)
+					// Ignore triangle rasterization if 2 of the vertices are the same (meaning the triangle is basically a line, which is already handled when the lines are drawn)
 					if (is_v0_equal_v1 || is_v0_equal_v2 || is_v1_equal_v2) {
 						return; 
 					}
 					
-					fill_triangle(v0, v1, v2, fill_color, shade);
+					fill_triangle(v0, v1, v2, v0_originalz, v1_originalz, v2_originalz, fill_color, shade);
 				}
 			}
 		}
@@ -2011,7 +2049,9 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outl
 			for (x;
 				x < (uint16_t) round(fmax(x1, x2)); x++) {
 
-				this->buffer[(WIDTH * rounded_y) + (uint16_t)x] = outline_color;
+				// Check and update depth buffer, or only do so when rasterizing?
+
+				this->pixel_buffer[(WIDTH * rounded_y) + (uint16_t)x] = outline_color;
 
 				/*
 
@@ -2048,7 +2088,9 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outl
 			for (y;
 				y != round(target_y); y += dy > 0 ? 1 : -1) {
 
-				this->buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
+				// Check and update depth buffer, or only do so when rasterizing?
+
+				this->pixel_buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
 
 
 				/*
@@ -2080,7 +2122,8 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outl
 		uint16_t x = round(x1);
 		uint16_t y = round(fmax(0, fmin(y1, y2)));
 		for (y; y < (uint16_t)round(fmax(y1, y2)); y++) {
-			this->buffer[(WIDTH * y) + x] = outline_color;
+			// Check and update depth buffer, or only do so when rasterizing?
+			this->pixel_buffer[(WIDTH * y) + x] = outline_color;
 		}
 
 	}
@@ -2120,7 +2163,7 @@ Mat Engine::CrossProduct3D(const Mat& v1, const Mat& v2) {
 	return result;
 }
 
-void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, uint32_t fill_color, bool shade) {
+void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const double& v0_originalz, const double& v1_originalz, const double& v2_originalz, uint32_t fill_color, bool shade) {
 	/*
 	int x1 = v0.get(1, 1);
 	int y1 = v0.get(2, 1);
@@ -2360,10 +2403,16 @@ next:
 	if (v2_y >= HEIGHT) v2_y = HEIGHT - 1;
 	*/
 
+
 	uint16_t bounding_box_left_x = round(fmin(fmin(v0_x, v1_x), v2_x));
 	uint16_t bounding_box_right_x = round(fmax(fmax(v0_x, v1_x), v2_x));
 	uint16_t bounding_box_top_y = round(fmin(fmin(v0_y, v1_y), v2_y));
 	uint16_t bounding_box_bottom_y = round(fmax(fmax(v0_y, v1_y), v2_y));
+
+	//double bounding_box_left_x = fmin(fmin(v0_x, v1_x), v2_x);
+	//double bounding_box_right_x = fmax(fmax(v0_x, v1_x), v2_x);
+	//double bounding_box_top_y = fmin(fmin(v0_y, v1_y), v2_y);
+	//double bounding_box_bottom_y = fmax(fmax(v0_y, v1_y), v2_y);
 
 	const Mat veca = v0 - v1;
 	const Mat vecb = v2 - v1;
@@ -2511,6 +2560,7 @@ next:
 			double division = (((v0_x - v1_x) * (v2_y - v1_y)) - ((v0_y - v1_y) * (v2_x - v1_x)));
 
 			if (division == 0) {
+				return;
 				throw std::runtime_error("Error: Division by 0 during barycentric coordinates calculation (rasterization).");
 			}
 
@@ -2596,6 +2646,7 @@ next:
 				}
 				*/
 
+				// Interpolates each vertex for red, green, and blue if not shading
 				if (!shade) {
 					uint8_t alpha = 0xFF;
 					uint8_t red = c * 0xFF; // v1
@@ -2604,9 +2655,40 @@ next:
 					fill_color = (red << 24) | (green << 16) | (blue << 8) | alpha;
 				}
 
-				this->buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+
+				if (pixel_y < this->HEIGHT && pixel_y >= 0 && pixel_x >= 0 && pixel_x < this->WIDTH) {
+					// Depth check
+					//double interpolated_z = v1_originalz + (alpha * (v0_originalz - v1_originalz)) + (beta * (v2_originalz - v1_originalz));
+
+					/*
+					Mat old_v0 = v0 * v0_originalz;
+					Mat old_v1 = v1 * v1_originalz;
+					Mat old_v2 = v2 * v2_originalz;
+
+					Mat interpolated_vtx = old_v1 + (alpha * (old_v0 - old_v1)) + (beta * (old_v2 - old_v1));
+
+					double interpolated_z = interpolated_vtx.get(3, 1);
+					*/
+					double interpolated_z = pow((1/v0_originalz * a) + (1/v1_originalz * c) + (1/v2_originalz * b), -1);
+					//interpolated_z = abs(interpolated_z);
+
+					if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
+						this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
+						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+					}
+					else if (interpolated_z == this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
+						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+					}
+
+					
+				}
+				
 				//this->buffer[WIDTH * pixel_y + pixel_x] = 0xFFFFFFFF;
 				//this->buffer[WIDTH * pixel_y + pixel_x] = fill_color;
+			}
+			else {
+				//std::cout << "Alpha: " << alpha << std::endl;
+				//std::cout << "Beta: " << beta << std::endl;
 			}
 		}
 	}
@@ -2952,7 +3034,8 @@ next:
 	*/
 }
 
-Mat GetCenterVertex(const Instance& instance, const Mat& VIEW_MATRIX) {
+// Returns the vertex that represents the center point of the instance in world space
+Mat Engine::Instance_GetCenterVertex(const Instance& instance) {
 	Mat center = Mat({ {0}, {0}, {0}, {1} }, 4, 1);
 	
 	double min_x = std::numeric_limits<double>::max();
@@ -2990,63 +3073,25 @@ Mat GetCenterVertex(const Instance& instance, const Mat& VIEW_MATRIX) {
 void Engine::draw() {
 	// Clears pixel buffer to the background/clear color
 	for (int i = 0; i < this->WIDTH * this->HEIGHT; i++) {
-		this->buffer[i] = this->BG_COLOR;
+		this->pixel_buffer[i] = this->BG_COLOR;
+		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
 
-	if (!this->z_sorted) {
+	/*
+	if (this->zsort_instances && !this->z_sorted) {
 		while (!this->z_sorted) {
 			this->z_sorted = true;
 			for (auto instance = this->current_scene.scene_instances.begin(); instance != this->current_scene.scene_instances.end() - 1; instance++) {
 				Instance* current_instance = &*instance;
 				Instance* next_instance = &*(instance + 1);
 
-				Mat current_nearest_vertex = current_instance->TRANSLATION_MATRIX * current_instance->ROTATION_MATRIX * current_instance->SCALING_MATRIX * current_instance->mesh->vertices[0];
-				current_nearest_vertex = VIEW_MATRIX * current_nearest_vertex;
-
-				Mat next_nearest_vertex = next_instance->TRANSLATION_MATRIX * next_instance->ROTATION_MATRIX * next_instance->SCALING_MATRIX * next_instance->mesh->vertices[0];
-				next_nearest_vertex = VIEW_MATRIX * next_nearest_vertex;
-
-				Mat current_center = GetCenterVertex(*current_instance, VIEW_MATRIX);
-				Mat next_center = GetCenterVertex(*next_instance, VIEW_MATRIX);
+				Mat current_center = Instance_GetCenterVertex(*current_instance);
+				Mat next_center = Instance_GetCenterVertex(*next_instance);
 
 				current_center = VIEW_MATRIX * current_center;
 				next_center = VIEW_MATRIX * next_center;
 
-				if (abs(current_center.get(3, 1)) < abs(current_nearest_vertex.get(3, 1))) {
-					current_nearest_vertex = current_center;
-				}
-
-				if (abs(next_center.get(3, 1)) < abs(next_nearest_vertex.get(3, 1))) {
-					next_nearest_vertex = next_center;
-				}
-
-				/*
-				for (const Mat& vertex : current_instance->mesh->vertices) {
-					Mat current_instance_vertex = current_instance->TRANSLATION_MATRIX * current_instance->ROTATION_MATRIX * current_instance->SCALING_MATRIX * vertex;
-
-					current_instance_vertex = VIEW_MATRIX * current_instance_vertex;
-
-					if (current_instance_vertex.get(3, 1) < current_nearest_vertex.get(3, 1)) {
-						current_nearest_vertex = current_instance_vertex;
-					}
-				}
-				
-
-				for (const Mat& vertex : next_instance->mesh->vertices) {
-					Mat next_instance_vertex = next_instance->TRANSLATION_MATRIX * next_instance->ROTATION_MATRIX * next_instance->SCALING_MATRIX * vertex;
-					next_instance_vertex = VIEW_MATRIX * next_instance_vertex;
-
-					if (next_instance_vertex.get(3, 1) < next_nearest_vertex.get(3, 1)) {
-						next_nearest_vertex = next_instance_vertex;
-					}
-				}
-				*/
-
-				double current_farthest_z = current_nearest_vertex.get(3, 1);
-				double next_farthest_z = next_nearest_vertex.get(3, 1);
-
 				// Swap entries
-				//if (abs(next_farthest_z) < abs(current_farthest_z)) {
 				if (current_center.get(3, 1) < next_center.get(3, 1)) {
 					std::swap(*current_instance, *next_instance);
 					this->z_sorted = false;
@@ -3055,6 +3100,7 @@ void Engine::draw() {
 			}
 		}
 	}
+	*/
 
 	for (const Instance& instance : this->current_scene.scene_instances) {
 		if (instance.show) draw_instance(instance, this->wireframe_triangles, this->LINE_COLOR, this->rasterize_triangles, this->FILL_COLOR, this->shade_triangles);
@@ -3064,7 +3110,7 @@ void Engine::draw() {
 void Engine::render() {
 	SDL_SetRenderDrawColor(this->renderer, this->CLEAR_COLOR >> 24, this->CLEAR_COLOR >> 16, this->CLEAR_COLOR >> 8, this->CLEAR_COLOR);
 	SDL_RenderClear(this->renderer);
-	SDL_UpdateTexture(this->texture, nullptr, this->buffer, this->WIDTH * sizeof(uint32_t));
+	SDL_UpdateTexture(this->texture, nullptr, this->pixel_buffer, this->WIDTH * sizeof(uint32_t));
 	SDL_RenderCopy(this->renderer, this->texture, nullptr, nullptr);
 	SDL_RenderPresent(this->renderer);
 }
@@ -3324,12 +3370,12 @@ Mat Engine::quaternion_rotationZ_matrix(double radians) {
 }
 
 /// <summary>
-/// Calculates whether there is an intersection between the given line and plane, updating the `intersection_point` variable to the actual intersection point and returns 1 that is the case, otherwise returns 0 when no intersection is found
+/// Calculates whether there is an intersection between the given line and plane, updating the `intersection_point` variable to the intersection point and returning 1 if that is the case, and 0 otherwise.
 /// </summary>
-/// <param name="plane_point">A point in the plane</param>
-/// <param name="plane_normal">A normal vector to the plane</param>
+/// <param name="plane_point">A point on the plane</param>
+/// <param name="plane_normal">A vector orthonormal to the plane</param>
 /// <param name="intersection_point">Reference to a variable which will store the intersection point if it exists</param>
-/// <returns>1 if line intersects plane, 0 otherwise</returns>
+/// <returns>1 if the line intersects the plane, 0 otherwise</returns>
 bool Engine::LinePlaneIntersection(const Mat* plane_point, const Mat* plane_normal, const Mat* line_start, const Mat* line_end, Mat& intersection_point) {
 	// Plane normal should be normalized?
 	const Mat line_vector = *line_end - *line_start;
@@ -3342,10 +3388,26 @@ bool Engine::LinePlaneIntersection(const Mat* plane_point, const Mat* plane_norm
 	return 0;
 }
 
+/// <summary>
+/// Returns the distance between a given point and a given plane.
+/// </summary>
+/// <param name="point">The point to be tested against the plane</param>
+/// <param name="plane_point">A point on the plane</param>
+/// <param name="plane_normal">A vector orthonormal to the plane</param>
+/// <returns>The distance between the point and plane.</returns>
 double Engine::PointDistanceToPlane(const Mat* point, const Mat* plane_point, const Mat* plane_normal) {
 	return Mat::dot(*point - *plane_point, *plane_normal);
 }
 
+/// <summary>
+/// Tests whether a given triangle intersects a given plane and, if there is an intersection, stores the resulting clipped triangles in the given variables.
+/// </summary>
+/// <param name="plane_point">A point on the plane</param>
+/// <param name="plane_normal">A vector orthonormal to the plane</param>
+/// <param name="input_triangle">The triangle to be tested against the plane</param>
+/// <param name="clipped_triangle_a">Variable where a clipped triangle will be stored</param>
+/// <param name="clipped_triangle_b">Variable where a clipped triangle will be stored</param>
+/// <returns>How many new triangles it got split into</returns>
 uint8_t Engine::ClipTriangleToPlane(const Mat* plane_point, const Mat* plane_normal, const Triangle* input_triangle, Triangle& clipped_triangle_a, Triangle& clipped_triangle_b) {
 	uint8_t n_inside_points = 0;
 	uint8_t n_outside_points = 0;
@@ -3434,6 +3496,7 @@ uint8_t Engine::ClipTriangleToPlane(const Mat* plane_point, const Mat* plane_nor
 	throw std::runtime_error("Invalid branch taken at function `ClipTriangleToPlane`");
 }
 
+// Sets yaw and pitch from a direction vector (the displacement in each axis from the default direction vector)
 void Engine::Euler_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch) {
 	// Still need to handle gimbal lock edge case and also include roll
 
@@ -3444,6 +3507,7 @@ void Engine::Euler_GetAnglesFromDirection(const Mat& default_direction_vector, c
 	if (pitch < 0) pitch = (2 * M_PI) + pitch;
 }
 
+// Sets yaw, pitch, and roll from a rotation matrix
 void Engine::Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll) {
 	pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
 
@@ -3457,7 +3521,7 @@ void Engine::Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& p
 	}
 }
 
-// Gets yaw, pitch, and roll from quaternion
+// Sets yaw, pitch, and roll from quaternion
 void Engine::Quaternion_GetAnglesFromQuaternion(const Quaternion& quaternion, double& yaw, double& pitch, double& roll) {
 	Mat rotation_matrix = quaternion.get_rotationmatrix();
 	pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
@@ -3472,6 +3536,7 @@ void Engine::Quaternion_GetAnglesFromQuaternion(const Quaternion& quaternion, do
 	}
 }
 
+// Sets yaw, pitch, and roll from a direction vector (the displacement in each axis from the default direction vector)
 void Engine::Quaternion_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll) {
 	const Mat normalized_v1 = default_direction_vector / default_direction_vector.norm();
 	const Mat normalized_v2 = direction_vector / direction_vector.norm();
@@ -3485,8 +3550,10 @@ void Engine::Quaternion_GetAnglesFromDirection(const Mat& default_direction_vect
 	Engine::Quaternion_GetAnglesFromQuaternion(rotation, yaw, pitch, roll);
 }
 
+// Frees the pixel buffer, destroys the texture, renderer, window, and cleans SDL subsystems.
 void Engine::close() {
-	free(this->buffer);
+	free(this->pixel_buffer);
+	free(this->depth_buffer);
 
 	SDL_DestroyTexture(this->texture);
 	SDL_DestroyRenderer(this->renderer);
@@ -3495,6 +3562,9 @@ void Engine::close() {
 	SDL_Quit();
 }
 
+/// <summary>
+/// Updates the view matrix to look at the current camera direction vector in the current camera position, with the current camera up vector.
+/// </summary>
 void Engine::LookAt() {
 
 	// Setting 4th dimension to 0 for dot product
@@ -3503,9 +3573,7 @@ void Engine::LookAt() {
 
 	Mat cam_z_axis = ((camera_direction + camera_position) - camera_position);
 	cam_z_axis.set(0, 4, 1);
-	//Mat vec_b = Engine::CrossProduct3D(this->camera_up, vec_a);
 	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	//Mat vec_c = Engine::CrossProduct3D(vec_a, vec_b);
 	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
 
 	this->VIEW_MATRIX = Mat::identity_matrix(4);
@@ -3532,6 +3600,10 @@ void Engine::LookAt() {
 	this->VIEW_MATRIX.set(1, 4, 4);
 }
 
+/// <summary>
+/// Updates the view matrix to look at the target vector.
+/// </summary>
+/// <param name="target_vector">Vector to look at</param>
 void Engine::LookAt(const Mat& target_vector) {
 
 	// Setting 4th dimension to 0 for dot product
@@ -3546,9 +3618,7 @@ void Engine::LookAt(const Mat& target_vector) {
 	cam_z_axis.normalize();
 	this->camera_direction = cam_z_axis;
 
-	//Mat vec_b = Engine::CrossProduct3D(this->camera_up, vec_a);
 	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	//Mat vec_c = Engine::CrossProduct3D(vec_a, vec_b);
 	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
 	this->camera_up = cam_y_axis;
 
@@ -3574,6 +3644,13 @@ void Engine::LookAt(const Mat& target_vector) {
 	this->VIEW_MATRIX.set(1, 4, 4);
 }
 
+/// <summary>
+/// Returns a view matrix which looks at the given camera direction vector in the given camera position, with the given camera up vector.
+/// </summary>
+/// <param name="camera_position">Camera position vector</param>
+/// <param name="camera_direction">Camera direction vector</param>
+/// <param name="camera_up">Camera up vector</param>
+/// <returns>A 4x4 view matrix looking at the camera direction in the camera position, with the camera up vector.</returns>
 Mat Engine::LookAt(const Mat& camera_position, const Mat& camera_direction, const Mat& camera_up) {
 
 	// Setting 4th dimension to 0 for dot product
@@ -3583,9 +3660,7 @@ Mat Engine::LookAt(const Mat& camera_position, const Mat& camera_direction, cons
 	Mat cam_z_axis = ((camera_direction + camera_position) - tmp_camera_position);
 
 	cam_z_axis.set(0, 4, 1);
-	//Mat vec_b = Engine::CrossProduct3D(camera_up, vec_a);
 	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	//Mat vec_c = Engine::CrossProduct3D(vec_a, vec_b);
 	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
 
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
@@ -3614,6 +3689,14 @@ Mat Engine::LookAt(const Mat& camera_position, const Mat& camera_direction, cons
 	return VIEW_MATRIX;
 }
 
+/// <summary>
+/// Returns a view matrix which looks at the given target vector, and updates the camera direction and camera up vectors accordingly.
+/// </summary>
+/// <param name="camera_position">Camera position vector</param>
+/// <param name="camera_direction">Camera direction vector</param>
+/// <param name="target_vector">Vector to look at</param>
+/// <param name="camera_up">Camera up vector</param>
+/// <returns>A 4x4 view matrix looking at the camera direction in the camera position, with the camera up vector.</returns>
 Mat Engine::LookAt(const Mat& camera_position, Mat& camera_direction, const Mat& target_vector, Mat& camera_up) {
 
 	// Setting 4th dimension to 0 for dot product
@@ -3628,9 +3711,7 @@ Mat Engine::LookAt(const Mat& camera_position, Mat& camera_direction, const Mat&
 	cam_z_axis.normalize();
 	camera_direction = cam_z_axis;
 
-	//Mat vec_b = Engine::CrossProduct3D(camera_up, vec_a);
 	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	//Mat vec_c = Engine::CrossProduct3D(vec_a, vec_b);
 	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
 	camera_up = cam_y_axis;
 
