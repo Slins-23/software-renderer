@@ -1831,11 +1831,10 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 					//Mat middle_point = v1 + (0.5 * (v0 - v1)) + (0.5 * (v2 - v1));
 
 					//Mat eye_to_triangle_dist = middle_point - camera_position;
-					Mat eye_to_triangle_dist = v1 - (camera_position);
+					Mat eye_to_triangle_dist = camera_position - v1;
 					eye_to_triangle_dist.normalize();
-					//double correlation = Mat::dot(triangle_normal, eye_to_triangle_dist);
-					double correlation = Mat::dot(triangle_normal, camera_direction);
-					if (correlation >= 0) {
+					double correlation = Mat::dot(triangle_normal, eye_to_triangle_dist);
+					if (correlation <= 0) {
 						cull_triangle = true;
 						continue;
 					}
