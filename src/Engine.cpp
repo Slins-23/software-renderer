@@ -280,8 +280,8 @@ bool Engine::handle_events() {
 				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
 
 				if (!this->playing) break;
-				this->wireframe_triangles = !this->wireframe_triangles;
-				if (this->wireframe_triangles) {
+				this->wireframe_render = !this->wireframe_render;
+				if (this->wireframe_render) {
 					std::cout << "Wireframe rendering: Enabled" << std::endl;
 				}
 				else {
@@ -293,60 +293,58 @@ bool Engine::handle_events() {
 				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
 
 				if (!this->playing) break;
-				this->rasterize_triangles = !this->rasterize_triangles;
-				if (this->rasterize_triangles) {
-					this->shade_triangles = false;
+				this->rasterize = !this->rasterize;
+				if (this->rasterize && this->wireframe_render) {
+					this->wireframe_render = false;
 				}
 
-				if (this->rasterize_triangles) {
-					std::cout << "Triangle rasterization: Enabled" << std::endl;
+				if (this->rasterize) {
+					std::cout << "Rasterization: Enabled" << std::endl;
 				}
 				else {
-					std::cout << "Triangle rasterization: Disabled" << std::endl;
+					std::cout << "Rasterization: Disabled" << std::endl;
 				}
 				break;
 			case SDL_SCANCODE_3:
 				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
 
 				if (!this->playing) break;
-				this->shade_triangles = !this->shade_triangles;
-				if (this->shade_triangles) {
-					this->rasterize_triangles = false;
+				this->shade = !this->shade;
+				if (this->shade && this->wireframe_render) {
+					this->wireframe_render = false;
 				}
 
-				if (this->shade_triangles) {
-					std::cout << "Triangle shading: Enabled" << std::endl;
+				if (this->shade) {
+					std::cout << "Shading: Enabled" << std::endl;
 				}
 				else {
-					std::cout << "Triangle shading: Disabled" << std::endl;
+					std::cout << "Shading: Disabled" << std::endl;
 				}
 				break;
 			case SDL_SCANCODE_4:
 				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
 
 				if (!this->playing) break;
-				this->cull_triangles = !this->cull_triangles;
+				this->backface_cull = !this->backface_cull;
 
-				if (this->cull_triangles) {
-					std::cout << "Triangle culling: Enabled" << std::endl;
+				if (this->backface_cull) {
+					std::cout << "Backface culling: Enabled" << std::endl;
 				}
 				else {
-					std::cout << "Triangle culling: Disabled" << std::endl;
+					std::cout << "Backface culling: Disabled" << std::endl;
 				}
 				break;
 			case SDL_SCANCODE_5:
 				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
 
 				if (!this->playing) break;
-				this->zsort_instances = !this->zsort_instances;
+				this->depth_test = !this->depth_test;
 
-				if (this->zsort_instances) this->z_sorted = false;
-
-				if (this->zsort_instances) {
-					std::cout << "Instance z-sorting: Enabled" << std::endl;
+				if (this->depth_test) {
+					std::cout << "Depth testing: Enabled" << std::endl;
 				}
 				else {
-					std::cout << "Instance z-sorting: Disabled" << std::endl;
+					std::cout << "Depth testing: Disabled" << std::endl;
 				}
 
 				break;
@@ -1820,7 +1818,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 
 				bool cull_triangle = false;
 
-				if (this->cull_triangles) {
+				if (this->backface_cull) {
 					Mat vec_a = v0 - v1;
 					vec_a.normalize();
 					Mat vec_b = v2 - v1;
@@ -1831,10 +1829,12 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 					//Mat middle_point = v1 + (0.5 * (v0 - v1)) + (0.5 * (v2 - v1));
 
 					//Mat eye_to_triangle_dist = middle_point - camera_position;
-					Mat eye_to_triangle_dist = camera_position - v1;
+					Mat eye_to_triangle_dist = v1;
 					eye_to_triangle_dist.normalize();
+
 					double correlation = Mat::dot(triangle_normal, eye_to_triangle_dist);
-					if (correlation <= 0) {
+					if (correlation >= 0) {
+						//eye_to_triangle_dist.print();
 						cull_triangle = true;
 						continue;
 					}
@@ -1952,12 +1952,23 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				if (v2.get(1, 1) >= WIDTH - 1) v2.set(WIDTH - 1, 1, 1);
 				if (v2.get(2, 1) >= HEIGHT - 1) v2.set(HEIGHT - 1, 2, 1);
 
+				if ((fill || shade) && visible) {
+					// Ignore triangle rasterization if 2 of the vertices are the same (meaning the triangle is basically a line, which is already handled when the lines are drawn)
+					if (is_v0_equal_v1 || is_v0_equal_v2 || is_v1_equal_v2) {
+						return;
+					}
+
+					fill_triangle(v0, v1, v2, v0_originalz, v1_originalz, v2_originalz, fill_color, shade);
+				}
+
 				if (draw_outline) {
 					// Checks whether 2 of the triangle's vertices are the same, and only draws line if that is not the case (avoids drawing the same line more than once)
 					if (!is_v0_equal_v1) {
 						draw_line(
 							v0.get(1, 1), v0.get(2, 1),
 							v1.get(1, 1), v1.get(2, 1),
+							v0, v1,
+							v0_originalz, v1_originalz,
 							outline_color
 						);
 					}
@@ -1966,6 +1977,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						draw_line(
 							v1.get(1, 1), v1.get(2, 1),
 							v2.get(1, 1), v2.get(2, 1),
+							v1, v2,
+							v1_originalz, v2_originalz,
 							outline_color
 						);
 					}
@@ -1974,25 +1987,20 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						draw_line(
 							v2.get(1, 1), v2.get(2, 1),
 							v0.get(1, 1), v0.get(2, 1),
+							v2, v1,
+							v2_originalz, v1_originalz,
 							outline_color
 						);
 					}
 				}
 
-				if ((fill || shade) && visible) {
-					// Ignore triangle rasterization if 2 of the vertices are the same (meaning the triangle is basically a line, which is already handled when the lines are drawn)
-					if (is_v0_equal_v1 || is_v0_equal_v2 || is_v1_equal_v2) {
-						return; 
-					}
-					
-					fill_triangle(v0, v1, v2, v0_originalz, v1_originalz, v2_originalz, fill_color, shade);
-				}
+
 			}
 		}
 	}
 }
 
-void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outline_color) {
+void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& vec_a, const Mat& vec_b, const double& vec_a_originalz, const double& vec_b_originalz, uint32_t outline_color) {
 	// If not a vertical line
 	// (if x's are too close it's considered a vertical line, this accounts for small floating point errors)
 
@@ -2007,13 +2015,28 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outl
 	}
 	*/
 
+
+	Mat start_vector = vec_a;
+	Mat end_vector = vec_b;
+	double start_vector_original_z = vec_a_originalz;
+	double end_vector_original_z = vec_b_originalz;
+
 	if (abs(x1 - x2) > 0.5) {
+		double original_x = fmin(x1, x2);
+		double y = (original_x == x1) ? y1 : y2;
+
+		bool starts_at_vec_a = true;
+		if (original_x == x2) {
+			starts_at_vec_a = false;
+			std::swap(start_vector, end_vector);
+			std::swap(start_vector_original_z, end_vector_original_z);
+		}
+
 		double dy = (y2 - y1) / (x2 - x1);
 		double abs_dx = abs(1 / dy);
 
 		//printf("%f\n", dy);
-		double original_x = fmin(x1, x2);
-		double y = (original_x == x1) ? y1 : y2;
+
 		//double y = dy > 0 ? fmin(y1, y2) : fmax(y1, y2);
 
 		/*
@@ -2045,12 +2068,48 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outl
 
 			uint16_t rounded_y = round(y);
 
+			double start_vector_x = start_vector.get(1, 1);
+			double start_vector_y = start_vector.get(2, 1);
+			double end_vector_x = end_vector.get(1, 1);
+			double end_vector_y = end_vector.get(2, 1);
+
+			Mat direction_vector = end_vector - start_vector;
+			double direction_x = direction_vector.get(1, 1);
+			double direction_y = direction_vector.get(2, 1);
+
+			double total_length = direction_vector.norm();
+
 			for (x;
 				x < (uint16_t) round(fmax(x1, x2)); x++) {
 
 				// Check and update depth buffer, or only do so when rasterizing?
 
-				this->pixel_buffer[(WIDTH * rounded_y) + (uint16_t)x] = outline_color;
+				if (!this->depth_test) {
+					this->pixel_buffer[(WIDTH * rounded_y) + (uint16_t)x] = outline_color;
+				}
+				else {
+					double walked_length = sqrt(pow(x - start_vector_x, 2) + pow(rounded_y - start_vector_y, 2));
+					double alpha = walked_length / total_length;
+
+					if (total_length == 0) {
+						//return;
+						throw std::runtime_error("Error: A direction vector of length 0 caused a division by 0 during line depth testing.");
+					}
+
+					double a = alpha;
+					double b = 1 - alpha; // always on v1
+
+					double interpolated_z = pow((1 / start_vector_original_z * a) + (1 / end_vector_original_z * b), -1);
+
+					if (interpolated_z < this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
+						this->depth_buffer[(this->WIDTH * rounded_y) + x] = interpolated_z;
+						this->pixel_buffer[(this->WIDTH * rounded_y) + x] = outline_color;
+					}
+					else if (interpolated_z == this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
+						this->pixel_buffer[(this->WIDTH * rounded_y) + x] = outline_color;
+					}
+				}
+				
 
 				/*
 
@@ -2084,12 +2143,54 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outl
 			uint16_t rounded_x = round(x);
 			int16_t y = round(original_y);
 
+			if (original_x == x2) {
+				std::swap(start_vector, end_vector);
+				std::swap(start_vector_original_z, end_vector_original_z);
+			}
+
+			double start_vector_x = start_vector.get(1, 1);
+			double start_vector_y = start_vector.get(2, 1);
+			double end_vector_x = end_vector.get(1, 1);
+			double end_vector_y = end_vector.get(2, 1);
+
+			Mat direction_vector = end_vector - start_vector;
+			double direction_x = direction_vector.get(1, 1);
+			double direction_y = direction_vector.get(2, 1);
+
+			double total_length = direction_vector.norm();
+
 			for (y;
 				y != round(target_y); y += dy > 0 ? 1 : -1) {
 
 				// Check and update depth buffer, or only do so when rasterizing?
 
-				this->pixel_buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
+				//this->pixel_buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
+
+				if (!this->depth_test) {
+					this->pixel_buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
+				}
+				else {
+					double walked_length = sqrt(pow(rounded_x - start_vector_x, 2) + pow((int16_t)y - start_vector_y, 2));
+					double alpha = walked_length / total_length;
+
+					if (total_length == 0) {
+						//return;
+						throw std::runtime_error("Error: A direction vector of length 0 caused a division by 0 during line depth testing.");
+					}
+
+					double a = alpha;
+					double b = 1 - alpha; // always on v1
+
+					double interpolated_z = pow((1 / start_vector_original_z * a) + (1 / end_vector_original_z * b), -1);
+
+					if (interpolated_z < this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x]) {
+						this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = interpolated_z;
+						this->pixel_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = outline_color;
+					}
+					else if (interpolated_z == this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x]) {
+						this->pixel_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = outline_color;
+					}
+				}
 
 
 				/*
@@ -2120,9 +2221,51 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, uint32_t outl
 	else {
 		uint16_t x = round(x1);
 		uint16_t y = round(fmax(0, fmin(y1, y2)));
+
+		if (y2 < y1) {
+			std::swap(start_vector, end_vector);
+			std::swap(start_vector_original_z, end_vector_original_z);
+		}
+
+		double start_vector_x = x;
+		double start_vector_y = start_vector.get(2, 1);
+		double end_vector_x = x;
+		double end_vector_y = end_vector.get(2, 1);
+
+		Mat direction_vector = end_vector - start_vector;
+		double direction_x = x;
+		double direction_y = direction_vector.get(2, 1);
+
+		double total_length = direction_vector.norm();
+
 		for (y; y < (uint16_t)round(fmax(y1, y2)); y++) {
 			// Check and update depth buffer, or only do so when rasterizing?
-			this->pixel_buffer[(WIDTH * y) + x] = outline_color;
+
+			if (!this->depth_test) {
+				this->pixel_buffer[(WIDTH * y) + x] = outline_color;
+			}
+			else {
+				double walked_length = sqrt(pow(x - start_vector_x, 2) + pow(y - start_vector_y, 2));
+				double alpha = walked_length / total_length;
+
+				if (total_length == 0) {
+					//return;
+					throw std::runtime_error("Error: A direction vector of length 0 caused a division by 0 during line depth testing.");
+				}
+
+				double a = alpha;
+				double b = 1 - alpha; // always on v1
+
+				double interpolated_z = pow((1 / start_vector_original_z * a) + (1 / end_vector_original_z * b), -1);
+
+				if (interpolated_z < this->depth_buffer[(this->WIDTH * y) + x]) {
+					this->depth_buffer[(this->WIDTH * y) + x] = interpolated_z;
+					this->pixel_buffer[(this->WIDTH * y) + x] = outline_color;
+				}
+				else if (interpolated_z == this->depth_buffer[(this->WIDTH * y) + x]) {
+					this->pixel_buffer[(this->WIDTH * y) + x] = outline_color;
+				}
+			}
 		}
 
 	}
@@ -2668,17 +2811,23 @@ next:
 
 					double interpolated_z = interpolated_vtx.get(3, 1);
 					*/
-					double interpolated_z = pow((1/v0_originalz * a) + (1/v1_originalz * c) + (1/v2_originalz * b), -1);
+					
 					//interpolated_z = abs(interpolated_z);
 
-					if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
-						this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
-						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
-					}
-					else if (interpolated_z == this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
-						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
-					}
+					if (this->depth_test) {
+						double interpolated_z = pow((1 / v0_originalz * a) + (1 / v1_originalz * c) + (1 / v2_originalz * b), -1);
 
+						if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
+							this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
+							this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+						}
+						else if (interpolated_z == this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
+							this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+						}
+					}
+					else {
+						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+					}
 					
 				}
 				
@@ -3102,7 +3251,7 @@ void Engine::draw() {
 	*/
 
 	for (const Instance& instance : this->current_scene.scene_instances) {
-		if (instance.show) draw_instance(instance, this->wireframe_triangles, this->LINE_COLOR, this->rasterize_triangles, this->FILL_COLOR, this->shade_triangles);
+		if (instance.show) draw_instance(instance, this->wireframe_render, this->LINE_COLOR, this->rasterize, this->FILL_COLOR, this->shade);
 	}
 }
 

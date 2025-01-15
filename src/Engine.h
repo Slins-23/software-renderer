@@ -72,7 +72,6 @@ struct Quaternion {
 
 		Quaternion rotated_point = q * q_point * q_conjugate;
 		Mat final_point = rotated_point.get_4dvector();
-		final_point.set(1, 4, 1);
 
 		return final_point;
 	}
@@ -1044,11 +1043,11 @@ public:
 	// How often, in milliseconds, should the average FPS over the given time interval be printed to the console
 	double fps_update_interval = 500;
 
-	bool zsort_instances = false; // Toggle 5
-	bool cull_triangles = true; // Toggle 4
-	bool shade_triangles = false; // Toggle 3
-	bool rasterize_triangles = true; // Toggle 2
-	bool wireframe_triangles = false; // Toggle 1
+	bool depth_test = true; // Toggle 5
+	bool backface_cull = true; // Toggle 4
+	bool shade = true; // Toggle 3
+	bool rasterize = false; // Toggle 2
+	bool wireframe_render = false; // Toggle 1
 
 	bool z_sorted = false;
 
@@ -1207,7 +1206,7 @@ public:
 	void draw_mesh(const Mesh& mesh, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
 	void draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v3, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
 	void draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
-	void draw_line(double x1, double y1, double x2, double y2, uint32_t outline_color);
+	void draw_line(double x1, double y1, double x2, double y2, const Mat& vec_a, const Mat& vec_b, const double& vec_a_originalz, const double& vec_b_originalz, uint32_t outline_color);
 	Mat Instance_GetCenterVertex(const Instance& instance);
 	void draw();
 	void render();
