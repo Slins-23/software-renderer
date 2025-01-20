@@ -1867,7 +1867,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 					//std::cout << "Similarity: " << similarity << " | Distance: " << distance << std::endl;
 
 					//std::cout << light_intensity << std::endl;
-					if (1) {
+					if (similarity >= 0) {
 						//double light_intensity = (1 / pow(this->light_reach, 2)) * pow(distance, 2);
 
 						//double light_intensity = abs((distance - light_reach)) * -similarity;
@@ -1889,7 +1889,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
 					}
 					else {
-						//visible = false;
+						visible = false;
 					}
 				}
 
@@ -1916,6 +1916,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				v1 = this->SCALE_MATRIX * v1;
 				v2 = this->SCALE_MATRIX * v2;
 
+				// Gives triangles random colors each frame
+				/*
 				uint8_t alpha = 0xFF;
 				uint8_t red = rand() % 0xFF;
 				uint8_t blue = rand() % 0xFF;
@@ -1924,6 +1926,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 
 
 				outline_color = color;
+				*/
+
+
 				//fill_color = color;
 
 				bool is_v0_equal_v1 = v0 == v1;
@@ -1952,7 +1957,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				if (v2.get(1, 1) >= WIDTH - 1) v2.set(WIDTH - 1, 1, 1);
 				if (v2.get(2, 1) >= HEIGHT - 1) v2.set(HEIGHT - 1, 2, 1);
 
-				if ((fill || shade) && visible) {
+				if ((fill || shade)) {
 					// Ignore triangle rasterization if 2 of the vertices are the same (meaning the triangle is basically a line, which is already handled when the lines are drawn)
 					if (is_v0_equal_v1 || is_v0_equal_v2 || is_v1_equal_v2) {
 						return;
@@ -1987,8 +1992,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						draw_line(
 							v2.get(1, 1), v2.get(2, 1),
 							v0.get(1, 1), v0.get(2, 1),
-							v2, v1,
-							v2_originalz, v1_originalz,
+							v2, v0,
+							v2_originalz, v0_originalz,
 							outline_color
 						);
 					}
@@ -2067,6 +2072,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 			}
 
 			uint16_t rounded_y = round(y);
+			start_vector.set(rounded_y, 2, 1);
 
 			double start_vector_x = start_vector.get(1, 1);
 			double start_vector_y = start_vector.get(2, 1);
@@ -2077,7 +2083,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 			double direction_x = direction_vector.get(1, 1);
 			double direction_y = direction_vector.get(2, 1);
 
-			double total_length = direction_vector.norm();
+			double total_length = sqrt(pow(direction_x, 2) + pow(direction_y, 2));
 
 			for (x;
 				x < (uint16_t) round(fmax(x1, x2)); x++) {
@@ -2085,7 +2091,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 				// Check and update depth buffer, or only do so when rasterizing?
 
 				if (!this->depth_test) {
-					this->pixel_buffer[(WIDTH * rounded_y) + (uint16_t)x] = outline_color;
+					this->pixel_buffer[(WIDTH * rounded_y) + x] = outline_color;
 				}
 				else {
 					double walked_length = sqrt(pow(x - start_vector_x, 2) + pow(rounded_y - start_vector_y, 2));
@@ -2097,12 +2103,13 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 					}
 
 					double a = alpha;
-					double b = 1 - alpha; // always on v1
+					double b = 1 - alpha;
 
-					double interpolated_z = pow((1 / start_vector_original_z * a) + (1 / end_vector_original_z * b), -1);
+					
+					double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 
 					if (interpolated_z < this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
-						this->depth_buffer[(this->WIDTH * rounded_y) + x] = interpolated_z;
+						//this->depth_buffer[(this->WIDTH * rounded_y) + x] = interpolated_z;
 						this->pixel_buffer[(this->WIDTH * rounded_y) + x] = outline_color;
 					}
 					else if (interpolated_z == this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
@@ -2142,11 +2149,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 			uint16_t rounded_x = round(x);
 			int16_t y = round(original_y);
-
-			if (original_x == x2) {
-				std::swap(start_vector, end_vector);
-				std::swap(start_vector_original_z, end_vector_original_z);
-			}
+			start_vector.set(y, 2, 1);
 
 			double start_vector_x = start_vector.get(1, 1);
 			double start_vector_y = start_vector.get(2, 1);
@@ -2157,7 +2160,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 			double direction_x = direction_vector.get(1, 1);
 			double direction_y = direction_vector.get(2, 1);
 
-			double total_length = direction_vector.norm();
+			double total_length = sqrt(pow(direction_x, 2) + pow(direction_y, 2));
 
 			for (y;
 				y != round(target_y); y += dy > 0 ? 1 : -1) {
@@ -2181,10 +2184,11 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 					double a = alpha;
 					double b = 1 - alpha; // always on v1
 
-					double interpolated_z = pow((1 / start_vector_original_z * a) + (1 / end_vector_original_z * b), -1);
+					double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
+					//double interpolated_z = ((start_vector_original_z) + (alpha * ((end_vector_original_z) - (start_vector_original_z))));
 
 					if (interpolated_z < this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x]) {
-						this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = interpolated_z;
+						//this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = interpolated_z;
 						this->pixel_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = outline_color;
 					}
 					else if (interpolated_z == this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x]) {
@@ -2236,7 +2240,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 		double direction_x = x;
 		double direction_y = direction_vector.get(2, 1);
 
-		double total_length = direction_vector.norm();
+		double total_length = sqrt(pow(direction_x, 2) + pow(direction_y, 2));
 
 		for (y; y < (uint16_t)round(fmax(y1, y2)); y++) {
 			// Check and update depth buffer, or only do so when rasterizing?
@@ -2256,10 +2260,10 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 				double a = alpha;
 				double b = 1 - alpha; // always on v1
 
-				double interpolated_z = pow((1 / start_vector_original_z * a) + (1 / end_vector_original_z * b), -1);
+				double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 
 				if (interpolated_z < this->depth_buffer[(this->WIDTH * y) + x]) {
-					this->depth_buffer[(this->WIDTH * y) + x] = interpolated_z;
+					//this->depth_buffer[(this->WIDTH * y) + x] = interpolated_z;
 					this->pixel_buffer[(this->WIDTH * y) + x] = outline_color;
 				}
 				else if (interpolated_z == this->depth_buffer[(this->WIDTH * y) + x]) {
@@ -2815,7 +2819,7 @@ next:
 					//interpolated_z = abs(interpolated_z);
 
 					if (this->depth_test) {
-						double interpolated_z = pow((1 / v0_originalz * a) + (1 / v1_originalz * c) + (1 / v2_originalz * b), -1);
+						double interpolated_z = 1 / (((1 / v0_originalz) * a) + ((1 / v1_originalz) * c) + ((1 / v2_originalz) * b));
 
 						if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
 							this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
