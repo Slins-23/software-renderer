@@ -267,12 +267,12 @@ bool Engine::handle_events() {
 				break;
 			case SDL_SCANCODE_KP_PERIOD:
 				if (!this->playing) break;
-				z_fighting_tolerance *= 1.5;
+				z_fighting_tolerance += 0.001;
 				std::cout << "Z fighting tolerance: " << z_fighting_tolerance << std::endl;
 				break;
 			case SDL_SCANCODE_KP_ENTER:
 				if (!this->playing) break;
-				z_fighting_tolerance *= 0.5;
+				z_fighting_tolerance -= 0.001;
 				std::cout << "Z fighting tolerance: " << z_fighting_tolerance << std::endl;
 				break;
 
@@ -2086,7 +2086,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 					
 					//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 					double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
-					if (this->shade) interpolated_z -= this->z_fighting_tolerance;
+					if (this->shade || this->rasterize) interpolated_z *= z_fighting_tolerance;
 					//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 
 					if (interpolated_z <= this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
@@ -2164,7 +2164,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 					//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 					double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
-					if (this->shade) interpolated_z -= this->z_fighting_tolerance;
+					if (this->shade || this->rasterize) interpolated_z *= z_fighting_tolerance;
 					//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 					//double interpolated_z = ((start_vector_original_z) + (alpha * ((end_vector_original_z) - (start_vector_original_z))));
 
@@ -2224,7 +2224,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 				//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 				double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
 
-				if (this->shade) interpolated_z -= this->z_fighting_tolerance;
+				if (this->shade || this->rasterize) interpolated_z *= z_fighting_tolerance;
 				//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 
 				if (interpolated_z <= this->depth_buffer[(this->WIDTH * y) + x]) {
