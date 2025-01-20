@@ -1051,6 +1051,8 @@ public:
 
 	bool z_sorted = false;
 
+	double z_fighting_tolerance = 0.005;
+
 	double near = 0.1;
 	double far = 1000;
 	double FOV = 60;

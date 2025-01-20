@@ -267,13 +267,13 @@ bool Engine::handle_events() {
 				break;
 			case SDL_SCANCODE_KP_PERIOD:
 				if (!this->playing) break;
-				light_reach -= 0.1;
-				std::cout << "Light source reach: " << light_reach << std::endl;
+				z_fighting_tolerance *= 1.5;
+				std::cout << "Z fighting tolerance: " << z_fighting_tolerance << std::endl;
 				break;
 			case SDL_SCANCODE_KP_ENTER:
 				if (!this->playing) break;
-				light_reach += 0.1;
-				std::cout << "Light source reach: " << light_reach << std::endl;
+				z_fighting_tolerance *= 0.5;
+				std::cout << "Z fighting tolerance: " << z_fighting_tolerance << std::endl;
 				break;
 
 			case SDL_SCANCODE_1:
@@ -2037,32 +2037,9 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 			std::swap(start_vector_original_z, end_vector_original_z);
 		}
 
-		double dy = (y2 - y1) / (x2 - x1);
+		//double dy = (y2 - y1) / (x2 - x1);
+		double dy = (end_vector.get(2, 1) - start_vector.get(2, 1)) / (end_vector.get(1, 1) - start_vector.get(1, 1));
 		double abs_dx = abs(1 / dy);
-
-		//printf("%f\n", dy);
-
-		//double y = dy > 0 ? fmin(y1, y2) : fmax(y1, y2);
-
-		/*
-		if (fabs(x1 - x2) <= 3) {
-			printf("x1: %d | y1: %d | x2: %d | y2: %d | dy: %f\n", nx1, ny1, nx2, ny2, dy);
-		}
-		*/
-
-		/*
-
-		if (dy == 0 && ny1 != ny2) {
-			if (original_x == nx1) {
-				printf("dy: %f | (%d, %d) -> (%d, %d)\n", (y2 - y1) / (x2 - x1), nx1, ny1, nx2, ny2);
-			}
-			else {
-				printf("dy: %f | (%d, %d) -> (%d, %d)\n", (y2 - y1) / (x2 - x1), nx2, ny2, nx1, ny1);
-			}
-			
-		}
-
-		*/
 
 		// Clip edges of the line if they're out of the screen to optimize (check intersections with screen) x and y must be within screen boundaries
 		if (abs(dy) <= abs_dx) {
@@ -2072,7 +2049,8 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 			}
 
 			uint16_t rounded_y = round(y);
-			start_vector.set(rounded_y, 2, 1);
+			//start_vector.set(x, 1, 1);
+			//start_vector.set(rounded_y, 2, 1);
 
 			double start_vector_x = start_vector.get(1, 1);
 			double start_vector_y = start_vector.get(2, 1);
@@ -2106,13 +2084,12 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 					double b = 1 - alpha;
 
 					
-					double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
+					//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
+					double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
+					if (this->shade) interpolated_z -= this->z_fighting_tolerance;
+					//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 
-					if (interpolated_z < this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
-						//this->depth_buffer[(this->WIDTH * rounded_y) + x] = interpolated_z;
-						this->pixel_buffer[(this->WIDTH * rounded_y) + x] = outline_color;
-					}
-					else if (interpolated_z == this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
+					if (interpolated_z <= this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
 						this->pixel_buffer[(this->WIDTH * rounded_y) + x] = outline_color;
 					}
 				}
@@ -2149,7 +2126,8 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 			uint16_t rounded_x = round(x);
 			int16_t y = round(original_y);
-			start_vector.set(y, 2, 1);
+			//start_vector.set(rounded_x, 1, 1);
+			//start_vector.set(y, 2, 1);
 
 			double start_vector_x = start_vector.get(1, 1);
 			double start_vector_y = start_vector.get(2, 1);
@@ -2170,10 +2148,10 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 				//this->pixel_buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
 
 				if (!this->depth_test) {
-					this->pixel_buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
+					this->pixel_buffer[(WIDTH * y) + rounded_x] = outline_color;
 				}
 				else {
-					double walked_length = sqrt(pow(rounded_x - start_vector_x, 2) + pow((int16_t)y - start_vector_y, 2));
+					double walked_length = sqrt(pow(rounded_x - start_vector_x, 2) + pow(y - start_vector_y, 2));
 					double alpha = walked_length / total_length;
 
 					if (total_length == 0) {
@@ -2184,33 +2162,16 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 					double a = alpha;
 					double b = 1 - alpha; // always on v1
 
-					double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
+					//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
+					double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
+					if (this->shade) interpolated_z -= this->z_fighting_tolerance;
+					//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 					//double interpolated_z = ((start_vector_original_z) + (alpha * ((end_vector_original_z) - (start_vector_original_z))));
 
-					if (interpolated_z < this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x]) {
-						//this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = interpolated_z;
-						this->pixel_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = outline_color;
-					}
-					else if (interpolated_z == this->depth_buffer[(this->WIDTH * (int16_t)y) + rounded_x]) {
-						this->pixel_buffer[(this->WIDTH * (int16_t)y) + rounded_x] = outline_color;
+					if (interpolated_z <= this->depth_buffer[(this->WIDTH * y) + rounded_x]) {
+						this->pixel_buffer[(this->WIDTH * y) + rounded_x] = outline_color;
 					}
 				}
-
-
-				/*
-				if (x != original_x) {
-					if (x > original_x && dy < -1) {
-						for (int tmp_y = (y - dy) - 1; tmp_y > y; tmp_y--) {
-							if (tmp_y > 0 && tmp_y < HEIGHT && x > 0) this->buffer[((WIDTH * tmp_y) + (uint16_t)x)] = outline_color;
-						}
-					}
-					else if (x > original_x && dy > 1) {
-						for (int tmp_y = (y - dy) + 1; tmp_y < y; tmp_y++) {
-							if (tmp_y > 0 && tmp_y < HEIGHT && x > 0) this->buffer[((WIDTH * tmp_y) + (uint16_t)x)] = outline_color;
-						}
-					}
-				}
-				*/
 
 				x += abs_dx;
 				rounded_x = round(x);
@@ -2260,13 +2221,13 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 				double a = alpha;
 				double b = 1 - alpha; // always on v1
 
-				double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
+				//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
+				double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
 
-				if (interpolated_z < this->depth_buffer[(this->WIDTH * y) + x]) {
-					//this->depth_buffer[(this->WIDTH * y) + x] = interpolated_z;
-					this->pixel_buffer[(this->WIDTH * y) + x] = outline_color;
-				}
-				else if (interpolated_z == this->depth_buffer[(this->WIDTH * y) + x]) {
+				if (this->shade) interpolated_z -= this->z_fighting_tolerance;
+				//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
+
+				if (interpolated_z <= this->depth_buffer[(this->WIDTH * y) + x]) {
 					this->pixel_buffer[(this->WIDTH * y) + x] = outline_color;
 				}
 			}
@@ -2819,7 +2780,9 @@ next:
 					//interpolated_z = abs(interpolated_z);
 
 					if (this->depth_test) {
-						double interpolated_z = 1 / (((1 / v0_originalz) * a) + ((1 / v1_originalz) * c) + ((1 / v2_originalz) * b));
+						//double interpolated_z = 1 / (((1 / v0_originalz) * a) + ((1 / v1_originalz) * c) + ((1 / v2_originalz) * b));
+						double interpolated_z = (v0_originalz * a) + (v1_originalz * c) + (v2_originalz * b);
+
 
 						if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
 							this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
