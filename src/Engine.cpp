@@ -1745,45 +1745,6 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 				}
 			}
 
-			{
-				/*
-				if (n_clipped_triangle == 0) {
-					Triangle tst = sub_clipped_triangles[0];
-					Mat v0 = tst.vertices[0];
-					Mat v1 = tst.vertices[1];
-					Mat v2 = tst.vertices[2];
-
-					bool cull = false;
-					Mat vec_a = v0 - v1;
-					vec_a.normalize();
-					Mat vec_b = v2 - v1;
-					vec_b.normalize();
-					Mat triangle_normal = Engine::CrossProduct3D(vec_a, vec_b);
-					triangle_normal.normalize();
-
-					Mat middle_point = v1 + (0.5 * (v0 - v1)) + (0.5 * (v2 - v1));
-
-					Mat eye_to_triangle_dist = middle_point - camera_position;
-
-					camera_position.print();
-					middle_point.print();
-					eye_to_triangle_dist.normalize();
-					eye_to_triangle_dist.print();
-					triangle_normal.print();
-					v0.print();
-					v1.print();
-					v2.print();
-					//double correlation = Mat::dot(triangle_normal, eye_to_triangle_dist);
-					double correlation = Mat::dot(triangle_normal, camera_direction / camera_direction.norm());
-					if (correlation >= 0) {
-						cull = true;
-					}
-					std::cout << "Cull? " << cull << std::endl;
-				}
-				*/
-
-			}
-
 			for (Triangle current_triangle : sub_clipped_triangles) {
 				Mat v0 = current_triangle.vertices[0];
 				Mat v1 = current_triangle.vertices[1];
@@ -2093,23 +2054,6 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 						this->pixel_buffer[(this->WIDTH * rounded_y) + x] = outline_color;
 					}
 				}
-				
-
-				/*
-
-				if (x != original_x) {
-					if (x > original_x && dy < -1) {
-						for (int tmp_y = (y - dy) - 1; tmp_y > y; tmp_y--) {
-							if (tmp_y > 0 && tmp_y < HEIGHT && x > 0) this->buffer[((WIDTH * tmp_y) + (uint16_t)x)] = outline_color;
-						}
-					}
-					else if (x > original_x && dy > 1) {
-						for (int tmp_y = (y - dy) + 1; tmp_y < y; tmp_y++) {
-							if (tmp_y > 0 && tmp_y < HEIGHT && x > 0) this->buffer[((WIDTH * tmp_y) + (uint16_t)x)] = outline_color;
-						}
-					}
-				}
-				*/
 
 				y += dy;
 				rounded_y = round(y);
@@ -2271,293 +2215,33 @@ Mat Engine::CrossProduct3D(const Mat& v1, const Mat& v2) {
 }
 
 void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const double& v0_originalz, const double& v1_originalz, const double& v2_originalz, uint32_t fill_color, bool shade) {
-	/*
-	int x1 = v0.get(1, 1);
-	int y1 = v0.get(2, 1);
 
-	int x2 = v1.get(1, 1);
-	int y2 = v1.get(2, 1);
+	double v0_x = v0.get(1, 1);
+	double v0_y = v0.get(2, 1);
 
-	int x3 = v2.get(1, 1);
-	int y3 = v2.get(2, 1);
+	double v1_x = v1.get(1, 1);
+	double v1_y = v1.get(2, 1);
 
-	auto SWAP = [](int& x, int& y) { int t = x; x = y; y = t; };
-	auto drawline = [&](int sx, int ex, int ny) { for (int i = sx; i <= ex; i++) {
-		if (i >= 0 && i < WIDTH && ny >= 0 && ny < HEIGHT)
-		{
-			buffer[ny * WIDTH + i] = fill_color;
-		}
-		}
-	};
-
-	int t1x, t2x, y, minx, maxx, t1xp, t2xp;
-	bool changed1 = false;
-	bool changed2 = false;
-	int signx1, signx2, dx1, dy1, dx2, dy2;
-	int e1, e2;
-	// Sort vertices
-	if (y1 > y2) { SWAP(y1, y2); SWAP(x1, x2); }
-	if (y1 > y3) { SWAP(y1, y3); SWAP(x1, x3); }
-	if (y2 > y3) { SWAP(y2, y3); SWAP(x2, x3); }
-
-	t1x = t2x = x1; y = y1;   // Starting points
-	dx1 = (int)(x2 - x1); if (dx1 < 0) { dx1 = -dx1; signx1 = -1; }
-	else signx1 = 1;
-	dy1 = (int)(y2 - y1);
-
-	dx2 = (int)(x3 - x1); if (dx2 < 0) { dx2 = -dx2; signx2 = -1; }
-	else signx2 = 1;
-	dy2 = (int)(y3 - y1);
-
-	if (dy1 > dx1) {   // swap values
-		SWAP(dx1, dy1);
-		changed1 = true;
-	}
-	if (dy2 > dx2) {   // swap values
-		SWAP(dy2, dx2);
-		changed2 = true;
-	}
-
-	e2 = (int)(dx2 >> 1);
-	// Flat top, just process the second half
-	if (y1 == y2) goto next;
-	e1 = (int)(dx1 >> 1);
-
-	for (int i = 0; i < dx1;) {
-		t1xp = 0; t2xp = 0;
-		if (t1x < t2x) { minx = t1x; maxx = t2x; }
-		else { minx = t2x; maxx = t1x; }
-		// process first line until y value is about to change
-		while (i < dx1) {
-			i++;
-			e1 += dy1;
-			while (e1 >= dx1) {
-				e1 -= dx1;
-				if (changed1) t1xp = signx1;//t1x += signx1;
-				else          goto next1;
-			}
-			if (changed1) break;
-			else t1x += signx1;
-		}
-		// Move line
-	next1:
-		// process second line until y value is about to change
-		while (1) {
-			e2 += dy2;
-			while (e2 >= dx2) {
-				e2 -= dx2;
-				if (changed2) t2xp = signx2;//t2x += signx2;
-				else          goto next2;
-			}
-			if (changed2)     break;
-			else              t2x += signx2;
-		}
-	next2:
-		if (minx > t1x) minx = t1x; if (minx > t2x) minx = t2x;
-		if (maxx < t1x) maxx = t1x; if (maxx < t2x) maxx = t2x;
-		drawline(minx, maxx, y);    // Draw line from min to max points found on the y
-		// Now increase y
-		if (!changed1) t1x += signx1;
-		t1x += t1xp;
-		if (!changed2) t2x += signx2;
-		t2x += t2xp;
-		y += 1;
-		if (y == y2) break;
-
-	}
-next:
-	// Second half
-	dx1 = (int)(x3 - x2); if (dx1 < 0) { dx1 = -dx1; signx1 = -1; }
-	else signx1 = 1;
-	dy1 = (int)(y3 - y2);
-	t1x = x2;
-
-	if (dy1 > dx1) {   // swap values
-		SWAP(dy1, dx1);
-		changed1 = true;
-	}
-	else changed1 = false;
-
-	e1 = (int)(dx1 >> 1);
-
-	for (int i = 0; i <= dx1; i++) {
-		t1xp = 0; t2xp = 0;
-		if (t1x < t2x) { minx = t1x; maxx = t2x; }
-		else { minx = t2x; maxx = t1x; }
-		// process first line until y value is about to change
-		while (i < dx1) {
-			e1 += dy1;
-			while (e1 >= dx1) {
-				e1 -= dx1;
-				if (changed1) { t1xp = signx1; break; }//t1x += signx1;
-				else          goto next3;
-			}
-			if (changed1) break;
-			else   	   	  t1x += signx1;
-			if (i < dx1) i++;
-		}
-	next3:
-		// process second line until y value is about to change
-		while (t2x != x3) {
-			e2 += dy2;
-			while (e2 >= dx2) {
-				e2 -= dx2;
-				if (changed2) t2xp = signx2;
-				else          goto next4;
-			}
-			if (changed2)     break;
-			else              t2x += signx2;
-		}
-	next4:
-
-		if (minx > t1x) minx = t1x; if (minx > t2x) minx = t2x;
-		if (maxx < t1x) maxx = t1x; if (maxx < t2x) maxx = t2x;
-		drawline(minx, maxx, y);
-		if (!changed1) t1x += signx1;
-		t1x += t1xp;
-		if (!changed2) t2x += signx2;
-		t2x += t2xp;
-		y += 1;
-		if (y > y3) return;
-	}
-
-
-	return;
-	*/
-	// V0 has to be swapped with V1 or V2, why does the order matter?
-	Mat v0a = v0;
-	Mat v1a = v1;
-	Mat v2a = v2;
-
-	double v0_x = v0a.get(1, 1);
-	double v0_y = v0a.get(2, 1);
-
-	double v1_x = v1a.get(1, 1);
-	double v1_y = v1a.get(2, 1);
-
-	double v2_x = v2a.get(1, 1);
-	double v2_y = v2a.get(2, 1);
-
-	/*
-	double min_x = fmin(fmin(v0_x, v1_x), v2_x);
-	double min_y = fmin(fmin(v0_y, v1_y), v2_y);
-	if (min_y != v0_y) {
-		if (min_y == v1_y) {
-			double old_v0_x = v0_x;
-			double old_v0_y = v0_y;
-			v0_x = v1_x;
-			v0_y = v1_y;
-			v1_x = old_v0_x;
-			v1_y = old_v0_y;
-		}
-		else if (min_y == v2_y) {
-			double old_v0_x = v0_x;
-			double old_v0_y = v0_y;
-			v0_x = v2_x;
-			v0_y = v2_y;
-			v2_x = old_v0_x;
-			v2_y = old_v0_y;
-		}
-	}
-
-	if (min_y == v0_y) {
-		if (v1_y == v0_y && v1_x > v0_x) {
-			double old_v0_x = v0_x;
-			v0_x = v1_x;
-			v1_x = old_v0_x;
-		} else if (v2_y == v0_y && v2_x > v0_x) {
-			double old_v0_x = v0_x;
-			v0_x = v2_x;
-			v2_x = old_v0_x;
-		}
-	}
-
-
-	// Swap V1, V2
-	if (v2_y < v1_y && v1_x == v2_x) {
-		double old_v1_x = v1_x;
-		double old_v1_y = v1_y;
-		v1_x = v2_x;
-		v1_y = v2_y;
-		v2_x = old_v1_x;
-		v2_y = old_v1_y;
-	}
-	else if (v2_x < v1_x) {
-		double old_v1_x = v1_x;
-		double old_v1_y = v1_y;
-		v1_x = v2_x;
-		v1_y = v2_y;
-		v2_x = old_v1_x;
-		v2_y = old_v1_y;
-	}
-	*/
-
-
-	/*
-	if (v0_x < 0) v0_x = 0;
-	if (v0_y < 0) v0_y = 0;
-	if (v1_x < 0) v1_x = 0;
-	if (v1_y < 0) v1_y = 0;
-	if (v2_x < 0) v2_x = 0;
-	if (v2_y < 0) v2_y = 0;
-
-	if (v0_x >= WIDTH) v0_x = WIDTH - 1;
-	if (v1_x >= WIDTH) v1_x = WIDTH - 1;
-	if (v2_x >= WIDTH) v2_x = WIDTH - 1;
-
-	if (v0_y >= HEIGHT) v0_y = HEIGHT - 1;
-	if (v1_y >= HEIGHT) v1_y = HEIGHT - 1;
-	if (v2_y >= HEIGHT) v2_y = HEIGHT - 1;
-	*/
-
+	double v2_x = v2.get(1, 1);
+	double v2_y = v2.get(2, 1);
 
 	uint16_t bounding_box_left_x = round(fmin(fmin(v0_x, v1_x), v2_x));
 	uint16_t bounding_box_right_x = round(fmax(fmax(v0_x, v1_x), v2_x));
 	uint16_t bounding_box_top_y = round(fmin(fmin(v0_y, v1_y), v2_y));
 	uint16_t bounding_box_bottom_y = round(fmax(fmax(v0_y, v1_y), v2_y));
 
-	//double bounding_box_left_x = fmin(fmin(v0_x, v1_x), v2_x);
-	//double bounding_box_right_x = fmax(fmax(v0_x, v1_x), v2_x);
-	//double bounding_box_top_y = fmin(fmin(v0_y, v1_y), v2_y);
-	//double bounding_box_bottom_y = fmax(fmax(v0_y, v1_y), v2_y);
+	const Mat vec_a = v0 - v1;
+	const Mat vec_b = v2 - v1;
 
-	const Mat veca = v0 - v1;
-	const Mat vecb = v2 - v1;
+	double vec_a_x = vec_a.get(1, 1);
+	double vec_a_y = vec_a.get(2, 1);
 
-	double veca_x = veca.get(1, 1);
-	double veca_y = veca.get(2, 1);
+	double vec_b_x = vec_b.get(1, 1);
+	double vec_b_y = vec_b.get(2, 1);
 
-	double vecb_x = vecb.get(1, 1);
-	double vecb_y = vecb.get(2, 1);
-
-	//uint8_t red = a * 0xFF;
-	//uint8_t green = b * 0xFF;
-	//uint8_t blue = c * 0xFF;
-
-	/*
-	Mat vs1 = Mat(
-		{
-			{(double)v1_x - v0_x},
-			{(double)v1_y - v0_y},
-			{0},
-			{0}
-		}
-	, 4, 1);
-
-	Mat vs2 = Mat(
-		{
-			{(double)v2_x - v0_x},
-			{(double)v2_y - v0_y},
-			{0},
-			{0}
-		}
-	, 4, 1);
-	*/
-
-
-	for (uint16_t pixel_y = bounding_box_top_y; pixel_y < bounding_box_bottom_y; pixel_y++) {
+	for (uint16_t pixel_y = bounding_box_top_y; pixel_y <= bounding_box_bottom_y; pixel_y++) {
 		if (pixel_y >= this->HEIGHT || pixel_y < 0) return;
-		for (uint16_t pixel_x = bounding_box_left_x; pixel_x < bounding_box_right_x; pixel_x++) {
+		for (uint16_t pixel_x = bounding_box_left_x; pixel_x <= bounding_box_right_x; pixel_x++) {
 			if (pixel_x >= this->WIDTH || pixel_x < 0) return;
 			// C = V1 (Red) 
 			// A = V0 (Green)
@@ -2584,85 +2268,6 @@ next:
 			//               /          \
 			//   (V1, red)  /____________\  (V0, green)          
 			// 
-			//Mat pixel = (a * v1) + (b * v2) + (c * v0) // (1 - alpha - beta )v1 + (beta)v2 + (alpha)v0 // v1 + alpha(v0 - v1) + beta(v2 - v1)
-
-			// How do I deal with colinear vertices? Degenerate triangle, all vertices have the same y. Should lines be represented as a triangle like this?
-			// Swap vertices if v2 and v1 have the same Y, since that makes alpha & beta undefined
-			/*
-			if (v2_y == v1_y) {
-				double old_v2_x = v2_x;
-				double old_v2_y = v2_y;
-				v2_x = v0_x;
-				v2_y = v0_y;
-				v0_x = old_v2_x;
-				v0_y = old_v2_y;
-			}
-			*/
-
-
-			/*
-			if (v2_y == v0_y) {
-				double old_v1_x = v1_x;
-				double old_v1_y = v1_y;
-				v1_x = v2_x;
-				v1_y = v2_y;
-				v2_x = old_v1_x;
-				v2_y = old_v1_y;
-			}
-			*/
-
-
-			// 
-
-			//double alpha = ((v1_x * (v2_y - v1_y)) + ((pixel_y - v1_y) * (v2_x - v1_x)) - (pixel_x * (v2_y - v1_y))) / (((v0_y - v1_y) * (v2_x - v1_x)) - ((v0_x - v1_x) * (v2_y - v1_y)));
-
-			/*
-			double alpha = (double)(((pixel_x - v0_x) * (v2_y - v0_y)) - ((pixel_y - v0_y) * (v2_x - v0_x))) / (((v2_y - v0_y) * (v1_x - v0_x)) - ((v1_y - v0_y) * (v2_x - v0_x)));
-			double beta = (double)(pixel_y - v0_y - (alpha * (v1_y - v0_y))) / (v2_y - v0_y);
-
-			// NEW
-			//double alpha = (((pixel_x - v0_x) * (v2_y - v0_y)) - ((pixel_y - v0_y) * (v2_x - v0_x))) / (((v1_x - v0_x) * (v2_y - v0_y)) - ((v1_y - v0_y) * (v2_x - v0_x)));
-			// double beta = (((v1_x - v0_x) * (pixel_y - v0_y)) - ((v1_y - v0_y) * (pixel_x - v0_x))) / (((v1_x - v0_x) * (v2_y - v0_y)) - ((v1_y - v0_y) * (v2_x - v0_x)));
-
-			static Mat point = Mat(
-				{
-					{1},
-					{1},
-					{1},
-					{1}
-				}
-			, 4, 1);
-
-			point.set((double)pixel_x, 1, 1);
-			point.set((double)pixel_y, 2, 1);
-
-			static Mat q = point;
-			q.set(point.get(1, 1) - v0.get(1, 1), 1, 1);
-			q.set(point.get(2, 1) - v0.get(2, 1), 2, 1);
-
-			//Mat vs1 = v1 - v0;
-			//Mat vs2 = v2 - v0;
-
-			static Mat vs1 = point;
-			vs1.set(v1.get(1, 1) - v0.get(1, 1), 1, 1);
-			vs1.set(v1.get(2, 1) - v0.get(2, 1), 2, 1);
-
-			static Mat vs2 = point;
-			vs2.set(v2.get(1, 1) - v0.get(1, 1), 1, 1);
-			vs2.set(v2.get(2, 1) - v0.get(2, 1), 2, 1);
-			*/
-
-			//double alpha2 = (double)CrossProduct(q, vs2) / CrossProduct(vs1, vs2);
-			//double beta2 = (double)CrossProduct(vs1, q) / CrossProduct(vs1, vs2);
-
-
-			// NOT WORKING
-
-			//double alpha = (((pixel_x - v0_x) * (v2_y - v0_y)) - ((pixel_y - v0_y) * (v2_x - v0_x))) / (((v2_y - v0_y) * (v1_x - v0_x)) - ((v1_y - v0_y) * (v2_x - v0_x)));
-			//double beta = (pixel_y - v0_y - (alpha * (v1_y - v0_y))) / (v2_y - v0_y);
-
-			//double alpha = (((pixel_x - v1_x) * (v2_y - v1_y)) - ((pixel_y - v1_y) * (v2_x - v1_x))) / (((v0_x - v1_x) * (v2_y - v1_y)) - ((v0_y - v1_y) * (v2_x - v1_x)));
-			//double beta = (((v0_x - v1_x) * (pixel_y - v1_y)) - ((v0_y - v1_y) * (pixel_x - v1_x))) / (((v0_x - v1_x) * (v2_y - v1_y)) - ((v0_y - v1_y) * (v2_x - v1_x)));
 
 			double division = (((v0_x - v1_x) * (v2_y - v1_y)) - ((v0_y - v1_y) * (v2_x - v1_x)));
 
@@ -2671,72 +2276,13 @@ next:
 				throw std::runtime_error("Error: Division by 0 during barycentric coordinates calculation (rasterization).");
 			}
 
-
 			double alpha = (((pixel_x - v1_x) * (v2_y - v1_y)) - ((pixel_y - v1_y) * (v2_x - v1_x))) / division;
 			double beta = (((v0_x - v1_x) * (pixel_y - v1_y)) - ((v0_y - v1_y) * (pixel_x - v1_x))) / division;
-
-			// WORKING
-			//double alpha = (((pixel_x - v1_x) * (v2_y - v1_y)) - ((pixel_y - v1_y) * (v2_x - v1_x))) / (((v0_x - v1_x) * (v2_y - v1_y)) - ((v0_y - v1_y) * (v2_x - v1_x)));
-			//double beta = (((v0_x - v1_x) * (pixel_y - v1_y)) - ((v0_y - v1_y) * (pixel_x - v1_x))) / (((v0_x - v1_x) * (v2_y - v1_y)) - ((v0_y - v1_y) * (v2_x - v1_x)));
-
-
-			/*
-			if (abs(alpha - alpha2) > 0.001 || abs(beta - beta2) > 0.001) {
-				std::cout << abs(alpha - alpha2) << std::endl;
-				std::cout << abs(beta - beta2) << std::endl;
-				exit(-1);
-			};
-			*/
-
-			/*
-			double alpha = (double)(((pixel_x - v1_x) * (v2_y - v1_y)) - ((pixel_y - v1_y) * (v2_x - v1_x))) / (((v2_y - v1_y) * (v0_x - v1_x)) - ((v0_y - v1_y) * (v2_x - v1_x)));
-			double beta = (double)(pixel_y - v1_y - (alpha * (v0_y - v1_y))) / (v2_y - v1_y);
-
-
-			Mat point = Mat(
-				{
-					{(double)pixel_x},
-					{(double)pixel_y},
-					{1},
-					{1}
-				}
-			, 4, 1);
-
-			Mat q = point - v0;
-
-
-			Mat vs1 = v1 - v0;
-			Mat vs2 = v2 - v0;
-			double alpha2 = (double)CrossProduct(q, vs2) / CrossProduct(vs1, vs2);
-			double beta2 = (double)CrossProduct(vs1, q) / CrossProduct(vs1, vs2);
-			alpha = alpha2;
-			beta = beta2;
-			*/
-
-			//std::cout << "A: " << alpha << " | " "B: " << beta << std::endl;
-
-			/*
-			Mat q = Mat(
-				{
-					{(double)pixel_x - v0_x},
-					{(double) pixel_y - v0_y},
-					{0},
-					{0}
-				}
-			, 4, 1);
-
-			double kk = CrossProduct(vs1, vs2);
-
-			alpha = CrossProduct(q, vs2) / kk;
-			beta = CrossProduct(vs1, q) / kk;
-			*/
 
 			// Checks whether is within triangle/edge
 			//if ((pixel_t0 >= 0 && pixel_t1 >= 0) || (pixel_t0 <= 1 && pixel_t1 <= 1)) {
 
 			if (alpha >= 0 && beta >= 0 && alpha + beta <= 1) {
-				//std::cout << "Alpha: " << alpha << " | Beta: " << beta << std::endl;
-				//return;
 				double c = 1 - alpha - beta; // always on v1
 				double b = beta; // always on v2, unless v2 is at the same height as v1, then v0 and v2 swap and this is now at v0
 				double a = alpha; // always on v0, unless same case as beta above, in this case it stays at v2
@@ -2753,7 +2299,7 @@ next:
 				}
 				*/
 
-				// Interpolates each vertex for red, green, and blue if not shading
+				// Interpolates each vertex for red, green, and blue (if not shading)
 				if (!shade) {
 					uint8_t alpha = 0xFF;
 					uint8_t red = c * 0xFF; // v1
@@ -2764,21 +2310,6 @@ next:
 
 
 				if (pixel_y < this->HEIGHT && pixel_y >= 0 && pixel_x >= 0 && pixel_x < this->WIDTH) {
-					// Depth check
-					//double interpolated_z = v1_originalz + (alpha * (v0_originalz - v1_originalz)) + (beta * (v2_originalz - v1_originalz));
-
-					/*
-					Mat old_v0 = v0 * v0_originalz;
-					Mat old_v1 = v1 * v1_originalz;
-					Mat old_v2 = v2 * v2_originalz;
-
-					Mat interpolated_vtx = old_v1 + (alpha * (old_v0 - old_v1)) + (beta * (old_v2 - old_v1));
-
-					double interpolated_z = interpolated_vtx.get(3, 1);
-					*/
-					
-					//interpolated_z = abs(interpolated_z);
-
 					if (this->depth_test) {
 						//double interpolated_z = 1 / (((1 / v0_originalz) * a) + ((1 / v1_originalz) * c) + ((1 / v2_originalz) * b));
 						double interpolated_z = (v0_originalz * a) + (v1_originalz * c) + (v2_originalz * b);
@@ -2795,11 +2326,7 @@ next:
 					else {
 						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
 					}
-					
 				}
-				
-				//this->buffer[WIDTH * pixel_y + pixel_x] = 0xFFFFFFFF;
-				//this->buffer[WIDTH * pixel_y + pixel_x] = fill_color;
 			}
 			else {
 				//std::cout << "Alpha: " << alpha << std::endl;
@@ -2808,345 +2335,7 @@ next:
 		}
 	}
 
-	/*
-	static const uint8_t n_partitions = 4;
-
-	uint16_t mini_boxes_width = round((bounding_box_right_x - bounding_box_left_x) / (double) n_partitions);
-	uint16_t mini_boxes_height = round((bounding_box_bottom_y - bounding_box_top_y) / (double) n_partitions);
-
-	std::cout << mini_boxes_width << " | " << mini_boxes_height << std::endl;
-	*/
-
 	return;
-	/*
-
-
-	Get triangle bounding box (clip it to screen dimensions) 
-		Make mini bounding boxes
-			For each mini bounding box (clip it to screen dimensions)
-				If all edges of the box are outside the triangle, go to the next one
-				Otherwise, check all pixels within
-		// Go through triangle's bounding box pixels
-		for (uint16_t pixel_y = bounding_box_top_y; pixel_row < bounding_box_bottom_y; pixel_y++) {
-			for (uint16_t pixel_x = bounding_box_left_x; pixel < bounding_box_right_x; pixel_x++) {
-				int8_t pixel_t0 = 0;
-				int8_t pixel_t1 = 1;
-
-				// Checks whether is within triangle/edge
-				if ((pixel_t0 >= 0 && pixel_t1 >= 0) || (pixel_t0 <= 1 && pixel_t1 <= 1)) {
-
-					// Skips pixel if sits at bottom/right edge
-					// Ignore t0 == 0 && t1 == 0 as well as
-					if ((t0 == 0 || t1 == 0) && !left_edge && !top_edge)){
-						continue;
-					}
-
-					Color_pixel(WIDTH * pixel_y + pixel_x);
-				}
-			}
-	}
-	
-
-	(Pixel center within the general triangle ? )
-		Draw_pixel
-		return;
-
-	go from left edge to right(arent barycentric coords redundant here since the pixels in between edges are within the triangle ? )
-
-		interpolate barycentric coordinates instead ? (i.e.go from t_k = 0 to t_k = 1 in 0.01 steps or so ? ) no edge detection here in principle.What about gaps ?
-		from t0 = 0 to t0 = 1 at step = 0.01
-			from t1 = 0 to t1 = 1 at step = 0.01
-				pixel_coord = (1 - t0 - t1)v2 + t0(v2 - v1) + t1(v2 - v0)
-				color_pixel(pixel_coord);
-
-	how do i know whether it is a top or left edge? do i need a separate check for that? would be when t0 = 0 or t0 = 1 or t1 = 0 or t1 = 1
-	sort vertices by x and y, check if left and top edge and not draw?
-					
-
-	return;
-	*/
-
-	/*
-	(Triangle has singular middle_vertex?)
-		Split_general_triangle_into_bottom_and_top_triangles
-
-	(Triangle has top edge ? )
-		(Pixel center sits exactly at top edge ? )
-			Draw_pixel
-			return;
-	(Triangle has left edge ? )
-		(Pixel center sits exactly at left edge ? )
-			Draw_pixel
-			return;
-	*/
-
-	// Highest vertex will be the vertex closest to y = 0 (also the leftmost vertex if there are 2 at the same height)
-	//return;
-
-	/*	
-
-	uint16_t v0_x = v0.get(1, 1);
-	uint16_t v0_y = v0.get(2, 1);
-
-	uint16_t v1_x = v1.get(1, 1);
-	uint16_t v1_y = v1.get(2, 1);
-
-	uint16_t v2_x = v2.get(1, 1);
-	uint16_t v2_y = v2.get(2, 1);
-
-	if (v0_x == v1_x && v0_y == v1_y) {
-		return;
-	}
-	else if (v0_x == v2_x && v0_y == v2_y) {
-		return;
-	}
-	else if (v1_x == v2_x && v1_y == v2_y) {
-		return;
-	}
-	else if (v0_y == v1_y && v0_y == v2_y) {
-		return;
-	}
-
-	uint16_t highest_leftmost_vertex_x = v0_x;
-	uint16_t highest_leftmost_vertex_y = v0_y;
-
-	uint16_t highest_rightmost_vertex_x = v0_x;
-	uint16_t highest_rightmost_vertex_y = v0_y;
-
-	uint16_t lowest_leftmost_vertex_x = v0_x;
-	uint16_t lowest_leftmost_vertex_y = v0_y;
-
-	uint16_t lowest_rightmost_vertex_x = v0_x;
-	uint16_t lowest_rightmost_vertex_y = v0_y;
-
-	uint16_t middle_vertex_x = v0_x;
-	uint16_t middle_vertex_y = v0_y;
-
-	if (v1_y > v2_y && v1_y > v0_y && v2_y != v0_y) {
-		if (v2_y < v0_y) {
-			highest_leftmost_vertex_x = v2_x;
-			highest_leftmost_vertex_y = v2_y;
-
-			highest_rightmost_vertex_x = v2_x;
-			highest_rightmost_vertex_y = v2_y;
-		}
-
-		lowest_leftmost_vertex_x = v1_x;
-		lowest_leftmost_vertex_y = v1_y;
-
-		lowest_rightmost_vertex_x = v1_x;
-		lowest_rightmost_vertex_y = v1_y;
-	} 
-	else if (v2_y > v1_y && v2_y > v0_y && v1_y != v0_y) {
-		if (v1_y < v0_y) {
-			highest_leftmost_vertex_x = v1_x;
-			highest_leftmost_vertex_y = v1_y;
-
-			highest_rightmost_vertex_x = v1_x;
-			highest_rightmost_vertex_y = v1_y;
-		}
-
-		lowest_leftmost_vertex_x = v2_x;
-		lowest_leftmost_vertex_y = v2_y;
-
-		lowest_rightmost_vertex_x = v2_x;
-		lowest_rightmost_vertex_y = v2_y;
-	}
-	else if (v1_y == v0_y) {
-		if (v1_y > v2_y) {
-			if (v1_x > v0_x) {
-				lowest_rightmost_vertex_x = v1_x;
-				lowest_rightmost_vertex_y = v1_y;
-			}
-			else if (v1_x < v0_x) {
-				lowest_leftmost_vertex_x = v1_x;
-				lowest_leftmost_vertex_y = v1_y;
-			}
-
-			highest_leftmost_vertex_x = v2_x;
-			highest_leftmost_vertex_y = v2_y;
-			highest_rightmost_vertex_x = v2_x;
-			highest_rightmost_vertex_y = v2_y;
-		}
-		else {
-			if (v1_x > v0_x) {
-				highest_rightmost_vertex_x = v1_x;
-				highest_rightmost_vertex_y = v1_y;
-			}
-			else if (v1_x < v0_x) {
-				highest_leftmost_vertex_x = v1_x;
-				highest_leftmost_vertex_y = v1_y;
-			}
-
-			lowest_leftmost_vertex_x = v2_x;
-			lowest_leftmost_vertex_y = v2_y;
-			lowest_rightmost_vertex_x = v2_x;
-			lowest_rightmost_vertex_y = v2_y;
-		}
-
-	}
-	else if (v2_y == v0_y) {
-		if (v2_y > v1_y) {
-			if (v2_x > v0_x) {
-				lowest_rightmost_vertex_x = v2_x;
-				lowest_rightmost_vertex_y = v2_y;
-			}
-			else if (v2_x < v0_x) {
-				lowest_leftmost_vertex_x = v2_x;
-				lowest_leftmost_vertex_y = v2_y;
-			}
-
-			highest_leftmost_vertex_x = v1_x;
-			highest_leftmost_vertex_y = v1_y;
-			highest_rightmost_vertex_x = v1_x;
-			highest_rightmost_vertex_y = v1_y;
-		}
-		else {
-			if (v2_x > v0_x) {
-				highest_rightmost_vertex_x = v2_x;
-				highest_rightmost_vertex_y = v2_y;
-			}
-			else if (v2_x < v0_x) {
-				highest_leftmost_vertex_x = v2_x;
-				highest_leftmost_vertex_y = v2_y;
-			}
-
-			lowest_leftmost_vertex_x = v1_x;
-			lowest_leftmost_vertex_y = v1_y;
-			lowest_rightmost_vertex_x = v1_x;
-			lowest_rightmost_vertex_y = v1_y;
-		}
-	}
-	else if (v2_y == v1_y) {
-		if (v2_y > v0_y) {
-			if (v2_x > v1_x) {
-				lowest_leftmost_vertex_x = v1_x;
-				lowest_leftmost_vertex_y = v1_y;
-				lowest_rightmost_vertex_x = v2_x;
-				lowest_rightmost_vertex_y = v2_y;
-			}
-			else if (v2_x < v1_x) {
-				lowest_leftmost_vertex_x = v2_x;
-				lowest_leftmost_vertex_y = v2_y;
-				lowest_rightmost_vertex_x = v1_x;
-				lowest_rightmost_vertex_y = v1_y;
-			}
-		}
-		else {
-			if (v2_x > v1_x) {
-				highest_leftmost_vertex_x = v1_x;
-				highest_leftmost_vertex_y = v1_y;
-				highest_rightmost_vertex_x = v2_x;
-				highest_rightmost_vertex_y = v2_y;
-			}
-			else if (v2_x < v1_x) {
-				highest_leftmost_vertex_x = v2_x;
-				highest_leftmost_vertex_y = v2_y;
-				highest_rightmost_vertex_x = v1_x;
-				highest_rightmost_vertex_y = v1_y;
-			}
-		}
-
-	}
-
-	bool no_vertices_at_same_height = true;
-	if (v0_y == v1_y || v0_y == v2_y || v1_y == v2_y) {
-		no_vertices_at_same_height = false;
-	}
-	else {
-		middle_vertex_x = v0_x;
-		middle_vertex_y = v0_y;
-
-		if (middle_vertex_y < v0_y && middle_vertex_y < v1_y) {
-			if (v1_y < v0_y) {
-				middle_vertex_x = v1_x;
-				middle_vertex_y = v1_y;
-			}
-		}
-		else if (middle_vertex_y < v1_y && middle_vertex_y < v2_y) {
-			if (v1_y < v2_y) {
-				middle_vertex_x = v1_x;
-				middle_vertex_y = v1_y;
-			}
-			else {
-				middle_vertex_x = v2_x;
-				middle_vertex_y = v2_y;
-			}
-		}
-		else if (middle_vertex_y < v2_y && middle_vertex_y < v0_y) {
-			if (v2_y < v0_y) {
-				middle_vertex_x = v2_x;
-				middle_vertex_y = v2_y;
-			}
-		}
-	}
-
-	double left_line_dx = 0;
-	double right_line_dx = 0;
-
-	if (!no_vertices_at_same_height) {
-		left_line_dx = (highest_leftmost_vertex_x - lowest_leftmost_vertex_x) / (highest_leftmost_vertex_y - lowest_leftmost_vertex_y);
-		right_line_dx = (highest_rightmost_vertex_x - lowest_rightmost_vertex_x) / (highest_rightmost_vertex_y - (lowest_rightmost_vertex_y));
-	}
-	else {
-		if (highest_rightmost_vertex_y == middle_vertex_y) {
-			return;
-		}
-
-		double dx = (highest_leftmost_vertex_x - middle_vertex_x) / (highest_leftmost_vertex_y - middle_vertex_y);
-
-		if (dx <= 0) {
-			left_line_dx = dx;
-			right_line_dx = (highest_rightmost_vertex_x - lowest_rightmost_vertex_x) / (highest_rightmost_vertex_y - (lowest_rightmost_vertex_y));
-		}
-		else {
-			right_line_dx = dx;
-			left_line_dx = (highest_rightmost_vertex_x - lowest_rightmost_vertex_x) / (highest_rightmost_vertex_y - (lowest_rightmost_vertex_y));
-		}
-	}
-
-	for (int y = highest_leftmost_vertex_y; y < lowest_leftmost_vertex_y; y++) {
-		if (y >= HEIGHT) return;
-		else if (y < 0) continue;
-
-		int left_line_edge = ((y - highest_leftmost_vertex_y) * left_line_dx) + highest_leftmost_vertex_x;
-		int right_line_edge = ((y - highest_rightmost_vertex_y) * right_line_dx) + highest_rightmost_vertex_x;
-
-		for (int x = left_line_edge; x < (left_line_edge + right_line_edge) / 2; x++) {
-			if (x >= WIDTH) return;
-			else if (x < 0) continue;
-			// Coloring from left side
-			this->buffer[(this->WIDTH * y) + x] = fill_color;
-
-			if (right_line_edge - (x - left_line_edge) >= WIDTH) return;
-			else if (right_line_edge - (x - left_line_edge) < 0) continue;
-			// Coloring from right side
-			this->buffer[(this->WIDTH * y) + (right_line_edge - (x - left_line_edge))] = fill_color;
-		}
-
-		if (no_vertices_at_same_height && y == middle_vertex_y) {
-			double dx = (middle_vertex_x - lowest_leftmost_vertex_x) / (middle_vertex_y - lowest_leftmost_vertex_y);
-
-			//if (left_line_dx <= 0 && dx > 0) {
-			if (left_line_dx != dx) {
-				left_line_dx = dx;
-				highest_leftmost_vertex_x = middle_vertex_x;
-				highest_leftmost_vertex_y = middle_vertex_y;
-			}
-			//else if (right_line_dx <= 0 && dx > 0) {
-			else if (right_line_dx != dx) {
-				right_line_dx = dx;
-				highest_rightmost_vertex_x = middle_vertex_x;
-				highest_rightmost_vertex_y = middle_vertex_y;
-			}
-			else {
-				//std::cout << "Error: Invalid condition path reached" << std::endl;
-				//exit(-1);
-			}
-		}
-	}
-
-	*/
 }
 
 // Returns the vertex that represents the center point of the instance in world space
@@ -3191,31 +2380,6 @@ void Engine::draw() {
 		this->pixel_buffer[i] = this->BG_COLOR;
 		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
-
-	/*
-	if (this->zsort_instances && !this->z_sorted) {
-		while (!this->z_sorted) {
-			this->z_sorted = true;
-			for (auto instance = this->current_scene.scene_instances.begin(); instance != this->current_scene.scene_instances.end() - 1; instance++) {
-				Instance* current_instance = &*instance;
-				Instance* next_instance = &*(instance + 1);
-
-				Mat current_center = Instance_GetCenterVertex(*current_instance);
-				Mat next_center = Instance_GetCenterVertex(*next_instance);
-
-				current_center = VIEW_MATRIX * current_center;
-				next_center = VIEW_MATRIX * next_center;
-
-				// Swap entries
-				if (current_center.get(3, 1) < next_center.get(3, 1)) {
-					std::swap(*current_instance, *next_instance);
-					this->z_sorted = false;
-				}
-
-			}
-		}
-	}
-	*/
 
 	for (const Instance& instance : this->current_scene.scene_instances) {
 		if (instance.show) draw_instance(instance, this->wireframe_render, this->LINE_COLOR, this->rasterize, this->FILL_COLOR, this->shade);
