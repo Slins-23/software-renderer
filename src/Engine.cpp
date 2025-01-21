@@ -906,7 +906,7 @@ bool Engine::handle_events() {
 void Scene::save_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, const Mat& default_camera_position, const Mat& camera_position, const Mat& default_camera_direction, const Mat& camera_direction, const Mat& default_camera_up, const Mat& camera_up, double yaw, double pitch, double roll) {
 	char scene_filepath[255];
 	sprintf_s(scene_filepath, 255, "%s%s", scenes_folder, scene_filename);
-	nlohmann::json json_object;
+	nlohmann::ordered_json json_object;
 
 	json_object["scene"] = scene_filename;
 
@@ -1113,6 +1113,7 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 				camera_roll = this->scene_data["camera"]["rotation"]["z"] * (M_PI / 180);
 			}
 		}
+		
 
 		// If direction was given, update the direction vector
 		if (this->scene_data["camera"].contains("direction")) {
@@ -1124,69 +1125,23 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			camera_direction.set(y, 2, 1);
 			camera_direction.set(z, 3, 1);
 
-			//double correct_yaw = atanf(camera_direction.get(3, 1) / camera_direction.get(1, 1)) + (M_PI / 2);
-			//double correct_pitch = atanf((camera_direction.get(2, 1)) / (camera_direction.get(3, 1)));
-			// 
-			// 
-			// 
-			//double correct_yaw = atan2f(camera_direction.get(3, 1), camera_direction.get(1, 1)) + (M_PI / 2);
-			//double correct_pitch = atan2f(camera_direction.get(2, 1), camera_direction.get(3, 1)) + M_PI;
-
 			// If no rotation parameters were given, derive them from the direction vector
 			if (!rotation_given) {
+				// Gets yaw and pitch representing the rotation from the default camera direction to the camera direction
+				
 				Engine::Quaternion_GetAnglesFromDirection(default_camera_direction, camera_direction, camera_yaw, camera_pitch, camera_roll);
 				Engine::rotateY(tmp_dir, camera_yaw);
 				Engine::rotateX(tmp_dir, camera_pitch);
-				std::cout << "1 Yaw: " << camera_yaw << std::endl;
-				std::cout << "1 Pitch: " << camera_pitch << std::endl;
-				std::cout << "1 Roll: " << camera_roll << std::endl;
-
 			}
-
-			/*
-			if (this->camera_pitch == 0) {
-				this->camera_pitch = correct_pitch;
-			}
-			else if (this->camera_pitch != correct_pitch) {
-				throw std::runtime_error("Error: Camera direction vector does not correspond to the given pitch.");
-			}
-
-			if (this->camera_yaw == 0) {
-				this->camera_yaw = correct_yaw;
-			}
-			else if (this->camera_yaw != correct_yaw) {
-				throw std::runtime_error("Error: Camera direction vector does not correspond to the given yaw.");
-			}
-			*/
 		}
 		
 		// If direction was not given, but rotation was - rotates the default camera direction vectors by the rotation parameters
 		else if (rotation_given) {
-			/*
-			camera_direction = Quaternion::RotatePoint(camera_direction, camera_up, camera_yaw);
-			camera_right = Quaternion::RotatePoint(camera_right, camera_up, camera_yaw);
-			camera_direction = Quaternion::RotatePoint(camera_direction, camera_right, camera_pitch);
-			camera_up = Quaternion::RotatePoint(camera_up, camera_right, camera_pitch);
-			*/
-
-			Quaternion rotationY = Quaternion::AngleAxis(camera_up.get(1, 1), camera_up.get(2, 1), camera_up.get(3, 1), camera_yaw);
-			Mat rotation = rotationY.get_rotationmatrix();
-			camera_direction = rotation * camera_direction;
-			//camera_right = rotation * camera_right;
-			camera_right = Engine::CrossProduct3D(camera_up, camera_direction);
-
-			Quaternion rotationX = Quaternion::AngleAxis(camera_right.get(1, 1), camera_right.get(2, 1), camera_right.get(3, 1), camera_pitch);
-			rotation = rotationX.get_rotationmatrix();
-
-			camera_direction = rotation * camera_direction;
-
-			//camera_up = Engine::CrossProduct3D(camera_direction, camera_right);
-			camera_up = rotation * camera_up;
-
-			Quaternion rotationZ = Quaternion::AngleAxis(camera_direction.get(1, 1), camera_direction.get(2, 1), camera_direction.get(3, 1), camera_roll);
-			rotation = rotationZ.get_rotationmatrix();
-			camera_up = rotation * camera_up;
-			
+			camera_direction = Quaternion::RotatePoint(camera_direction, camera_up, camera_yaw, false);
+			camera_right = Quaternion::RotatePoint(camera_right, camera_up, camera_yaw, false);
+			camera_direction = Quaternion::RotatePoint(camera_direction, camera_right, camera_pitch, false);
+			camera_up = Quaternion::RotatePoint(camera_up, camera_right, camera_pitch, false);
+			camera_up = Quaternion::RotatePoint(camera_up, camera_direction, camera_roll, false);
 		}
 
 		if (this->scene_data["camera"].contains("up")) {
@@ -1198,40 +1153,12 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			camera_up.set(y, 2, 1);
 			camera_up.set(z, 3, 1);
 
-			//double correct_yaw = atanf(camera_direction.get(3, 1) / camera_direction.get(1, 1)) + (M_PI / 2);
-			//double correct_pitch = atanf((camera_direction.get(2, 1)) / (camera_direction.get(3, 1)));
-			// 
-			// 
-			// 
-			//double correct_yaw = atan2f(camera_direction.get(3, 1), camera_direction.get(1, 1)) + (M_PI / 2);
-			//double correct_pitch = atan2f(camera_direction.get(2, 1), camera_direction.get(3, 1)) + M_PI;
-
 			if (!rotation_given) {
-				//Engine::Quaternion_GetAnglesFromDirectionYR(default_camera_up, camera_up, camera_yaw, camera_pitch, camera_roll);
+				// Gets roll representing the rotation from the default camera up to the camera up
 				Engine::GetRoll(camera_direction, camera_up, camera_yaw, camera_pitch, camera_roll);
-				std::cout << "2 Yaw: " << camera_yaw << std::endl;
-				std::cout << "2 Pitch: " << camera_pitch << std::endl;
-				std::cout << "2 Roll: " << camera_roll << std::endl;
-
 				Engine::rotateX(tmp_up, camera_pitch);
 				Engine::rotateZ(tmp_up, camera_roll);
 			}
-
-			/*
-			if (this->camera_pitch == 0) {
-				this->camera_pitch = correct_pitch;
-			}
-			else if (this->camera_pitch != correct_pitch) {
-				throw std::runtime_error("Error: Camera direction vector does not correspond to the given pitch.");
-			}
-
-			if (this->camera_yaw == 0) {
-				this->camera_yaw = correct_yaw;
-			}
-			else if (this->camera_yaw != correct_yaw) {
-				throw std::runtime_error("Error: Camera direction vector does not correspond to the given yaw.");
-			}
-			*/
 		}
 	}
 
@@ -1249,31 +1176,6 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 	camera_up.print();
 	std::cout << std::endl;
 
-
-	std::cout << "RERO DIR: " << std::endl;
-	tmp_dir.print();
-
-	std::cout << "RERO UP: " << std::endl;
-	tmp_up.print();
-
-	tmp_dir = default_camera_direction;
-	tmp_up = default_camera_up;
-
-	tmp_dir = Quaternion::RotatePoint(tmp_dir, tmp_up, camera_yaw);
-	Mat tmp_right = Engine::CrossProduct3D(tmp_up, tmp_dir);
-	tmp_dir = Quaternion::RotatePoint(tmp_dir, tmp_right, camera_pitch);
-	tmp_up = Quaternion::RotatePoint(tmp_up, tmp_right, camera_pitch);
-	tmp_up = Quaternion::RotatePoint(tmp_up, tmp_dir, camera_roll);
-
-	std::cout << "RERO DIR 2 : " << std::endl;
-	tmp_dir.print();
-
-	std::cout << "RERO UP 2 : " << std::endl;
-	tmp_up.print();
-
-	camera_direction = tmp_dir;
-	camera_up = tmp_up;
-
 	//VIEW_MATRIX =  SCALING_MATRIX * ROTATION_MATRIX * TRANSLATION_MATRIX;
 	VIEW_MATRIX = Engine::LookAt(camera_position, camera_direction, camera_up);
 	std::cout << "View matrix: " << std::endl;
@@ -1288,8 +1190,6 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 		Mesh current_model = Mesh(model_path, model_filename, this->total_meshes);
 
 		this->scene_meshes.push_back(std::move(current_model));
-
-
 
 		for (auto instance = this->scene_data["models"][model_filename]["instances"].begin(); instance != this->scene_data["models"][model_filename]["instances"].end(); instance++) {
 			const char* instance_name = instance.key().c_str();

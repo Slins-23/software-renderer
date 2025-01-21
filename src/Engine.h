@@ -49,14 +49,14 @@ struct Quaternion {
 		Quaternion rotationY = Quaternion::AngleAxis(y_axis.get(1, 1), y_axis.get(2, 1), y_axis.get(3, 1), yaw);
 
 		// Rotated x and z axes
-		x_axis = Quaternion::RotatePoint(x_axis, y_axis, yaw);
-		z_axis = Quaternion::RotatePoint(z_axis, y_axis, yaw);
+		x_axis = Quaternion::RotatePoint(x_axis, y_axis, yaw, false);
+		z_axis = Quaternion::RotatePoint(z_axis, y_axis, yaw, false);
 
 		Quaternion rotationX = Quaternion::AngleAxis(x_axis.get(1, 1), x_axis.get(2, 1), x_axis.get(3, 1), pitch);
 
 		// Rotated y and z axes
-		y_axis = Quaternion::RotatePoint(y_axis, x_axis, pitch);
-		z_axis = Quaternion::RotatePoint(z_axis, x_axis, pitch);
+		y_axis = Quaternion::RotatePoint(y_axis, x_axis, pitch, false);
+		z_axis = Quaternion::RotatePoint(z_axis, x_axis, pitch, false);
 
 		Quaternion rotationZ = Quaternion::AngleAxis(z_axis.get(1, 1), z_axis.get(2, 1), z_axis.get(3, 1), roll);
 
@@ -65,13 +65,16 @@ struct Quaternion {
 		return orientation;
 	}
 
-	static Mat RotatePoint(const Mat& point, const Mat& axis, double angle) {
+	static Mat RotatePoint(const Mat& point, const Mat& axis, double angle, bool is_position) {
 		Quaternion q = Quaternion::AngleAxis(axis.get(1, 1), axis.get(2, 1), axis.get(3, 1), angle);
 		Quaternion q_point = Quaternion(point.get(1, 1), point.get(2, 1), point.get(3, 1), 0);
 		Quaternion q_conjugate = q.get_complexconjugate();
 
 		Quaternion rotated_point = q * q_point * q_conjugate;
 		Mat final_point = rotated_point.get_4dvector();
+
+		double fourth_dimension = is_position ? 1 : 0;
+		final_point.set(fourth_dimension, 4, 1);
 
 		return final_point;
 	}
@@ -80,11 +83,11 @@ struct Quaternion {
 
 	}
 
-	static Mat RotatePoint(double point_x, double point_y, double point_z, double axis_x, double axis_y, double axis_z, double angle) {
-		const Mat point = Mat({ {point_x}, {point_y}, {point_z}, {1} }, 4, 1);
-		const Mat axis = Mat({ {axis_x}, {axis_y}, {axis_z}, {1} }, 4, 1);
+	static Mat RotatePoint(double point_x, double point_y, double point_z, double axis_x, double axis_y, double axis_z, double angle, bool is_position) {
+		const Mat point = Mat({ {point_x}, {point_y}, {point_z}, {0} }, 4, 1);
+		const Mat axis = Mat({ {axis_x}, {axis_y}, {axis_z}, {0} }, 4, 1);
 
-		return Quaternion::RotatePoint(point, axis, angle);
+		return Quaternion::RotatePoint(point, axis, angle, is_position);
 	}
 
 	static Mat RotatePoint(double point_x, double point_y, double point_z, const Mat& axis) {
@@ -960,7 +963,7 @@ struct Scene {
 	std::deque<Instance> scene_instances;
 
 	std::string scene_filepath = "None";
-	nlohmann::json scene_data;
+	nlohmann::ordered_json scene_data;
 
 	Scene() {
 
