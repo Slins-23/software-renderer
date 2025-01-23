@@ -97,16 +97,41 @@ bool Engine::handle_events() {
 			break;
 		case SDL_KEYDOWN:
 			switch (this->event.key.keysym.scancode) {
+			case SDL_SCANCODE_8:
+				/*
+			{
+				Mat rot_axis = this->camera_up;
+				this->light_source_pos = Quaternion::RotatePoint(this->light_source_pos, rot_axis, -rotation_angle, true);
+				Instance* light = this->current_scene.get_instance_ptr("let");
+				light->yaw += -rotation_angle;
+				light->ROTATION_MATRIX = Quaternion::AngleAxis(rot_axis.get(1, 1), rot_axis.get(2, 1), rot_axis.get(3, 1), -rotation_angle).get_rotationmatrix() * light->ROTATION_MATRIX;
+				light->orientation = Quaternion::AngleAxis(rot_axis.get(1, 1), rot_axis.get(2, 1), rot_axis.get(3, 1), -rotation_angle) * light->orientation;
+				light->MODEL_TO_WORLD = light->ROTATION_MATRIX * light->TRANSLATION_MATRIX * light->SCALING_MATRIX;
+			}
+				*/
+				break;
+			case SDL_SCANCODE_9:
+				/*
+			{
+				Mat rot_axis = this->camera_up;
+				this->light_source_pos = Quaternion::RotatePoint(this->light_source_pos, rot_axis, rotation_angle, true);
+				Instance* light = this->current_scene.get_instance_ptr("let");
+				light->yaw += rotation_angle;
+				light->ROTATION_MATRIX = Quaternion::AngleAxis(rot_axis.get(1, 1), rot_axis.get(2, 1), rot_axis.get(3, 1), rotation_angle).get_rotationmatrix() * light->ROTATION_MATRIX;
+				light->orientation = Quaternion::AngleAxis(rot_axis.get(1, 1), rot_axis.get(2, 1), rot_axis.get(3, 1), rotation_angle) * light->orientation;
+				light->MODEL_TO_WORLD = light->ROTATION_MATRIX * light->TRANSLATION_MATRIX * light->SCALING_MATRIX;
+			}
+				*/
+				break;
 			case SDL_SCANCODE_KP_4:
 				if (!this->playing) break;
 
 				{
-					this->z_sorted = false;
 
 					// same as j
 					Instance* obj = this->current_scene.get_instance_ptr(5);
 					obj->tx += 0.01;
-					obj->TRANSLATION_MATRIX = Engine::translation_matrix(obj->tx, obj->ty, obj->tz);
+					obj->TRANSLATION_MATRIX = Mat::translation_matrix(obj->tx, obj->ty, obj->tz);
 					obj->MODEL_TO_WORLD = obj->TRANSLATION_MATRIX * obj->ROTATION_MATRIX * obj->SCALING_MATRIX;
 
 					// same as i
@@ -137,18 +162,16 @@ bool Engine::handle_events() {
 			case SDL_SCANCODE_KP_6:
 				if (!this->playing) break;
 				{
-					this->z_sorted = false;
 					// same as l
 					Instance* obj = this->current_scene.get_instance_ptr(5);
 					obj->tx -= 0.01;
-					obj->TRANSLATION_MATRIX = Engine::translation_matrix(obj->tx, obj->ty, obj->tz);
+					obj->TRANSLATION_MATRIX = Mat::translation_matrix(obj->tx, obj->ty, obj->tz);
 					obj->MODEL_TO_WORLD = obj->TRANSLATION_MATRIX * obj->ROTATION_MATRIX * obj->SCALING_MATRIX;
 				}
 				break;
 			case SDL_SCANCODE_KP_8:
 				if (!this->playing) break;
 				{
-					this->z_sorted = false;
 					// same as i
 					Instance* obj = this->current_scene.get_instance_ptr(0);
 					obj->pitch += 0.1;
@@ -178,7 +201,6 @@ bool Engine::handle_events() {
 				if (!this->playing) break;
 				// same as k
 				{
-					this->z_sorted = false;
 					Instance* obj = this->current_scene.get_instance_ptr(0);
 					obj->pitch -= 0.1;
 					Mat obj_x_axis = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
@@ -207,12 +229,11 @@ bool Engine::handle_events() {
 				if (!this->playing) break;
 				// same as q
 				{
-					this->z_sorted = false;
 					Instance* obj = this->current_scene.get_instance_ptr(5);
 					obj->sx -= 0.01;
 					obj->sy -= 0.01;
 					obj->sz -= 0.01;
-					obj->SCALING_MATRIX = Engine::scale_matrix(obj->sx, obj->sy, obj->sz);
+					obj->SCALING_MATRIX = Mat::scale_matrix(obj->sx, obj->sy, obj->sz);
 					obj->MODEL_TO_WORLD = obj->TRANSLATION_MATRIX * obj->ROTATION_MATRIX * obj->SCALING_MATRIX;
 				}
 				break;
@@ -220,12 +241,11 @@ bool Engine::handle_events() {
 				if (!this->playing) break;
 				// same as e
 				{
-					this->z_sorted = false;
 					Instance* obj = this->current_scene.get_instance_ptr(5);
 					obj->sx += 0.01;
 					obj->sy += 0.01;
 					obj->sz += 0.01;
-					obj->SCALING_MATRIX = Engine::scale_matrix(obj->sx, obj->sy, obj->sz);
+					obj->SCALING_MATRIX = Mat::scale_matrix(obj->sx, obj->sy, obj->sz);
 					obj->MODEL_TO_WORLD = obj->TRANSLATION_MATRIX * obj->ROTATION_MATRIX * obj->SCALING_MATRIX;
 
 					// same as i
@@ -264,6 +284,16 @@ bool Engine::handle_events() {
 				this->light_source_pos.set(this->light_source_pos.get(3, 1) - 0.1, 3, 1);
 				std::cout << "Light source position: ";
 				this->light_source_pos.print();
+				break;
+			case SDL_SCANCODE_KP_DIVIDE:
+				if (!this->playing) break;
+				if (this->light_intensity >= 0.199) this->light_intensity -= 0.1;
+				std::cout << "Light intensity: " << this->light_intensity << std::endl;
+				break;
+			case SDL_SCANCODE_KP_MULTIPLY:
+				if (!this->playing) break;
+				this->light_intensity += 0.1;
+				std::cout << "Light intensity: " << this->light_intensity << std::endl;
 				break;
 			case SDL_SCANCODE_KP_PERIOD:
 				if (!this->playing) break;
@@ -352,11 +382,6 @@ bool Engine::handle_events() {
 				this->playing = !this->playing;
 				break;
 			case SDL_SCANCODE_T:
-				//std::cout << "Camera position:" << std::endl;
-				//(this->camera_position - this->default_camera_position).print();
-				//this->camera_position.print();
-				//std::cout << "Default camera direction: " << std::endl;
-				//this->default_camera_direction.print();
 				std::cout << "View matrix: " << std::endl;
 				this->VIEW_MATRIX.print();
 				std::cout << "Camera yaw: " << this->camera_yaw * (180 / M_PI) << std::endl;
@@ -369,205 +394,34 @@ bool Engine::handle_events() {
 
 				std::cout << "Camera position: " << std::endl;
 				this->camera_position.print();
-
-
-				{
-					/*
-					Mat rotated_direction = default_camera_direction;
-					Mat rotated_up = default_camera_up;
-					Mat cam_right = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
-
-					rotated_direction = Quaternion::RotatePoint(rotated_direction, Mat({ {0}, {1}, {0}, {0} }, 4, 1), camera_yaw);
-					rotated_direction.set(0, 4, 1);
-
-					//cam_right = Quaternion::RotatePoint(cam_right, Mat({ {0}, {1}, {0}, {0} }, 4, 1), tmp_yaw);
-					//cam_right.set(0, 4, 1);
-
-					cam_right = Engine::CrossProduct3D(rotated_up, rotated_direction);
-					std::cout << "Right vector: " << std::endl;
-					cam_right.print();
-					rotated_direction = Quaternion::RotatePoint(rotated_direction, cam_right, tmp_pitch);
-					rotated_direction.set(0, 4, 1);
-					rotated_up = Quaternion::RotatePoint(rotated_up, cam_right, tmp_pitch);
-					rotated_up.set(0, 4, 1);
-
-					rotated_up = Quaternion::RotatePoint(rotated_up, rotated_direction, tmp_roll);
-					rotated_up.set(0, 4, 1);
-
-					camera_direction.set(0, 4, 1);
-					camera_up.set(0, 4, 1);
-
-
-					double similarity_direction = Mat::dot(camera_direction, rotated_direction) / (camera_direction.norm() * rotated_direction.norm());
-					double similarity_up = Mat::dot(camera_up, rotated_up) / (camera_up.norm() * rotated_up.norm());
-
-					std::cout << "Similarity dir: " << similarity_direction << std::endl;
-					std::cout << "Similarity up: " << similarity_up << std::endl;
-
-
-					if (similarity_direction < 0.999999) {
-						std::cout << "Direction differs, current: " << std::endl;
-						camera_direction.print();
-
-						std::cout << "Rerotated direction: " << std::endl;
-						rotated_direction.print();
-					}
-
-					if (similarity_up < 0.999999) {
-						std::cout << "Up differs, current: " << std::endl;
-						camera_up.print();
-
-						std::cout << "Rerotated up: " << std::endl;
-						rotated_up.print();
-					}
-					*/
-				}
 
 				break;
 			case SDL_SCANCODE_G:
 				std::cout << "View matrix: " << std::endl;
 				this->VIEW_MATRIX.print();
-				std::cout << "Camera yaw: " << this->camera_yaw * (180 / M_PI) << std::endl;
-				std::cout << "Camera pitch: " << this->camera_pitch * (180 / M_PI) << std::endl;
-				std::cout << "Camera roll: " << this->camera_roll * (180 / M_PI) << std::endl;
+				q_camera.GetAngles(camera_yaw, camera_pitch, camera_roll);
+				std::cout << "Camera yaw: " << camera_yaw * (180 / M_PI) << std::endl;
+				std::cout << "Camera pitch: " << camera_pitch * (180 / M_PI) << std::endl;
+				std::cout << "Camera roll: " << camera_roll * (180 / M_PI) << std::endl;
 				std::cout << "Camera direction: " << std::endl;
 				this->camera_direction.print();
 				std::cout << "Camera up: " << std::endl;
 				this->camera_up.print();
-
 				std::cout << "Camera position: " << std::endl;
 				this->camera_position.print();
 
 				printf("\n\n");
 
-				{
-					//std::cout << "From specifics: " << std::endl;
-					//double tmp_yaw = 0;
-					//double tmp_pitch = 0;
-					//double tmp_roll = 0;
-					//Engine::Quaternion_GetAnglesFromDirectionYP(default_camera_direction, camera_direction, tmp_yaw, tmp_pitch, tmp_roll);
-					//std::cout << "Direction yaw: " << tmp_yaw << std::endl;
-					//std::cout << "Direction pitch: " << tmp_pitch << std::endl;
-					//Engine::Quaternion_GetAnglesFromDirectionYP(default_camera_up, camera_up, tmp_yaw, tmp_pitch, tmp_roll);
-					//std::cout << "Up pitch: " << tmp_pitch << std::endl;
-					//std::cout << "Up roll: " << tmp_roll << std::endl;
-
-
-					//std::cout << "Previous compounded: " << std::endl;
-					//std::cout << "Camera yaw: " << camera_yaw << std::endl;
-					//std::cout << "Camera pitch: " << camera_pitch << std::endl;
-					//std::cout << "Camera roll: " << camera_roll << std::endl;
-
-					Engine::Quaternion_GetAnglesFromQuaternion(q_camera, camera_yaw, camera_pitch, camera_roll);
-
-					//std::cout << "New from quaternion: " << std::endl;
-					std::cout << "Camera yaw: " << camera_yaw << std::endl;
-					std::cout << "Camera pitch: " << camera_pitch << std::endl;
-					std::cout << "Camera roll: " << camera_roll << std::endl;
-
-					std::cout << "Quaternion x: " << q_camera.x << std::endl;
-					std::cout << "Quaternion y: " << q_camera.y << std::endl;
-					std::cout << "Quaternion z: " << q_camera.z << std::endl;
-					std::cout << "Quaternion w: " << q_camera.w << std::endl;
-				}
+				std::cout << "Camera orientation quaternion x: " << q_camera.x << std::endl;
+				std::cout << "Camera orientation quaternion y: " << q_camera.y << std::endl;
+				std::cout << "Camera orientation quaternion z: " << q_camera.z << std::endl;
+				std::cout << "Camera orientation quaternion w: " << q_camera.w << std::endl;
 
 				this->current_scene.save_scene(this->scenes_folder, this->scene_save_name, this->models_folder, false, this->default_camera_position, this->camera_position, this->default_camera_direction, this->camera_direction, this->default_camera_up, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
 				break;
 			case SDL_SCANCODE_Z:
 				if (!this->playing) break;
 				{
-					Instance* pilar = this->current_scene.get_instance_ptr("5");
-					double tx = pilar->MODEL_TO_WORLD.get(1, 4);
-					double ty = pilar->MODEL_TO_WORLD.get(2, 4);
-					double tz = pilar->MODEL_TO_WORLD.get(3, 4);
-					//pilar->MODEL_TO_WORLD = Engine::translation_matrix(-tx, -ty, -tz) * pilar->MODEL_TO_WORLD;
-					//pilar->MODEL_TO_WORLD = Engine::rotationX_matrix(this->rotation_angle) * pilar->MODEL_TO_WORLD;
-					//pilar->MODEL_TO_WORLD = Engine::translation_matrix(tx, ty, tz) * pilar->MODEL_TO_WORLD;
-					//break;
-
-					pilar = this->current_scene.get_instance_ptr("22");
-					pilar->tx += translation_amount;
-					pilar->ty += translation_amount;
-					pilar->tz += translation_amount;
-					pilar->TRANSLATION_MATRIX = Engine::translation_matrix(-pilar->tx, -pilar->ty, -pilar->tz);
-					pilar->MODEL_TO_WORLD = pilar->TRANSLATION_MATRIX * pilar->ROTATION_MATRIX * pilar->SCALING_MATRIX;
-					break;
-
-					// Rotate about camera direction (0, 0, -1)
-					// By this->rotation_angle
-
-					/*
-					q = cos(2 * this->rotation_angle / 2) + (sin(2 * this->rotation_angle / 2) * ());
-					p = 2;
-					qinv = inv(q)
-
-					ROTATED_POINT = q * p * qinv;
-					ROTATED_MODEL_TO_WORLD = ROTATE(pilar->MODEL_TO_WORLD, ROTATED_POINT);
-					*/
-
-					double a = cos(8 * (this->rotation_angle / 2));
-					double b = sin(8 * (this->rotation_angle / 2)) * 0;
-					double c = sin(8 * (this->rotation_angle / 2)) * 0;
-					double d = sin(8 * (this->rotation_angle / 2)) * 1;
-
-					a /= sqrt((a * a) + (b * b) + (c * c) + (d * d));
-					b /= sqrt((a * a) + (b * b) + (c * c) + (d * d));
-					c /= sqrt((a * a) + (b * b) + (c * c) + (d * d));
-					d /= sqrt((a * a) + (b * b) + (c * c) + (d * d));
-
-
-					/*
-					Mat ROTATE_MODEL_TO_WORLD = Mat(
-						{
-							{1 - (c * c) - (d * d), (b * c) - (a * d), (b * d) + (a * c), 0},
-							{(b * c) + (a * d), 1 - (b * b) - (d * d), (c * d) - (a * b), 0},
-							{(b * d) - (a * c), (c * d) + (a * b), 1 - (b * b) - (c * c), 0},
-							{0, 0, 0, 1}
-						}
-					, 4, 4);
-					*/
-
-					Mat ROTATE_MODEL_TO_WORLD = Mat(
-						{
-						   {1 - 2 * (c * c + d * d), 2 * (b * c - a * d), 2 * (b * d + a * c), 0},
-							{2 * (b * c + a * d), 1 - 2 * (b * b + d * d), 2 * (c * d - a * b), 0},
-							{2 * (b * d - a * c), 2 * (c * d + a * b), 1 - 2 * (b * b + c * c), 0},
-							{0, 0, 0, 1}
-						}
-					, 4, 4);
-
-					Quaternion q = Quaternion::AngleAxis(0, 0, 1, this->rotation_angle);
-
-
-					std::cout << "Length before: " << q.get_magnitude() << std::endl;
-					q.normalize();
-					std::cout << "Length after: " << q.get_magnitude() << std::endl;
-
-					ROTATE_MODEL_TO_WORLD = q.get_rotationmatrix();
-
-					Quaternion rr = Quaternion::AngleAxis(1, 0, 0, this->rotation_angle);
-					Quaternion point = Quaternion(0, 0, -5, 0);
-					Quaternion rr_cj = rr.get_complexconjugate();
-					Quaternion result = rr * point * rr_cj;
-					Mat new_point = result.get_3dvector();
-					new_point.print();
-
-					/*
-					Mat ROTATE_MODEL_TO_WORLD = Mat(
-						{
-						   {(a * a) + (b * b) - (c * c) - (d * d), 2 * (b * c - a * d), 2 * (b * d + a * c), 0},
-							{2 * (b * c + a * d), (a * a) - (b * b) + (c * c) - (d * d), 2 * (c * d - a * b), 0},
-							{2 * (b * d - a * c), 2 * (c * d + a * b), (a * a) - (b * b) - (c * c) + (d * d), 0},
-							{0, 0, 0, 1}
-						}
-					, 4, 4);
-					*/
-
-					pilar->MODEL_TO_WORLD = ROTATE_MODEL_TO_WORLD * pilar->MODEL_TO_WORLD;
-
-					//pilar->MODEL_TO_WORLD = Engine::rotationZ_matrix(this->rotation_angle) * pilar->MODEL_TO_WORLD;
-
-					pilar->MODEL_TO_WORLD = Engine::translation_matrix(tx, ty, tz) * pilar->MODEL_TO_WORLD;
 				}
 				break;
 			case SDL_SCANCODE_X:
@@ -577,9 +431,9 @@ bool Engine::handle_events() {
 					//double tx = pilar->MODEL_TO_WORLD.get(1, 4);
 					//double ty = pilar->MODEL_TO_WORLD.get(2, 4);
 					//double tz = pilar->MODEL_TO_WORLD.get(3, 4);
-					//pilar->MODEL_TO_WORLD = Engine::translation_matrix(-tx, -ty, -tz) * pilar->MODEL_TO_WORLD;
+					//pilar->MODEL_TO_WORLD = Mat::translation_matrix(-tx, -ty, -tz) * pilar->MODEL_TO_WORLD;
 					//pilar->MODEL_TO_WORLD = Engine::rotationX_matrix(this->rotation_angle) * pilar->MODEL_TO_WORLD;
-					//pilar->MODEL_TO_WORLD = Engine::translation_matrix(tx, ty, tz) * pilar->MODEL_TO_WORLD;
+					//pilar->MODEL_TO_WORLD = Mat::translation_matrix(tx, ty, tz) * pilar->MODEL_TO_WORLD;
 					//break;
 
 					pilar = this->current_scene.get_instance_ptr("5");
@@ -600,9 +454,9 @@ bool Engine::handle_events() {
 					double tx = pilar->MODEL_TO_WORLD.get(1, 4);
 					double ty = pilar->MODEL_TO_WORLD.get(2, 4);
 					double tz = pilar->MODEL_TO_WORLD.get(3, 4);
-					//pilar->MODEL_TO_WORLD = Engine::translation_matrix(-tx, -ty, -tz) * pilar->MODEL_TO_WORLD;
+					//pilar->MODEL_TO_WORLD = Mat::translation_matrix(-tx, -ty, -tz) * pilar->MODEL_TO_WORLD;
 					//pilar->MODEL_TO_WORLD = Engine::rotationX_matrix(this->rotation_angle) * pilar->MODEL_TO_WORLD;
-					//pilar->MODEL_TO_WORLD = Engine::translation_matrix(tx, ty, tz) * pilar->MODEL_TO_WORLD;
+					//pilar->MODEL_TO_WORLD = Mat::translation_matrix(tx, ty, tz) * pilar->MODEL_TO_WORLD;
 					//break;
 
 					pilar = this->current_scene.get_instance_ptr("5");
@@ -621,7 +475,7 @@ bool Engine::handle_events() {
 				if (!this->playing) break;
 				this->FOV--;
 				FOVr = FOV * (M_PI / 180);
-				printf("FOV: %f", FOV);
+				printf("FOV: %f\n", FOV);
 
 				this->update_projection_matrix();
 				break;
@@ -629,7 +483,7 @@ bool Engine::handle_events() {
 				if (!this->playing) break;
 				this->FOV++;
 				FOVr = FOV * (M_PI / 180);
-				printf("FOV: %f", FOV);
+				printf("FOV: %f\n", FOV);
 
 				this->update_projection_matrix();
 				break;
@@ -710,20 +564,8 @@ bool Engine::handle_events() {
 					this->q_camera = rotationY * this->q_camera;
 
 					Engine::LookAt();
-
-					//ac_yaw += rotation_angle;
 					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
-
-					this->z_sorted = false;
 				}
-
-				/*
-				this->camera_yaw = this->camera_yaw + rotation_angle;
-
-				if (this->camera_yaw >= 2 * M_PI) {
-					this->camera_yaw = fmod(this->camera_yaw, 2 * M_PI);
-				}
-				*/
 				break;
 			case SDL_SCANCODE_L:
 				if (!this->playing) break;
@@ -734,19 +576,7 @@ bool Engine::handle_events() {
 					this->q_camera = rotationY * this->q_camera;
 
 					Engine::LookAt();
-
-					//ac_yaw -= rotation_angle;
 					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
-
-					/*
-					this->camera_yaw = this->camera_yaw - rotation_angle;
-
-					if (this->camera_yaw < 0) {
-						this->camera_yaw = (2 * M_PI) + fmod(this->camera_yaw, 2 * M_PI);
-					}
-					*/
-
-					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_I:
@@ -762,19 +592,7 @@ bool Engine::handle_events() {
 					this->q_camera = rotationX * this->q_camera;
 
 					Engine::LookAt();
-
-					//ac_pitch += rotation_angle;
 					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
-
-					/*
-					this->camera_pitch = this->camera_pitch + rotation_angle;
-
-					if (this->camera_pitch >= (2 * M_PI)) {
-						this->camera_pitch = fmod(this->camera_pitch, 2 * M_PI);
-					}
-					*/
-
-					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_K:
@@ -790,11 +608,7 @@ bool Engine::handle_events() {
 					this->q_camera = rotationX * this->q_camera;
 
 					Engine::LookAt();
-
-					//ac_pitch -= rotation_angle;
 					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
-
-					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_Q:
@@ -806,20 +620,7 @@ bool Engine::handle_events() {
 					this->q_camera = rotationZ * this->q_camera;
 
 					Engine::LookAt();
-
-					//ac_roll += rotation_angle;
-					//Engine::Quaternion_GetAnglesFromDirectionYR(this->default_camera_up, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
 					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_up, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
-
-					/*
-					this->camera_roll += rotation_angle;
-
-					if (this->camera_roll >= (2 * M_PI)) {
-						this->camera_roll = fmod(this->camera_roll, 2 * M_PI);
-					}
-					*/
-
-					this->z_sorted = false;
 				}
 				break;
 			case SDL_SCANCODE_E:
@@ -832,20 +633,7 @@ bool Engine::handle_events() {
 					//Engine::rotateZ(this->camera_up, -this->rotation_angle);
 
 					Engine::LookAt();
-
-					//ac_roll -= rotation_angle;
-					//Engine::Quaternion_GetAnglesFromDirectionYR(this->default_camera_up, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
-					Engine::Quaternion_GetAnglesFromQuaternion(this->q_camera, this->camera_yaw, this->camera_pitch, this->camera_roll);
-
-					/*
-					this->camera_roll -= rotation_angle;
-
-					if (this->camera_roll < 0) {
-						this->camera_roll = -fmod(this->camera_roll, 2 * M_PI);
-					}
-					*/
-
-					this->z_sorted = false;
+					this->q_camera.GetAngles(this->camera_yaw, this->camera_pitch, this->camera_roll);
 				}
 				break;
 			case SDL_SCANCODE_A:
@@ -1224,7 +1012,7 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 				translation_y = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["y"];
 				translation_z = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["z"];
 
-				translation = Engine::translation_matrix(translation_x, translation_y, translation_z);
+				translation = Mat::translation_matrix(translation_x, translation_y, translation_z);
 			}
 
 			// Checks if scale has been given for this instance, updates scale matrix if so
@@ -1234,7 +1022,7 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 				scale_y = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["y"];
 				scale_z = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["z"];
 
-				scale = Engine::scale_matrix(scale_x, scale_y, scale_z);
+				scale = Mat::scale_matrix(scale_x, scale_y, scale_z);
 			}
 
 			// Checks if rotation has been given for this instance, updates rotation matrix if so
@@ -1307,6 +1095,8 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 		}
 
 	}
+
+	
 
 	for (int i = 0; i < this->total_instances; i++) {
 		Instance* instance = &this->scene_instances[i];
@@ -1718,24 +1508,29 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 					world_normal.normalize();
 
 					triangle_normal.normalize();
-					Mat normalized_light_source = light_source_dir / light_source_dir.norm();
-					Mat dist_vertex_to_light = v0 - light_source_pos;
+					//Mat normalized_light_source = light_source_dir / light_source_dir.norm();
+					Mat normalized_light_source = light_source_pos - world_v0;
+					normalized_light_source = normalized_light_source / normalized_light_source.norm();
+
+					//Mat dist_vertex_to_light = v0 - light_source_pos;
 					//double distance = abs(Engine::PointDistanceToPlane(&v0, &light_source_pos, &normalized_light_source));
 					//double distance = sqrt(pow(world_v0.get(1, 1) - light_source_pos.get(1, 1), 2) + pow(world_v0.get(2, 1) - light_source_pos.get(2, 1), 2) + pow(world_v0.get(3, 1) - light_source_pos.get(3, 1), 2));
 					double distance = sqrt(pow(world_v0.get(1, 1) - light_source_pos.get(1, 1), 2) + pow(world_v0.get(2, 1) - light_source_pos.get(2, 1), 2) + pow(world_v0.get(3, 1) - light_source_pos.get(3, 1), 2));
-					double similarity = abs(Mat::dot(normalized_light_source, triangle_normal));
+					double world_similarity = Mat::dot(normalized_light_source, world_normal);
+					//double view_similarity = Mat::dot(normalized_light_source, triangle_normal);
+					double similarity = world_similarity;
 
 					//std::cout << "Similarity: " << similarity << " | Distance: " << distance << std::endl;
 
 					//std::cout << light_intensity << std::endl;
-					if (similarity >= 0) {
+					if (similarity > 0) {
 						//double light_intensity = (1 / pow(this->light_reach, 2)) * pow(distance, 2);
 
 						//double light_intensity = abs((distance - light_reach)) * -similarity;
 						//double light_intensity = -similarity;
 						//double light_intensity = -similarity;
 						double light_intensity = similarity;
-						double base_intensity = 0.3;
+						double base_intensity = this->light_intensity;
 						double attenuation = 1.f / (distance * distance);
 						//double distance_multiplier = light_intensity * attenuation * base_intensity;
 						//distance_multiplier = Utils::clamp(distance_multiplier, 0, 1);
@@ -1744,13 +1539,55 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						light_intensity = light_intensity * base_intensity * attenuation;
 						light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-						uint8_t color = (uint8_t)(light_intensity * 255.0);
+						uint8_t red = (uint8_t)(light_intensity * ((this->light_color >> 24) & 0x000000FF));
+						uint8_t green = (uint8_t)(light_intensity * ((this->light_color >> 16) & 0x000000FF));
+						uint8_t blue = (uint8_t)(light_intensity * ((this->light_color >> 8) & 0x000000FF));
+
+						//uint8_t color = (uint8_t)(light_intensity * 255.0);
 
 						//color /= pow(distance, 1/3);
-						fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
+						//fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
+						fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+
+						if (light_intensity < 0.001) {
+							visible = false;
+							fill_color = BG_COLOR;
+
+							light_intensity = this->light_intensity;
+							double light_intensity = similarity;
+							double base_intensity = this->light_intensity;
+							double attenuation = 1.f / (distance * distance);
+
+							light_intensity = light_intensity * base_intensity * attenuation;
+							light_intensity = Utils::clamp(light_intensity, 0, 1);
+
+							light_intensity = this->light_intensity;
+
+							uint8_t red = (uint8_t)(light_intensity * ((this->light_color >> 24) & 0x000000FF));
+							uint8_t green = (uint8_t)(light_intensity * ((this->light_color >> 16) & 0x000000FF));
+							uint8_t blue = (uint8_t)(light_intensity * ((this->light_color >> 8) & 0x000000FF));
+							//fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
+							fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+						}
 					}
 					else {
 						visible = false;
+						fill_color = BG_COLOR;
+						//uint8_t color = (uint8_t)(this->light_intensity * 0xFF);
+
+						light_intensity = this->light_intensity;
+						double light_intensity = similarity;
+						double base_intensity = this->light_intensity;
+						double attenuation = 1.f / (distance * distance);
+
+						light_intensity = light_intensity * base_intensity * attenuation;
+						light_intensity = Utils::clamp(light_intensity, 0, 1);
+
+						uint8_t red = (uint8_t)(light_intensity * ((this->light_color >> 24) & 0x000000FF));
+						uint8_t green = (uint8_t)(light_intensity * ((this->light_color >> 16) & 0x000000FF));
+						uint8_t blue = (uint8_t)(light_intensity * ((this->light_color >> 8) & 0x000000FF));
+						//fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
+						fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 					}
 				}
 
@@ -2397,14 +2234,14 @@ void Engine::rotateZ(Mat& matrix, double radians) {
 }
 
 void Engine::translate(Instance& instance, double tx, double ty, double tz) {
-	Mat translation_matrix = Engine::translation_matrix(tx, ty, tz);
+	Mat translation_matrix = Mat::translation_matrix(tx, ty, tz);
 
 	instance.TRANSLATION_MATRIX = translation_matrix * instance.TRANSLATION_MATRIX;
 	instance.MODEL_TO_WORLD = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX;
 }
 
 void Engine::translate(Mesh& mesh, double tx, double ty, double tz) {
-	Mat translation_matrix = Engine::translation_matrix(tx, ty, tz);
+	Mat translation_matrix = Mat::translation_matrix(tx, ty, tz);
 
 	for (Mat& vertex : mesh.vertices) {
 		vertex = translation_matrix * vertex;
@@ -2417,7 +2254,7 @@ void Engine::translate(Quad& quad, double tx, double ty, double tz) {
 }
 
 void Engine::translate(Triangle& triangle, double tx, double ty, double tz) {
-	Mat translation_matrix = Engine::translation_matrix(tx, ty, tz);
+	Mat translation_matrix = Mat::translation_matrix(tx, ty, tz);
 
 	for (Mat& vertex : triangle.vertices) {
 		vertex = translation_matrix * vertex;
@@ -2425,20 +2262,20 @@ void Engine::translate(Triangle& triangle, double tx, double ty, double tz) {
 }
 
 void Engine::translate(Mat& matrix, double tx, double ty, double tz) {
-	Mat translation_matrix = Engine::translation_matrix(tx, ty, tz);
+	Mat translation_matrix = Mat::translation_matrix(tx, ty, tz);
 
 	matrix = translation_matrix * matrix;
 }
 
 void Engine::scale(Instance& instance, double sx, double sy, double sz) {
-	Mat scaling_matrix = Engine::scale_matrix(sx, sy, sz);
+	Mat scaling_matrix = Mat::scale_matrix(sx, sy, sz);
 
 	instance.SCALING_MATRIX = scaling_matrix * instance.SCALING_MATRIX;
 	instance.MODEL_TO_WORLD = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX;
 }
 
 void Engine::scale(Mesh& mesh, double sx, double sy, double sz) {
-	Mat scale_matrix = Engine::scale_matrix(sx, sy, sz);
+	Mat scale_matrix = Mat::scale_matrix(sx, sy, sz);
 
 	for (Mat& vertex : mesh.vertices) {
 		vertex = scale_matrix * vertex;
@@ -2451,7 +2288,7 @@ void Engine::scale(Quad& quad, double sx, double sy, double sz) {
 }
 
 void Engine::scale(Triangle& triangle, double sx, double sy, double sz) {
-	Mat scale_matrix = Engine::scale_matrix(sx, sy, sz);
+	Mat scale_matrix = Mat::scale_matrix(sx, sy, sz);
 
 	for (Mat& vertex : triangle.vertices) {
 		vertex = scale_matrix * vertex;
@@ -2460,35 +2297,9 @@ void Engine::scale(Triangle& triangle, double sx, double sy, double sz) {
 }
 
 void Engine::scale(Mat& matrix, double sx, double sy, double sz) {
-	Mat scale_matrix = Engine::scale_matrix(sx, sy, sz);
+	Mat scale_matrix = Mat::scale_matrix(sx, sy, sz);
 
 	matrix = scale_matrix * matrix;
-}
-
-Mat Engine::translation_matrix(double tx, double ty, double tz) {
-	Mat translation_matrix = Mat(
-		{
-			{1, 0, 0, tx},
-			{0, 1, 0, ty},
-			{0, 0, 1, tz},
-			{0, 0, 0, 1}
-		}
-	, 4, 4);
-
-	return translation_matrix;
-}
-
-Mat Engine::scale_matrix(double sx, double sy, double sz) {
-	Mat scale_matrix = Mat(
-		{
-		{sx, 0, 0, 0},
-		{0, sy, 0, 0},
-		{0, 0, sz, 0},
-		{0, 0, 0, 1}
-		}
-	, 4, 4);
-
-	return scale_matrix;
 }
 
 Mat Engine::euler_rotationX_matrix(double radians) {
@@ -2700,21 +2511,6 @@ void Engine::Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& p
 	}
 }
 
-// Sets yaw, pitch, and roll from quaternion
-void Engine::Quaternion_GetAnglesFromQuaternion(const Quaternion& quaternion, double& yaw, double& pitch, double& roll) {
-	Mat rotation_matrix = quaternion.get_rotationmatrix();
-	pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
-
-	if (abs(rotation_matrix.get(2, 3) < 0.9999999)) {
-		yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
-		roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
-	}
-	else {
-		yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
-		roll = 0;
-	}
-}
-
 // Sets yaw, pitch, and roll from a direction vector (the displacement in each axis from the default direction vector)
 void Engine::Quaternion_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll) {
 	const Mat normalized_v1 = default_direction_vector / default_direction_vector.norm();
@@ -2726,7 +2522,7 @@ void Engine::Quaternion_GetAnglesFromDirection(const Mat& default_direction_vect
 	double rotation_angle = acos(Mat::dot(normalized_v1, normalized_v2));
 	const Quaternion rotation = Quaternion::AngleAxis(rotation_axis.get(1, 1), rotation_axis.get(2, 1), rotation_axis.get(3, 1), rotation_angle);
 
-	Engine::Quaternion_GetAnglesFromQuaternion(rotation, yaw, pitch, roll);
+	rotation.GetAngles(yaw, pitch, roll);
 }
 
 // Frees the pixel buffer, destroys the texture, renderer, window, and cleans SDL subsystems.

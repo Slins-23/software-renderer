@@ -442,3 +442,29 @@ void Mat::normalize() {
 		}
 	}
 }
+
+Mat Mat::translation_matrix(double tx, double ty, double tz) {
+	Mat translation_matrix = Mat(
+		{
+			{1, 0, 0, tx},
+			{0, 1, 0, ty},
+			{0, 0, 1, tz},
+			{0, 0, 0, 1}
+		}
+	, 4, 4);
+
+	return translation_matrix;
+}
+
+Mat Mat::scale_matrix(double sx, double sy, double sz) {
+	Mat scale_matrix = Mat(
+		{
+		{sx, 0, 0, 0},
+		{0, sy, 0, 0},
+		{0, 0, sz, 0},
+		{0, 0, 0, 1}
+		}
+	, 4, 4);
+
+	return scale_matrix;
+}

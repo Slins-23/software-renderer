@@ -220,4 +220,7 @@ public:
 	/// Divides each element in the vector by the vector norm.
 	/// </summary>
 	void normalize();
+
+	static Mat translation_matrix(double tx, double ty, double tz);
+	static Mat scale_matrix(double sx, double sy, double sz);
 };

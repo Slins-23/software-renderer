@@ -30,6 +30,21 @@ struct Quaternion {
 		this->w = w;
 	}
 
+	// Sets yaw, pitch, and roll from quaternion
+	void GetAngles(double& yaw, double& pitch, double& roll) const {
+		Mat rotation_matrix = this->get_rotationmatrix();
+		pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
+
+		if (abs(rotation_matrix.get(2, 3) < 0.9999999)) {
+			yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
+			roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
+		}
+		else {
+			yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
+			roll = 0;
+		}
+	}
+
 	static Quaternion AngleAxis(double x, double y, double z, double angle) {
 		double q_x = sin(angle / 2) * x;
 		double q_y = sin(angle / 2) * y;
@@ -566,61 +581,6 @@ private:
 		total_instances++;
 	}
 public:
-	void aQuaternion_GetAnglesFromQuaternionYP(const Quaternion& quaternion, double& yaw, double& pitch, double& roll) {
-		Mat rotation_matrix = quaternion.get_rotationmatrix();
-		pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
-
-		if (abs(rotation_matrix.get(2, 3) < 0.9999999)) {
-			yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
-			roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
-		}
-		else {
-			yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
-			roll = 0;
-		}
-	}
-
-	Mat aquaternion_rotationX_matrix(double radians) {
-		Quaternion quaternion = Quaternion::AngleAxis(1, 0, 0, radians);
-		return quaternion.get_rotationmatrix();
-	}
-
-	Mat aquaternion_rotationY_matrix(double radians) {
-		Quaternion quaternion = Quaternion::AngleAxis(0, 1, 0, radians);
-		return quaternion.get_rotationmatrix();
-	}
-
-	Mat aquaternion_rotationZ_matrix(double radians) {
-		Quaternion quaternion = Quaternion::AngleAxis(0, 0, 1, radians);
-		return quaternion.get_rotationmatrix();
-	}
-
-	Mat ascale_matrix(double sx, double sy, double sz) {
-		Mat scale_matrix = Mat(
-			{
-			{sx, 0, 0, 0},
-			{0, sy, 0, 0},
-			{0, 0, sz, 0},
-			{0, 0, 0, 1}
-			}
-		, 4, 4);
-
-		return scale_matrix;
-	}
-
-	Mat atranslation_matrix(double tx, double ty, double tz) {
-		Mat translation_matrix = Mat(
-			{
-				{1, 0, 0, tx},
-				{0, 1, 0, ty},
-				{0, 0, 1, tz},
-				{0, 0, 0, 1}
-			}
-		, 4, 4);
-
-		return translation_matrix;
-	}
-
 	std::string instance_name = "";
 	uint32_t instance_id = 0;
 	Mesh* mesh = nullptr;
@@ -650,9 +610,9 @@ public:
 	Instance() {};
 
 	Instance(Mesh* mesh, double tx, double ty, double tz, const Quaternion& orientation, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
-		this->TRANSLATION_MATRIX = atranslation_matrix(tx, ty, tz);
+		this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 		//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
-		this->SCALING_MATRIX = ascale_matrix(sx, sy, sz);
+		this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 		this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 
 		this->tx = tx;
@@ -660,7 +620,7 @@ public:
 		this->tz = tz;
 
 		this->orientation = orientation;
-		aQuaternion_GetAnglesFromQuaternionYP(orientation, this->yaw, this->pitch, this->roll);
+		orientation.GetAngles(this->yaw, this->pitch, this->roll);
 		this->ROTATION_MATRIX = this->orientation.get_rotationmatrix();
 
 		this->sx = sx;
@@ -674,9 +634,9 @@ public:
 	}
 
 	Instance(Mesh* mesh, double tx, double ty, double tz, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
-		this->TRANSLATION_MATRIX = atranslation_matrix(tx, ty, tz);
+		this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 		//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
-		this->SCALING_MATRIX = ascale_matrix(sx, sy, sz);
+		this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 		this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 
 		this->tx = tx;
@@ -684,7 +644,7 @@ public:
 		this->tz = tz;
 
 		this->orientation = orientation;
-		aQuaternion_GetAnglesFromQuaternionYP(orientation, this->yaw, this->pitch, this->roll);
+		orientation.GetAngles(this->yaw, this->pitch, this->roll);
 		this->ROTATION_MATRIX = this->orientation.get_rotationmatrix();
 
 		this->sx = sx;
@@ -705,10 +665,10 @@ public:
 		Quaternion orientation = Quaternion::FromYawPitchRoll(this->yaw, this->pitch, this->roll);
 		this->orientation = orientation;
 
-		this->TRANSLATION_MATRIX = atranslation_matrix(tx, ty, tz);
+		this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 		//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
 		this->ROTATION_MATRIX = this->orientation.get_rotationmatrix();
-		this->SCALING_MATRIX = ascale_matrix(sx, sy, sz);
+		this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 		this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 
 		this->tx = tx;
@@ -743,7 +703,7 @@ public:
 		this->pitch = pitch;
 		this->roll = roll,
 
-		this->sx = SCALING_MATRIX.get(1, 1);
+			this->sx = SCALING_MATRIX.get(1, 1);
 		this->sy = SCALING_MATRIX.get(2, 2);
 		this->sz = SCALING_MATRIX.get(3, 3);
 
@@ -826,10 +786,10 @@ public:
 
 		this->instance_name = instance_name;
 		this->mesh = mesh;
-		this->TRANSLATION_MATRIX = atranslation_matrix(tx, ty, tz);
+		this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 		//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
 		this->ROTATION_MATRIX = orientation.get_rotationmatrix();
-		this->SCALING_MATRIX = ascale_matrix(sx, sy, sz);
+		this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 		this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 		this->show = show;
 		this->instance_id = total_instances;
@@ -847,10 +807,10 @@ public:
 		this->orientation = orientation;
 		this->instance_name = instance_name;
 		this->mesh = mesh;
-		this->TRANSLATION_MATRIX = atranslation_matrix(tx, ty, tz);
+		this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 		//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
 		this->ROTATION_MATRIX = orientation.get_rotationmatrix();
-		this->SCALING_MATRIX = ascale_matrix(sx, sy, sz);
+		this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 		this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 		this->show = show;
 		this->instance_id = total_instances;
@@ -859,7 +819,7 @@ public:
 		this->ty = ty;
 		this->tz = tz;
 
-		aQuaternion_GetAnglesFromQuaternionYP(orientation, this->yaw, this->pitch, this->roll);
+		orientation.GetAngles(this->yaw, this->pitch, this->roll);
 
 		this->sx = sx;
 		this->sy = sy;
@@ -874,10 +834,11 @@ public:
 
 		this->instance_name = instance_name;
 		this->mesh = mesh;
-		this->TRANSLATION_MATRIX = atranslation_matrix(tx, ty, tz);
+		this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 		//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
 		this->ROTATION_MATRIX = orientation.get_rotationmatrix();
-		this->SCALING_MATRIX = ascale_matrix(sx, sy, sz);
+		this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
+		this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 		this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 		this->show = show;
 		this->instance_id = total_instances;
@@ -1052,8 +1013,6 @@ public:
 	bool rasterize = false; // Toggle 2
 	bool wireframe_render = false; // Toggle 1
 
-	bool z_sorted = false;
-
 	double z_fighting_tolerance = 0.994;
 
 	double near = 0.1;
@@ -1104,7 +1063,7 @@ public:
 		{
 			{0},
 			{0},
-			{0},
+			{1},
 			{1},
 		}, 4, 1
 		);
@@ -1118,7 +1077,8 @@ public:
 		}, 4, 1
 		);
 
-	double light_reach = 2;
+	double light_intensity = 0.3;
+	uint32_t light_color = 0x66285CFF;
 
 	// Rotation angle
 	double rotation_angle_degrees = 10;
@@ -1135,6 +1095,8 @@ public:
 	// Initial camera direction (not standard camera direction, only what it starts at, the default position is (0, 0, -1))
 	
 	Quaternion q_camera = Quaternion(0, 0, 0, 1);
+
+	Instance light_instance;
 
 	Mat default_camera_direction = Mat({
 		{0},
@@ -1198,6 +1160,7 @@ public:
 	const char* scenes_folder = "D:/Programming/Graphics/Prototyping/scenes/";
 	const char* scene_filename = "hallway.json";
 	const char* scene_save_name = "tst.json";
+	//const char* light_mesh = "light.obj";
 	Scene current_scene;
 
 	double ac_yaw = 0;
@@ -1248,8 +1211,6 @@ public:
 	static void scale(Triangle& triangle, double sx, double sy, double sz);
 	static void scale(Mat& matrix, double sx, double sy, double sz);
 
-	static Mat translation_matrix(double tx, double ty, double tz);
-	static Mat scale_matrix(double sx, double sy, double sz);
 	static Mat quaternion_rotationX_matrix(double radians);
 	static Mat quaternion_rotationY_matrix(double radians);
 	static Mat quaternion_rotationZ_matrix(double radians);
@@ -1266,7 +1227,6 @@ public:
 	static Mat CrossProduct3D(const Mat& v1, const Mat& v2);
 
 	static void Euler_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch);
-	static void Quaternion_GetAnglesFromQuaternion(const Quaternion& quaternion, double& yaw, double& pitch, double& roll);
 	static void Quaternion_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
 
 	static void Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll);
