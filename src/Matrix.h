@@ -221,6 +221,21 @@ public:
 	/// </summary>
 	void normalize();
 
+	/// <summary>
+	/// Returns a 4x4 translation matrix with the provided parameters
+	/// </summary>
+	/// <param name="tx">Translation along the x-axis</param>
+	/// <param name="ty">Translation along the y-axis</param>
+	/// <param name="tz">Translation along the z-axis</param>
+	/// <returns>A 4x4 translation matrix</returns>
 	static Mat translation_matrix(double tx, double ty, double tz);
+
+	/// <summary>
+	/// Returns a 4x4 scaling matrix with the provided parameters
+	/// </summary>
+	/// <param name="sx">Scaling along the x-axis</param>
+	/// <param name="sy">Scaling along the y-axis</param>
+	/// <param name="sz">Scaling along the z-axis</param>
+	/// <returns>A 4x4 scaling matrix</returns>
 	static Mat scale_matrix(double sx, double sy, double sz);
 };

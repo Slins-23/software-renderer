@@ -703,7 +703,7 @@ public:
 		this->pitch = pitch;
 		this->roll = roll,
 
-			this->sx = SCALING_MATRIX.get(1, 1);
+		this->sx = SCALING_MATRIX.get(1, 1);
 		this->sy = SCALING_MATRIX.get(2, 2);
 		this->sz = SCALING_MATRIX.get(3, 3);
 
@@ -907,6 +907,42 @@ public:
 
 		total_instances++;
 	}
+
+	// Returns the vertex that represents the center point of the instance in world space
+	Mat GetCenterVertex() const {
+		Mat center = Mat({ {0}, {0}, {0}, {1} }, 4, 1);
+
+		double min_x = std::numeric_limits<double>::max();
+		double max_x = std::numeric_limits<double>::lowest();
+		double min_y = std::numeric_limits<double>::max();
+		double max_y = std::numeric_limits<double>::lowest();
+		double min_z = std::numeric_limits<double>::max();
+		double max_z = std::numeric_limits<double>::lowest();
+
+		for (const Mat& vertex : this->mesh->vertices) {
+			Mat current_instance_vertex = this->TRANSLATION_MATRIX * this->ROTATION_MATRIX * this->SCALING_MATRIX * vertex;
+			double x = current_instance_vertex.get(1, 1);
+			double y = current_instance_vertex.get(2, 1);
+			double z = current_instance_vertex.get(3, 1);
+
+			min_x = std::min(x, min_x);
+			max_x = std::max(x, max_x);
+			min_y = std::min(y, min_y);
+			max_y = std::max(y, max_y);
+			min_z = std::min(z, min_z);
+			max_z = std::max(z, max_z);
+		}
+
+		double x = (min_x + max_x) / 2;
+		double y = (min_y + max_y) / 2;
+		double z = (min_z + max_z) / 2;
+
+		center.set(x, 1, 1);
+		center.set(y, 2, 1);
+		center.set(z, 3, 1);
+
+		return center;
+	}
 };
 
 struct Scene {
@@ -1078,6 +1114,8 @@ public:
 		);
 
 	double light_intensity = 0.3;
+	double minimum_exposure = 0.1;
+
 	uint32_t light_color = 0x66285CFF;
 
 	// Rotation angle
@@ -1162,10 +1200,6 @@ public:
 	const char* scene_save_name = "tst.json";
 	//const char* light_mesh = "light.obj";
 	Scene current_scene;
-
-	double ac_yaw = 0;
-	double ac_pitch = 0;
-	double ac_roll = 0;
 	
 	bool setup();
 	bool handle_events();
@@ -1175,7 +1209,6 @@ public:
 	void draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v3, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
 	void draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
 	void draw_line(double x1, double y1, double x2, double y2, const Mat& vec_a, const Mat& vec_b, const double& vec_a_originalz, const double& vec_b_originalz, uint32_t outline_color);
-	Mat Instance_GetCenterVertex(const Instance& instance);
 	void draw();
 	void render();
 

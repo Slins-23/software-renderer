@@ -98,6 +98,10 @@ bool Engine::handle_events() {
 		case SDL_KEYDOWN:
 			switch (this->event.key.keysym.scancode) {
 			case SDL_SCANCODE_8:
+				if (!this->playing) break;
+				if (this->minimum_exposure >= 0.1) this->minimum_exposure -= 0.1;
+				std::cout << "Minimum exposure (light): " << this->minimum_exposure << std::endl;
+				break;
 				/*
 			{
 				Mat rot_axis = this->camera_up;
@@ -111,6 +115,10 @@ bool Engine::handle_events() {
 				*/
 				break;
 			case SDL_SCANCODE_9:
+				if (!this->playing) break;
+				if (this->minimum_exposure <= 0.9) this->minimum_exposure += 0.1;
+				std::cout << "Minimum exposure (light): " << this->minimum_exposure << std::endl;
+				break;
 				/*
 			{
 				Mat rot_axis = this->camera_up;
@@ -130,33 +138,27 @@ bool Engine::handle_events() {
 
 					// same as j
 					Instance* obj = this->current_scene.get_instance_ptr(5);
-					obj->tx += 0.01;
-					obj->TRANSLATION_MATRIX = Mat::translation_matrix(obj->tx, obj->ty, obj->tz);
-					obj->MODEL_TO_WORLD = obj->TRANSLATION_MATRIX * obj->ROTATION_MATRIX * obj->SCALING_MATRIX;
 
-					// same as i
-					obj = this->current_scene.get_instance_ptr(5);
-					obj->roll += 0.1;
-					Mat obj_x_axis = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
-					Mat obj_y_axis = Mat({ {0}, {1}, {0}, {0} }, 4, 1);
-					Mat obj_z_axis = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
+					Engine::translate(*obj, 0.01, -0.01, 0);
 
-					Quaternion rotationY = Quaternion::AngleAxis(obj_y_axis.get(1, 1), obj_y_axis.get(2, 1), obj_y_axis.get(3, 1), obj->yaw);
-					//obj_x_axis = Quaternion::RotatePoint(obj_x_axis, obj_y_axis, obj->yaw);
-					//obj_z_axis = Quaternion::RotatePoint(obj_z_axis, obj_y_axis, obj->yaw);
+					if (obj->roll < 1.5) Engine::rotateZ(*obj, 0.1); 
+					else if (obj->roll >= 1.5 && obj->pitch >= 1.5) Engine::rotateZ(*obj, 0.1);
+					else Engine::rotateX(*obj, 0.1);
 
-					Quaternion rotationX = Quaternion::AngleAxis(obj_x_axis.get(1, 1), obj_x_axis.get(2, 1), obj_x_axis.get(3, 1), obj->pitch);
-					//obj_y_axis = Quaternion::RotatePoint(obj_y_axis, obj_x_axis, obj->pitch);
-					//obj_z_axis = Quaternion::RotatePoint(obj_z_axis, obj_x_axis, obj->pitch);
+					///*
 
-					Quaternion rotationZ = Quaternion::AngleAxis(obj_z_axis.get(1, 1), obj_z_axis.get(2, 1), obj_z_axis.get(3, 1), obj->roll);
-					//obj_x_axis = Quaternion::RotatePoint(obj_x_axis, obj_z_axis, obj->roll);
-					//obj_y_axis = Quaternion::RotatePoint(obj_y_axis, obj_z_axis, obj->roll);
-
-					Quaternion orientation = rotationZ * rotationX * rotationY;
-					obj->orientation = orientation;
-					obj->ROTATION_MATRIX = obj->orientation.get_rotationmatrix();
-					obj->MODEL_TO_WORLD = obj->TRANSLATION_MATRIX * obj->ROTATION_MATRIX * obj->SCALING_MATRIX;
+					std::cout << "Yaw: " << obj->yaw << std::endl;
+					std::cout << "Pitch: " << obj->pitch << std::endl;
+					std::cout << "Roll: " << obj->roll << std::endl;
+					std::cout << "Rotation matrix: " << obj->ROTATION_MATRIX << std::endl;
+					std::cout << "Quaternion x: " << obj->orientation.x << std::endl;
+					std::cout << "Quaternion y: " << obj->orientation.y << std::endl;
+					std::cout << "Quaternion z: " << obj->orientation.z << std::endl;
+					std::cout << "Quaternion w: " << obj->orientation.w << std::endl;
+					std::cout << "Tx: " << obj->tx << std::endl;
+					std::cout << "Ty: " << obj->ty << std::endl;
+					std::cout << "Tz: " << obj->tz << std::endl;
+					//*/
 				}
 				break;
 			case SDL_SCANCODE_KP_6:
@@ -287,7 +289,7 @@ bool Engine::handle_events() {
 				break;
 			case SDL_SCANCODE_KP_DIVIDE:
 				if (!this->playing) break;
-				if (this->light_intensity >= 0.199) this->light_intensity -= 0.1;
+				if (this->light_intensity >= 0) this->light_intensity -= 0.1;
 				std::cout << "Light intensity: " << this->light_intensity << std::endl;
 				break;
 			case SDL_SCANCODE_KP_MULTIPLY:
@@ -421,31 +423,11 @@ bool Engine::handle_events() {
 				break;
 			case SDL_SCANCODE_Z:
 				if (!this->playing) break;
-				{
-				}
+
 				break;
 			case SDL_SCANCODE_X:
 				if (!this->playing) break;
-				{
-					Instance* pilar = this->current_scene.get_instance_ptr("5");
-					//double tx = pilar->MODEL_TO_WORLD.get(1, 4);
-					//double ty = pilar->MODEL_TO_WORLD.get(2, 4);
-					//double tz = pilar->MODEL_TO_WORLD.get(3, 4);
-					//pilar->MODEL_TO_WORLD = Mat::translation_matrix(-tx, -ty, -tz) * pilar->MODEL_TO_WORLD;
-					//pilar->MODEL_TO_WORLD = Engine::rotationX_matrix(this->rotation_angle) * pilar->MODEL_TO_WORLD;
-					//pilar->MODEL_TO_WORLD = Mat::translation_matrix(tx, ty, tz) * pilar->MODEL_TO_WORLD;
-					//break;
 
-					pilar = this->current_scene.get_instance_ptr("5");
-					pilar->yaw += 0.1;
-					//pilar->pitch += 0.1;
-					//pilar->roll += 0.1;
-					//pilar->ty -= translation_amount;
-					//pilar->tz -= translation_amount;
-					pilar->ROTATION_MATRIX = Engine::quaternion_rotationZ_matrix(pilar->roll) * Engine::quaternion_rotationX_matrix(pilar->pitch) * Engine::quaternion_rotationY_matrix(pilar->yaw);
-					pilar->MODEL_TO_WORLD = pilar->TRANSLATION_MATRIX * pilar->ROTATION_MATRIX * pilar->SCALING_MATRIX;
-					break;
-				}
 				break;
 			case SDL_SCANCODE_C:
 				if (!this->playing) break;
@@ -724,8 +706,8 @@ void Scene::save_scene(const char* scenes_folder, const char* scene_filename, co
 	json_object["camera"]["up"]["y"] = camera_up.get(2, 1);
 	json_object["camera"]["up"]["z"] = camera_up.get(3, 1);
 
-	json_object["camera"]["rotation"]["y"] = yaw * (180 / M_PI);
 	json_object["camera"]["rotation"]["x"] = pitch * (180 / M_PI);
+	json_object["camera"]["rotation"]["y"] = yaw * (180 / M_PI);
 	json_object["camera"]["rotation"]["z"] = roll * (180 / M_PI);
 
 	std::vector<std::string> models;
@@ -918,8 +900,8 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 				// Gets yaw and pitch representing the rotation from the default camera direction to the camera direction
 				
 				Engine::Quaternion_GetAnglesFromDirection(default_camera_direction, camera_direction, camera_yaw, camera_pitch, camera_roll);
-				Engine::rotateY(tmp_dir, camera_yaw);
-				Engine::rotateX(tmp_dir, camera_pitch);
+				Engine::rotateY(camera_direction, camera_yaw);
+				Engine::rotateX(camera_direction, camera_pitch);
 			}
 		}
 		
@@ -944,8 +926,8 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			if (!rotation_given) {
 				// Gets roll representing the rotation from the default camera up to the camera up
 				Engine::GetRoll(camera_direction, camera_up, camera_yaw, camera_pitch, camera_roll);
-				Engine::rotateX(tmp_up, camera_pitch);
-				Engine::rotateZ(tmp_up, camera_roll);
+				Engine::rotateX(camera_up, camera_pitch);
+				Engine::rotateZ(camera_up, camera_roll);
 			}
 		}
 	}
@@ -1529,48 +1511,35 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						//double light_intensity = abs((distance - light_reach)) * -similarity;
 						//double light_intensity = -similarity;
 						//double light_intensity = -similarity;
-						double light_intensity = similarity;
-						double base_intensity = this->light_intensity;
-						double attenuation = 1.f / (distance * distance);
+						double attenuation = 0;
+
+						if (distance != 0) attenuation = 1.0 / (distance * distance);
+						else attenuation = 1.0;
+
 						//double distance_multiplier = light_intensity * attenuation * base_intensity;
 						//distance_multiplier = Utils::clamp(distance_multiplier, 0, 1);
 
 						//light_intensity = light_intensity * distance_multiplier;
-						light_intensity = light_intensity * base_intensity * attenuation;
+						double light_intensity = similarity * this->light_intensity * attenuation;
 						light_intensity = Utils::clamp(light_intensity, 0, 1);
+
+						if (light_intensity < this->minimum_exposure) {
+							light_intensity = this->minimum_exposure;
+						}
 
 						uint8_t red = (uint8_t)(light_intensity * ((this->light_color >> 24) & 0x000000FF));
 						uint8_t green = (uint8_t)(light_intensity * ((this->light_color >> 16) & 0x000000FF));
 						uint8_t blue = (uint8_t)(light_intensity * ((this->light_color >> 8) & 0x000000FF));
 
-						//uint8_t color = (uint8_t)(light_intensity * 255.0);
-
-						//color /= pow(distance, 1/3);
-						//fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
 						fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
-
-						if (light_intensity < 0.001) {
-							visible = false;
-							fill_color = BG_COLOR;
-
-							light_intensity = this->light_intensity;
-							double light_intensity = similarity;
-							double base_intensity = this->light_intensity;
-							double attenuation = 1.f / (distance * distance);
-
-							light_intensity = light_intensity * base_intensity * attenuation;
-							light_intensity = Utils::clamp(light_intensity, 0, 1);
-
-							light_intensity = this->light_intensity;
-
-							uint8_t red = (uint8_t)(light_intensity * ((this->light_color >> 24) & 0x000000FF));
-							uint8_t green = (uint8_t)(light_intensity * ((this->light_color >> 16) & 0x000000FF));
-							uint8_t blue = (uint8_t)(light_intensity * ((this->light_color >> 8) & 0x000000FF));
-							//fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
-							fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
-						}
 					}
 					else {
+						uint8_t red = (uint8_t)(this->minimum_exposure * ((this->light_color >> 24) & 0x000000FF));
+						uint8_t green = (uint8_t)(this->minimum_exposure * ((this->light_color >> 16) & 0x000000FF));
+						uint8_t blue = (uint8_t)(this->minimum_exposure * ((this->light_color >> 8) & 0x000000FF));
+
+						fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+						/*
 						visible = false;
 						fill_color = BG_COLOR;
 						//uint8_t color = (uint8_t)(this->light_intensity * 0xFF);
@@ -1583,11 +1552,16 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 						light_intensity = light_intensity * base_intensity * attenuation;
 						light_intensity = Utils::clamp(light_intensity, 0, 1);
 
+						light_intensity = 0.05;
+
 						uint8_t red = (uint8_t)(light_intensity * ((this->light_color >> 24) & 0x000000FF));
 						uint8_t green = (uint8_t)(light_intensity * ((this->light_color >> 16) & 0x000000FF));
 						uint8_t blue = (uint8_t)(light_intensity * ((this->light_color >> 8) & 0x000000FF));
 						//fill_color = 0x000000FF | (color << 24) | (color << 16) | (color << 8);
 						fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+
+						fill_color = 0x000000FF;
+						*/
 					}
 				}
 
@@ -2075,42 +2049,6 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const do
 	return;
 }
 
-// Returns the vertex that represents the center point of the instance in world space
-Mat Engine::Instance_GetCenterVertex(const Instance& instance) {
-	Mat center = Mat({ {0}, {0}, {0}, {1} }, 4, 1);
-	
-	double min_x = std::numeric_limits<double>::max();
-	double max_x = std::numeric_limits<double>::lowest();
-	double min_y = std::numeric_limits<double>::max();
-	double max_y = std::numeric_limits<double>::lowest();
-	double min_z = std::numeric_limits<double>::max();
-	double max_z = std::numeric_limits<double>::lowest();
-
-	for (const Mat& vertex : instance.mesh->vertices) {
-		Mat current_instance_vertex = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX * vertex;
-		double x = current_instance_vertex.get(1, 1);
-		double y = current_instance_vertex.get(2, 1);
-		double z = current_instance_vertex.get(3, 1);
-
-		min_x = std::min(x, min_x);
-		max_x = std::max(x, max_x);
-		min_y = std::min(y, min_y);
-		max_y = std::max(y, max_y);
-		min_z = std::min(z, min_z);
-		max_z = std::max(z, max_z);
-	}
-
-	double x = (min_x + max_x) / 2;
-	double y = (min_y + max_y) / 2;
-	double z = (min_z + max_z) / 2;
-
-	center.set(x, 1, 1);
-	center.set(y, 2, 1);
-	center.set(z, 3, 1);
-
-	return center;
-}
-
 void Engine::draw() {
 	// Clears pixel buffer to the background/clear color
 	for (int i = 0; i < this->WIDTH * this->HEIGHT; i++) {
@@ -2132,9 +2070,11 @@ void Engine::render() {
 }
 
 void Engine::rotateX(Instance& instance, double radians) {
-	Mat rotation = Engine::quaternion_rotationX_matrix(radians);
+	Quaternion rotationX = Quaternion::AngleAxis(1, 0, 0, radians);
 
-	instance.ROTATION_MATRIX = rotation * instance.ROTATION_MATRIX;
+	instance.orientation = rotationX * instance.orientation;
+	instance.orientation.GetAngles(instance.yaw, instance.pitch, instance.roll);
+	instance.ROTATION_MATRIX = instance.orientation.get_rotationmatrix();
 	instance.MODEL_TO_WORLD = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX;
 }
 
@@ -2166,9 +2106,11 @@ void Engine::rotateX(Mat& matrix, double radians) {
 }
 
 void Engine::rotateY(Instance& instance, double radians) {
-	Mat rotation = Engine::quaternion_rotationY_matrix(radians);
+	Quaternion rotationY = Quaternion::AngleAxis(0, 1, 0, radians);
 
-	instance.ROTATION_MATRIX = rotation * instance.ROTATION_MATRIX;
+	instance.orientation = rotationY * instance.orientation;
+	instance.orientation.GetAngles(instance.yaw, instance.pitch, instance.roll);
+	instance.ROTATION_MATRIX = instance.orientation.get_rotationmatrix();
 	instance.MODEL_TO_WORLD = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX;
 }
 
@@ -2200,9 +2142,11 @@ void Engine::rotateY(Mat& matrix, double radians) {
 }
 
 void Engine::rotateZ(Instance& instance, double radians) {
-	Mat rotation = Engine::quaternion_rotationZ_matrix(radians);
+	Quaternion rotationZ = Quaternion::AngleAxis(0, 0, 1, radians);
 
-	instance.ROTATION_MATRIX = rotation * instance.ROTATION_MATRIX;
+	instance.orientation = rotationZ * instance.orientation;
+	instance.orientation.GetAngles(instance.yaw, instance.pitch, instance.roll);
+	instance.ROTATION_MATRIX = instance.orientation.get_rotationmatrix();
 	instance.MODEL_TO_WORLD = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX;
 }
 
@@ -2236,6 +2180,9 @@ void Engine::rotateZ(Mat& matrix, double radians) {
 void Engine::translate(Instance& instance, double tx, double ty, double tz) {
 	Mat translation_matrix = Mat::translation_matrix(tx, ty, tz);
 
+	instance.tx += tx;
+	instance.ty += ty;
+	instance.tz += tz;
 	instance.TRANSLATION_MATRIX = translation_matrix * instance.TRANSLATION_MATRIX;
 	instance.MODEL_TO_WORLD = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX;
 }
@@ -2270,6 +2217,9 @@ void Engine::translate(Mat& matrix, double tx, double ty, double tz) {
 void Engine::scale(Instance& instance, double sx, double sy, double sz) {
 	Mat scaling_matrix = Mat::scale_matrix(sx, sy, sz);
 
+	instance.sx *= sx;
+	instance.sy *= sy;
+	instance.sz *= sz;
 	instance.SCALING_MATRIX = scaling_matrix * instance.SCALING_MATRIX;
 	instance.MODEL_TO_WORLD = instance.TRANSLATION_MATRIX * instance.ROTATION_MATRIX * instance.SCALING_MATRIX;
 }
@@ -2481,6 +2431,7 @@ uint8_t Engine::ClipTriangleToPlane(const Mat* plane_point, const Mat* plane_nor
 		}
 
 		return 2;
+
 	}
 
 	throw std::runtime_error("Invalid branch taken at function `ClipTriangleToPlane`");
