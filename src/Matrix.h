@@ -238,4 +238,20 @@ public:
 	/// <param name="sz">Scaling along the z-axis</param>
 	/// <returns>A 4x4 scaling matrix</returns>
 	static Mat scale_matrix(double sx, double sy, double sz);
+
+	/// <summary>
+	/// Calculates the 2-Dimensional cross product of the two given vectors.
+	/// </summary>
+	/// <param name="v1">First vector</param>
+	/// <param name="v2">Second vector</param>
+	/// <returns>The scalar result</returns>
+	static double CrossProduct2D(const Mat& v1, const Mat& v2);
+
+	/// <summary>
+	/// Calculates the 3-Dimensional cross product of the two given vectors.
+	/// </summary>
+	/// <param name="v1">First vector</param>
+	/// <param name="v2">Second vector</param>
+	/// <returns>The resulting vector</returns>
+	static Mat CrossProduct3D(const Mat& v1, const Mat& v2);
 };

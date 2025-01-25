@@ -468,3 +468,36 @@ Mat Mat::scale_matrix(double sx, double sy, double sz) {
 
 	return scale_matrix;
 }
+
+double Mat::CrossProduct2D(const Mat & v1, const Mat & v2) {
+	return (v1.get(1, 1) * v2.get(2, 1)) - (v2.get(1, 1) * v1.get(2, 1));
+}
+
+Mat Mat::CrossProduct3D(const Mat & v1, const Mat & v2) {
+	double v1_x = v1.get(1, 1);
+	double v1_y = v1.get(2, 1);
+	double v1_z = v1.get(3, 1);
+
+	double v2_x = v2.get(1, 1);
+	double v2_y = v2.get(2, 1);
+	double v2_z = v2.get(3, 1);
+
+	double w_component = 0;
+	if (v1.get(4, 1) == 1 && v2.get(4, 1) == 1) w_component = 1;
+
+	Mat result = Mat(
+		{
+			{(v1_y * v2_z) - (v1_z * v2_y)},
+			{(v1_z * v2_x) - (v1_x * v2_z)},
+			{(v1_x * v2_y) - (v1_y * v2_x)},
+			{0}
+		}
+	, 4, 1);
+
+	// If the given vectors point in opposite directions (resulting in an empty zero vector)
+	if (result.get(1, 1) == 0 && result.get(2, 1) == 0 && result.get(3, 1) == 0) {
+
+	}
+
+	return result;
+}

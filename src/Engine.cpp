@@ -401,7 +401,7 @@ bool Engine::handle_events() {
 			case SDL_SCANCODE_G:
 				std::cout << "View matrix: " << std::endl;
 				this->VIEW_MATRIX.print();
-				q_camera.GetAngles(camera_yaw, camera_pitch, camera_roll);
+				camera_orientation.GetAngles(camera_yaw, camera_pitch, camera_roll);
 				std::cout << "Camera yaw: " << camera_yaw * (180 / M_PI) << std::endl;
 				std::cout << "Camera pitch: " << camera_pitch * (180 / M_PI) << std::endl;
 				std::cout << "Camera roll: " << camera_roll * (180 / M_PI) << std::endl;
@@ -414,10 +414,10 @@ bool Engine::handle_events() {
 
 				printf("\n\n");
 
-				std::cout << "Camera orientation quaternion x: " << q_camera.x << std::endl;
-				std::cout << "Camera orientation quaternion y: " << q_camera.y << std::endl;
-				std::cout << "Camera orientation quaternion z: " << q_camera.z << std::endl;
-				std::cout << "Camera orientation quaternion w: " << q_camera.w << std::endl;
+				std::cout << "Camera orientation quaternion x: " << camera_orientation.x << std::endl;
+				std::cout << "Camera orientation quaternion y: " << camera_orientation.y << std::endl;
+				std::cout << "Camera orientation quaternion z: " << camera_orientation.z << std::endl;
+				std::cout << "Camera orientation quaternion w: " << camera_orientation.w << std::endl;
 
 				this->current_scene.save_scene(this->scenes_folder, this->scene_save_name, this->models_folder, false, this->default_camera_position, this->camera_position, this->default_camera_direction, this->camera_direction, this->default_camera_up, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
 				break;
@@ -543,10 +543,10 @@ bool Engine::handle_events() {
 					Quaternion rotationY = Quaternion::AngleAxis(camera_up.get(1, 1), camera_up.get(2, 1), camera_up.get(3, 1), rotation_angle);
 					Mat rotation = rotationY.get_rotationmatrix();
 					this->camera_direction = rotation * this->camera_direction;
-					this->q_camera = rotationY * this->q_camera;
+					this->camera_orientation = rotationY * this->camera_orientation;
 
 					Engine::LookAt();
-					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
+					Quaternion::GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
 				}
 				break;
 			case SDL_SCANCODE_L:
@@ -555,42 +555,42 @@ bool Engine::handle_events() {
 					Quaternion rotationY = Quaternion::AngleAxis(camera_up.get(1, 1), camera_up.get(2, 1), camera_up.get(3, 1), -rotation_angle);
 					Mat rotation = rotationY.get_rotationmatrix();
 					this->camera_direction = rotation * this->camera_direction;
-					this->q_camera = rotationY * this->q_camera;
+					this->camera_orientation = rotationY * this->camera_orientation;
 
 					Engine::LookAt();
-					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
+					Quaternion::GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
 				}
 				break;
 			case SDL_SCANCODE_I:
 				if (!this->playing) break;
 				{
-					Mat camera_right = Engine::CrossProduct3D(camera_up, camera_direction);
+					Mat camera_right = Mat::CrossProduct3D(camera_up, camera_direction);
 					Quaternion rotationX = Quaternion::AngleAxis(camera_right.get(1, 1), camera_right.get(2, 1), camera_right.get(3, 1), rotation_angle);
 					Mat rotation = rotationX.get_rotationmatrix();
 
 					this->camera_direction = rotation * camera_direction;
 					this->camera_up = rotation * camera_up;
 
-					this->q_camera = rotationX * this->q_camera;
+					this->camera_orientation = rotationX * this->camera_orientation;
 
 					Engine::LookAt();
-					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
+					Quaternion::GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
 				}
 				break;
 			case SDL_SCANCODE_K:
 				if (!this->playing) break;
 				{
-					Mat camera_right = Engine::CrossProduct3D(camera_up, camera_direction);
+					Mat camera_right = Mat::CrossProduct3D(camera_up, camera_direction);
 
 					Quaternion rotationX = Quaternion::AngleAxis(camera_right.get(1, 1), camera_right.get(2, 1), camera_right.get(3, 1), -rotation_angle);
 					Mat rotation = rotationX.get_rotationmatrix();
 
 					this->camera_direction = rotation * camera_direction;
 					this->camera_up = rotation * camera_up;
-					this->q_camera = rotationX * this->q_camera;
+					this->camera_orientation = rotationX * this->camera_orientation;
 
 					Engine::LookAt();
-					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
+					Quaternion::GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
 				}
 				break;
 			case SDL_SCANCODE_Q:
@@ -599,10 +599,10 @@ bool Engine::handle_events() {
 					Quaternion rotationZ = Quaternion::AngleAxis(camera_direction.get(1, 1), camera_direction.get(2, 1), camera_direction.get(3, 1), rotation_angle);
 					Mat rotation = rotationZ.get_rotationmatrix();
 					this->camera_up = rotation * this->camera_up;
-					this->q_camera = rotationZ * this->q_camera;
+					this->camera_orientation = rotationZ * this->camera_orientation;
 
 					Engine::LookAt();
-					Engine::Quaternion_GetAnglesFromDirection(this->default_camera_up, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
+					Quaternion::GetAnglesFromDirection(this->default_camera_up, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
 				}
 				break;
 			case SDL_SCANCODE_E:
@@ -611,17 +611,17 @@ bool Engine::handle_events() {
 					Quaternion rotationZ = Quaternion::AngleAxis(camera_direction.get(1, 1), camera_direction.get(2, 1), camera_direction.get(3, 1), -rotation_angle);
 					Mat rotation = rotationZ.get_rotationmatrix();
 					this->camera_up = rotation * this->camera_up;
-					this->q_camera = rotationZ * this->q_camera;
+					this->camera_orientation = rotationZ * this->camera_orientation;
 					//Engine::rotateZ(this->camera_up, -this->rotation_angle);
 
 					Engine::LookAt();
-					this->q_camera.GetAngles(this->camera_yaw, this->camera_pitch, this->camera_roll);
+					this->camera_orientation.GetAngles(this->camera_yaw, this->camera_pitch, this->camera_roll);
 				}
 				break;
 			case SDL_SCANCODE_A:
 				if (!this->playing) break;
 				{
-					Mat camera_right = Engine::CrossProduct3D(this->camera_up, this->camera_direction);
+					Mat camera_right = Mat::CrossProduct3D(this->camera_up, this->camera_direction);
 					this->camera_position += tx * camera_right;
 					Engine::LookAt();
 				}
@@ -629,7 +629,7 @@ bool Engine::handle_events() {
 			case SDL_SCANCODE_D:
 				if (!this->playing) break;
 				{
-					Mat camera_right = Engine::CrossProduct3D(this->camera_up, this->camera_direction);
+					Mat camera_right = Mat::CrossProduct3D(this->camera_up, this->camera_direction);
 					this->camera_position -= tx * camera_right;
 					Engine::LookAt();
 				}
@@ -671,516 +671,6 @@ bool Engine::handle_events() {
 	}
 
 	return 0;
-}
-
-void Scene::save_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, const Mat& default_camera_position, const Mat& camera_position, const Mat& default_camera_direction, const Mat& camera_direction, const Mat& default_camera_up, const Mat& camera_up, double yaw, double pitch, double roll) {
-	char scene_filepath[255];
-	sprintf_s(scene_filepath, 255, "%s%s", scenes_folder, scene_filename);
-	nlohmann::ordered_json json_object;
-
-	json_object["scene"] = scene_filename;
-
-	// The default camera position is considered to be the world coordinate in which the camera will be considered to be (0, 0, 0)
-	json_object["camera"]["default_position"]["x"] = default_camera_position.get(1, 1);
-	json_object["camera"]["default_position"]["y"] = default_camera_position.get(2, 1);
-	json_object["camera"]["default_position"]["z"] = default_camera_position.get(3, 1);
-
-	// Camera position relative to the default camera position
-	json_object["camera"]["translation"]["x"] = camera_position.get(1, 1);
-	json_object["camera"]["translation"]["y"] = camera_position.get(2, 1);
-	json_object["camera"]["translation"]["z"] = camera_position.get(3, 1);
-
-	json_object["camera"]["default_direction"]["x"] = default_camera_direction.get(1, 1);
-	json_object["camera"]["default_direction"]["y"] = default_camera_direction.get(2, 1);
-	json_object["camera"]["default_direction"]["z"] = default_camera_direction.get(3, 1);
-
-	json_object["camera"]["direction"]["x"] = camera_direction.get(1, 1);
-	json_object["camera"]["direction"]["y"] = camera_direction.get(2, 1);
-	json_object["camera"]["direction"]["z"] = camera_direction.get(3, 1);
-
-	json_object["camera"]["default_up"]["x"] = default_camera_up.get(1, 1);
-	json_object["camera"]["default_up"]["y"] = default_camera_up.get(2, 1);
-	json_object["camera"]["default_up"]["z"] = default_camera_up.get(3, 1);
-
-	json_object["camera"]["up"]["x"] = camera_up.get(1, 1);
-	json_object["camera"]["up"]["y"] = camera_up.get(2, 1);
-	json_object["camera"]["up"]["z"] = camera_up.get(3, 1);
-
-	json_object["camera"]["rotation"]["x"] = pitch * (180 / M_PI);
-	json_object["camera"]["rotation"]["y"] = yaw * (180 / M_PI);
-	json_object["camera"]["rotation"]["z"] = roll * (180 / M_PI);
-
-	std::vector<std::string> models;
-	std::vector<Instance*> instances;
-	for (auto instance = this->scene_instances.begin(); instance != this->scene_instances.end(); instance++) {
-		std::string mesh_filename = instance->mesh->mesh_filename;
-		bool model_already_included = false;
-		for (size_t model_n = 0; model_n < models.size(); model_n++) {
-			std::string model_string = models[model_n];
-
-			if (model_string == mesh_filename) {
-				model_already_included = true;
-				break;
-			}
-		}
-
-		if (!model_already_included) {
-			models.push_back(mesh_filename);
-		}
-		
-		instances.push_back(&*instance);
-	}
-
-	for (auto model = models.begin(); model != models.end(); model++) {
-		std::vector<std::string> txt_array;
-		txt_array.push_back("instances");
-
-		std::vector<std::string> instance_ids;
-		for (size_t instance_id = 0; instance_id < this->total_instances; instance_id++) {
-			Instance* instance = Scene::get_instance_ptr(instance_id);
-			std::string mesh_filename = instance->mesh->mesh_filename;
-
-			if (mesh_filename == *model) {
-				json_object["models"][*model]["instances"][instance->instance_name]["show"] = instance->show;
-
-				json_object["models"][*model]["instances"][instance->instance_name]["translation"]["x"] = instance->tx;
-				json_object["models"][*model]["instances"][instance->instance_name]["translation"]["y"] = instance->ty;
-				json_object["models"][*model]["instances"][instance->instance_name]["translation"]["z"] = instance->tz;
-
-				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["y"] = instance->yaw * (180 / M_PI);
-				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["x"] = instance->pitch * (180 / M_PI);
-				json_object["models"][*model]["instances"][instance->instance_name]["rotation"]["z"] = instance->roll * (180 / M_PI);
-
-				json_object["models"][*model]["instances"][instance->instance_name]["scale"]["x"] = instance->sx;
-				json_object["models"][*model]["instances"][instance->instance_name]["scale"]["y"] = instance->sy;
-				json_object["models"][*model]["instances"][instance->instance_name]["scale"]["z"] = instance->sz;
-
-				json_object["models"][*model]["instances"][instance->instance_name]["model_to_world"] = std::vector<std::vector<double>>
-				{
-					{instance->MODEL_TO_WORLD.get(1, 1), instance->MODEL_TO_WORLD.get(1, 2), instance->MODEL_TO_WORLD.get(1, 3), instance->MODEL_TO_WORLD.get(1, 4)},
-					{instance->MODEL_TO_WORLD.get(2, 1), instance->MODEL_TO_WORLD.get(2, 2), instance->MODEL_TO_WORLD.get(2, 3), instance->MODEL_TO_WORLD.get(2, 4)},
-					{instance->MODEL_TO_WORLD.get(3, 1), instance->MODEL_TO_WORLD.get(3, 2), instance->MODEL_TO_WORLD.get(3, 3), instance->MODEL_TO_WORLD.get(3, 4)},
-					{instance->MODEL_TO_WORLD.get(4, 1), instance->MODEL_TO_WORLD.get(4, 2), instance->MODEL_TO_WORLD.get(4, 3), instance->MODEL_TO_WORLD.get(4, 4)}
-				};
-			}
-			else {
-				continue;
-			}
-		}
-	}
-
-	std::cout << json_object.dump(4) << std::endl;
-	std::ofstream file(scene_filepath);
-	file << json_object.dump(4);
-	file.close();
-}
-
-void Scene::load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_position, Mat& default_camera_direction, Mat& camera_direction, Mat& default_camera_up, Mat& camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, Mat& VIEW_MATRIX, bool use_scene_camera_settings) {
-	char scene_filepath[255];
-	sprintf_s(scene_filepath, 255, "%s%s", scenes_folder, scene_filename);
-
-	std::ifstream file = std::ifstream(scene_filepath);
-
-	this->scene_filepath = scene_filepath;
-	this->scene_data = nlohmann::json::parse(file);
-
-	this->scene_meshes.clear();
-	this->scene_instances.clear();
-
-	this->total_meshes = 0;
-	this->total_instances = 0;
-	this->total_triangles = 0;
-	this->total_vertices = 0;
-
-	this->rendered_meshes = 0;
-	this->rendered_instances = 0;
-	this->rendered_triangles = 0;
-	this->rendered_vertices = 0;
-
-	Mat tmp_dir = default_camera_direction;
-	Mat tmp_up = default_camera_up;
-
-	// Reset view matrix
-	VIEW_MATRIX = Mat::identity_matrix(4);
-
-	camera_position = default_camera_position;
-	camera_direction = default_camera_direction;
-	camera_up = default_camera_up;
-	camera_yaw = 0;
-	camera_pitch = 0;
-	camera_roll = 0;
-
-	Mat camera_right = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
-
-		// Then translates the camera
-	if (use_scene_camera_settings) {
-		if (this->scene_data["camera"].contains("default_position")) {
-			double x = this->scene_data["camera"]["default_position"]["x"].get<double>();
-			double y = this->scene_data["camera"]["default_position"]["y"].get<double>();
-			double z = this->scene_data["camera"]["default_position"]["z"].get<double>();
-
-			default_camera_position.set(x, 1, 1);
-			default_camera_position.set(y, 2, 1);
-			default_camera_position.set(z, 3, 1);
-
-			camera_position = default_camera_position;
-		}
-
-		// Loads scene camera parameters (position, direction, and orientation)
-		if (this->scene_data["camera"].contains("translation")) {
-			double tx = this->scene_data["camera"]["translation"]["x"].get<double>();
-			double ty = this->scene_data["camera"]["translation"]["y"].get<double>();
-			double tz = this->scene_data["camera"]["translation"]["z"].get<double>();
-
-			camera_position.set(tx + default_camera_position.get(1, 1), 1, 1);
-			camera_position.set(ty + default_camera_position.get(2, 1), 2, 1);
-			camera_position.set(tz + default_camera_position.get(3, 1), 3, 1);
-		}
-	}
-
-	// Then rotates the camera
-	if (use_scene_camera_settings) {
-
-		if (this->scene_data["camera"].contains("default_direction")) {
-			double default_x = this->scene_data["camera"]["default_direction"]["x"].get<double>();
-			double default_y = this->scene_data["camera"]["default_direction"]["y"].get<double>();
-			double default_z = this->scene_data["camera"]["default_direction"]["z"].get<double>();
-
-			default_camera_direction.set(default_x, 1, 1);
-			default_camera_direction.set(default_y, 2, 1);
-			default_camera_direction.set(default_z, 3, 1);
-
-			camera_direction = default_camera_direction;
-		}
-
-		if (this->scene_data["camera"].contains("default_up")) {
-			double default_x = this->scene_data["camera"]["default_up"]["x"].get<double>();
-			double default_y = this->scene_data["camera"]["default_up"]["y"].get<double>();
-			double default_z = this->scene_data["camera"]["default_up"]["z"].get<double>();
-
-			default_camera_up.set(default_x, 1, 1);
-			default_camera_up.set(default_y, 2, 1);
-			default_camera_up.set(default_z, 3, 1);
-
-			camera_up = default_camera_up;
-		}
-
-		bool rotation_given = false;
-		if (this->scene_data["camera"].contains("rotation")) {
-			rotation_given = true;
-
-			// Should be described in degrees
-
-			if (this->scene_data["camera"]["rotation"].contains("y")) {
-				camera_yaw = this->scene_data["camera"]["rotation"]["y"] * (M_PI / 180);
-			}
-
-			if (this->scene_data["camera"]["rotation"].contains("x")) {
-				camera_pitch = this->scene_data["camera"]["rotation"]["x"] * (M_PI / 180);
-			}
-
-			if (this->scene_data["camera"]["rotation"].contains("z")) {
-				camera_roll = this->scene_data["camera"]["rotation"]["z"] * (M_PI / 180);
-			}
-		}
-		
-
-		// If direction was given, update the direction vector
-		if (this->scene_data["camera"].contains("direction")) {
-			double x = this->scene_data["camera"]["direction"]["x"].get<double>();
-			double y = this->scene_data["camera"]["direction"]["y"].get<double>();
-			double z = this->scene_data["camera"]["direction"]["z"].get<double>();
-
-			camera_direction.set(x, 1, 1);
-			camera_direction.set(y, 2, 1);
-			camera_direction.set(z, 3, 1);
-
-			// If no rotation parameters were given, derive them from the direction vector
-			if (!rotation_given) {
-				// Gets yaw and pitch representing the rotation from the default camera direction to the camera direction
-				
-				Engine::Quaternion_GetAnglesFromDirection(default_camera_direction, camera_direction, camera_yaw, camera_pitch, camera_roll);
-				Engine::rotateY(camera_direction, camera_yaw);
-				Engine::rotateX(camera_direction, camera_pitch);
-			}
-		}
-		
-		// If direction was not given, but rotation was - rotates the default camera direction vectors by the rotation parameters
-		else if (rotation_given) {
-			camera_direction = Quaternion::RotatePoint(camera_direction, camera_up, camera_yaw, false);
-			camera_right = Quaternion::RotatePoint(camera_right, camera_up, camera_yaw, false);
-			camera_direction = Quaternion::RotatePoint(camera_direction, camera_right, camera_pitch, false);
-			camera_up = Quaternion::RotatePoint(camera_up, camera_right, camera_pitch, false);
-			camera_up = Quaternion::RotatePoint(camera_up, camera_direction, camera_roll, false);
-		}
-
-		if (this->scene_data["camera"].contains("up")) {
-			double x = this->scene_data["camera"]["up"]["x"].get<double>();
-			double y = this->scene_data["camera"]["up"]["y"].get<double>();
-			double z = this->scene_data["camera"]["up"]["z"].get<double>();
-
-			camera_up.set(x, 1, 1);
-			camera_up.set(y, 2, 1);
-			camera_up.set(z, 3, 1);
-
-			if (!rotation_given) {
-				// Gets roll representing the rotation from the default camera up to the camera up
-				Engine::GetRoll(camera_direction, camera_up, camera_yaw, camera_pitch, camera_roll);
-				Engine::rotateX(camera_up, camera_pitch);
-				Engine::rotateZ(camera_up, camera_roll);
-			}
-		}
-	}
-
-	std::cout << "Camera position: " << std::endl;
-	camera_position.print();
-
-	std::cout << "Yaw: " << camera_yaw << std::endl;
-	std::cout << "Pitch: " << camera_pitch << std::endl;
-	std::cout << "Roll: " << camera_roll << std::endl;
-
-	std::cout << "Camera direction: " << std::endl;
-	camera_direction.print();
-
-	std::cout << "Camera up: ";
-	camera_up.print();
-	std::cout << std::endl;
-
-	//VIEW_MATRIX =  SCALING_MATRIX * ROTATION_MATRIX * TRANSLATION_MATRIX;
-	VIEW_MATRIX = Engine::LookAt(camera_position, camera_direction, camera_up);
-	std::cout << "View matrix: " << std::endl;
-	VIEW_MATRIX.print();
-	printf("\n\n");
-
-	// Loads meshes and instances into the scene
-	for (auto model = this->scene_data["models"].begin(); model != this->scene_data["models"].end(); model++) {
-		const char* model_filename = model.key().c_str();
-		char model_path[255];
-		sprintf_s(model_path, 255, "%s%s", models_folder, model_filename);
-		Mesh current_model = Mesh(model_path, model_filename, this->total_meshes);
-
-		this->scene_meshes.push_back(std::move(current_model));
-
-		for (auto instance = this->scene_data["models"][model_filename]["instances"].begin(); instance != this->scene_data["models"][model_filename]["instances"].end(); instance++) {
-			const char* instance_name = instance.key().c_str();
-			//printf("%s: %s\n", model_filename, instance_name);
-
-			Mat translation = Mat::identity_matrix(4);
-			Mat scale = Mat::identity_matrix(4);
-			Mat rotation = Mat::identity_matrix(4);
-
-			Quaternion orientation = Quaternion(0, 0, 0, 1);
-
-			double translation_x = 0;
-			double translation_y = 0;
-			double translation_z = 0;
-
-			double scale_x = 1;
-			double scale_y = 1;
-			double scale_z = 1;
-
-			double yaw = 0;
-			double pitch = 0;
-			double roll = 0;
-
-			bool has_translation = false;
-			bool has_scaling = false;
-			bool has_rotation = false;
-
-			// Checks if translation has been given for this instance, updates translation matrix if so
-			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("translation")) {
-				has_translation = true;
-				translation_x = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["x"];
-				translation_y = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["y"];
-				translation_z = this->scene_data["models"][model_filename]["instances"][instance_name]["translation"]["z"];
-
-				translation = Mat::translation_matrix(translation_x, translation_y, translation_z);
-			}
-
-			// Checks if scale has been given for this instance, updates scale matrix if so
-			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("scale")) {
-				has_scaling = true;
-				scale_x = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["x"];
-				scale_y = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["y"];
-				scale_z = this->scene_data["models"][model_filename]["instances"][instance_name]["scale"]["z"];
-
-				scale = Mat::scale_matrix(scale_x, scale_y, scale_z);
-			}
-
-			// Checks if rotation has been given for this instance, updates rotation matrix if so
-			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("rotation")) {
-				has_rotation = true;
-				yaw = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["y"] * (M_PI / 180);
-				pitch = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["x"] * (M_PI / 180);
-				roll = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["z"] * (M_PI / 180);
-
-				orientation = Quaternion::FromYawPitchRoll(yaw, pitch, roll);
-				rotation = orientation.get_rotationmatrix();
-			}
-
-			Mat MODEL_TO_WORLD = Mat::identity_matrix(4);
-			bool has_model_to_world = false;
-
-			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("model_to_world")) {
-				
-				const auto model_matrix_obj = this->scene_data["models"][model_filename]["instances"][instance_name]["model_to_world"];
-				if (model_matrix_obj.size() == 4) {
-					const auto first_row = model_matrix_obj[0];
-					if (first_row.size() == 4) {
-						has_model_to_world = true;
-
-						MODEL_TO_WORLD = Mat(
-							{
-								{model_matrix_obj[0][0], model_matrix_obj[0][1], model_matrix_obj[0][2], model_matrix_obj[0][3]},
-								{model_matrix_obj[1][0], model_matrix_obj[1][1], model_matrix_obj[1][2], model_matrix_obj[1][3]},
-								{model_matrix_obj[2][0], model_matrix_obj[2][1], model_matrix_obj[2][2], model_matrix_obj[2][3]},
-								{model_matrix_obj[3][0], model_matrix_obj[3][1], model_matrix_obj[3][2], model_matrix_obj[3][3]}
-							}, 4, 4);
-					}
-					else {
-						throw std::runtime_error("Model-to-world matrix of invalid size given for scene '" + std::string(scene_filename) + "', model '" + std::string(model_filename) + "', instance '" + std::string(instance_name) + "'. Must be of size 16 (for a 4x4 matrix), but parsed size is " + std::to_string(model_matrix_obj.size() * first_row.size()));
-					}
-
-				}
-				else {
-					throw std::runtime_error("Model-to-world matrix of invalid size given for scene '" + std::string(scene_filename) + "', model '" + std::string(model_filename) + "', instance '" + std::string(instance_name) + "'. Must be of size 16 (for a 4x4 matrix), but parsed size is " + std::to_string(model_matrix_obj.size() * model_matrix_obj[0].size()));
-				}
-			}
-			else {
-				MODEL_TO_WORLD = translation * scale * rotation;
-			}
-
-			bool show = true;
-
-			if (this->scene_data["models"][model_filename]["instances"][instance_name].contains("show")) {
-				show = this->scene_data["models"][model_filename]["instances"][instance_name]["show"].get<bool>();
-			}
-
-			Instance mesh_instance;
-
-			// Loads from model-to-world if it's the only available information
-			if (!has_translation && !has_scaling && !has_rotation && has_model_to_world) {
-				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], MODEL_TO_WORLD, show, this->total_instances);
-			}
-
-			// Loads from parameters
-			else {
-				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], translation_x, translation_y, translation_z, yaw, pitch, roll, scale_x, scale_y, scale_z, show, this->total_instances);
-			}
-
-			this->scene_instances.push_back(std::move(mesh_instance));
-
-			//std::cout << "Total instances: " << this->total_instances << " | Total meshes: " << this->total_meshes << std::endl;
-			//std::cout << "-----------------------" << std::endl;
-
-
-		}
-
-	}
-
-	
-
-	for (int i = 0; i < this->total_instances; i++) {
-		Instance* instance = &this->scene_instances[i];
-
-		//printf("(%s: %d) - (%s : %d) | Show? %d\n", instance->mesh->mesh_filename.c_str(), instance->mesh->mesh_id, instance->instance_name.c_str(), instance->instance_id, instance->show);
-	}
-}
-
-Mesh Scene::get_mesh(uint32_t mesh_id) {
-	for (int i = 0; i < this->scene_meshes.size(); i++) {
-		Mesh* current_mesh = &this->scene_meshes[i];
-
-		if (current_mesh->mesh_id == mesh_id) {
-			return *current_mesh;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find mesh by id for the given mesh id of: " + std::to_string(mesh_id) + ".");
-}
-
-Mesh Scene::get_mesh(std::string mesh_filename) {
-	for (int i = 0; i < this->scene_meshes.size(); i++) {
-		Mesh* current_mesh = &this->scene_meshes[i];
-
-		if (current_mesh->mesh_filename == mesh_filename) {
-			return *current_mesh;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
-}
-
-Mesh* Scene::get_mesh_ptr(uint32_t mesh_id) {
-	for (int i = 0; i < this->scene_meshes.size(); i++) {
-		Mesh* current_mesh = &this->scene_meshes[i];
-
-		if (current_mesh->mesh_id == mesh_id) {
-			return current_mesh;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find mesh by id for the given mesh id of: " + std::to_string(mesh_id) + ".");
-}
-
-Mesh* Scene::get_mesh_ptr(std::string mesh_filename) {
-	for (int i = 0; i < this->scene_meshes.size(); i++) {
-		Mesh* current_mesh = &this->scene_meshes[i];
-
-		if (current_mesh->mesh_filename == mesh_filename) {
-			return current_mesh;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
-}
-
-Instance Scene::get_instance(uint32_t instance_id) {
-	for (int i = 0; i < this->scene_instances.size(); i++) {
-		Instance* current_instance = &this->scene_instances[i];
-
-		if (current_instance->instance_id == instance_id) {
-			return *current_instance;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find instance by id for the given instance id of: " + std::to_string(instance_id) + ".");
-}
-
-Instance Scene::get_instance(std::string instance_name) {
-	for (int i = 0; i < this->scene_instances.size(); i++) {
-		Instance* current_instance = &this->scene_instances[i];
-
-		if (current_instance->instance_name == instance_name) {
-			return *current_instance;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find instance by name for the given instance name of: " + instance_name + ".");
-}
-
-Instance* Scene::get_instance_ptr(uint32_t instance_id) {
-	for (int i = 0; i < this->scene_instances.size(); i++) {
-		Instance* current_instance = &this->scene_instances[i];
-
-		if (current_instance->instance_id == instance_id) {
-			return current_instance;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find instance by id for the given instance id of: " + std::to_string(instance_id) + ".");
-}
-
-Instance* Scene::get_instance_ptr(std::string instance_name) {
-	for (int i = 0; i < this->scene_instances.size(); i++) {
-		Instance* current_instance = &this->scene_instances[i];
-
-		if (current_instance->instance_name == instance_name) {
-			return current_instance;
-		}
-	}
-
-	throw std::runtime_error("Error: Could not find instance by name for the given instance name of: " + instance_name + ".");
 }
 
 void Engine::draw_instance(const Instance& instance, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade) {
@@ -1456,7 +946,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 					vec_a.normalize();
 					Mat vec_b = v2 - v1;
 					vec_b.normalize();
-					Mat triangle_normal = Engine::CrossProduct3D(vec_a, vec_b);
+					Mat triangle_normal = Mat::CrossProduct3D(vec_a, vec_b);
 					triangle_normal.normalize();
 
 					//Mat middle_point = v1 + (0.5 * (v0 - v1)) + (0.5 * (v2 - v1));
@@ -1480,13 +970,13 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& MODEL_TO_WORLD, bo
 					vec_a.normalize();
 					Mat vec_b = v2 - v1;
 					vec_b.normalize();
-					Mat triangle_normal = Engine::CrossProduct3D(vec_a, vec_b);
+					Mat triangle_normal = Mat::CrossProduct3D(vec_a, vec_b);
 
 					Mat a_vec_a = world_v0 - world_v1;
 					a_vec_a.normalize();
 					Mat a_vec_b = world_v2 - world_v1;
 					a_vec_b.normalize();
-					Mat world_normal = Engine::CrossProduct3D(a_vec_a, a_vec_b);
+					Mat world_normal = Mat::CrossProduct3D(a_vec_a, a_vec_b);
 					world_normal.normalize();
 
 					triangle_normal.normalize();
@@ -1890,39 +1380,6 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 	}
 
-}
-
-
-// 2D Cross product
-double Engine::CrossProduct2D(const Mat& v1, const Mat& v2) {
-	return (v1.get(1, 1) * v2.get(2, 1)) - (v2.get(1, 1) * v1.get(2, 1));
-}
-
-// 3D Cross product
-Mat Engine::CrossProduct3D(const Mat& v1, const Mat& v2) {
-	double v1_x = v1.get(1, 1);
-	double v1_y = v1.get(2, 1);
-	double v1_z = v1.get(3, 1);
-
-	double v2_x = v2.get(1, 1);
-	double v2_y = v2.get(2, 1);
-	double v2_z = v2.get(3, 1);
-
-	Mat result = Mat(
-		{ 
-			{(v1_y * v2_z) - (v1_z * v2_y)},
-			{(v1_z * v2_x) - (v1_x * v2_z)},
-			{(v1_x * v2_y) - (v1_y * v2_x)},
-			{0}
-		}
-	, 4, 1);
-
-	// If the given vectors point in opposite directions (resulting in an empty zero vector)
-	if (result.get(1, 1) == 0 && result.get(2, 1) == 0 && result.get(3, 1) == 0) {
-
-	}
-
-	return result;
 }
 
 void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const double& v0_originalz, const double& v1_originalz, const double& v2_originalz, uint32_t fill_color, bool shade) {
@@ -2462,20 +1919,6 @@ void Engine::Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& p
 	}
 }
 
-// Sets yaw, pitch, and roll from a direction vector (the displacement in each axis from the default direction vector)
-void Engine::Quaternion_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll) {
-	const Mat normalized_v1 = default_direction_vector / default_direction_vector.norm();
-	const Mat normalized_v2 = direction_vector / direction_vector.norm();
-
-	Mat rotation_axis = Engine::CrossProduct3D(normalized_v1, normalized_v2);
-	rotation_axis.normalize();
-
-	double rotation_angle = acos(Mat::dot(normalized_v1, normalized_v2));
-	const Quaternion rotation = Quaternion::AngleAxis(rotation_axis.get(1, 1), rotation_axis.get(2, 1), rotation_axis.get(3, 1), rotation_angle);
-
-	rotation.GetAngles(yaw, pitch, roll);
-}
-
 // Frees the pixel buffer, destroys the texture, renderer, window, and cleans SDL subsystems.
 void Engine::close() {
 	free(this->pixel_buffer);
@@ -2499,8 +1942,8 @@ void Engine::LookAt() {
 
 	Mat cam_z_axis = ((camera_direction + camera_position) - camera_position);
 	cam_z_axis.set(0, 4, 1);
-	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
+	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
+	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
 
 	this->VIEW_MATRIX = Mat::identity_matrix(4);
 
@@ -2544,8 +1987,8 @@ void Engine::LookAt(const Mat& target_vector) {
 	cam_z_axis.normalize();
 	this->camera_direction = cam_z_axis;
 
-	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
+	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
+	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
 	this->camera_up = cam_y_axis;
 
 	this->VIEW_MATRIX.set(cam_x_axis.get(1, 1), 1, 1);
@@ -2586,8 +2029,8 @@ Mat Engine::LookAt(const Mat& camera_position, const Mat& camera_direction, cons
 	Mat cam_z_axis = ((camera_direction + camera_position) - tmp_camera_position);
 
 	cam_z_axis.set(0, 4, 1);
-	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
+	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
+	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
 
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
 
@@ -2637,8 +2080,8 @@ Mat Engine::LookAt(const Mat& camera_position, Mat& camera_direction, const Mat&
 	cam_z_axis.normalize();
 	camera_direction = cam_z_axis;
 
-	Mat cam_x_axis = Engine::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Engine::CrossProduct3D(cam_z_axis, cam_x_axis);
+	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
+	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
 	camera_up = cam_y_axis;
 
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
@@ -2680,4 +2123,127 @@ void Engine::GetRoll(const Mat& camera_direction, const Mat& camera_up, const do
 
 
 	//roll = -atan2(new_vector.get(1, 1) * cos(yaw) - new_vector.get(3, 1) * sin(yaw), new_vector.get(2, 1) / cos(pitch));
+}
+
+void Engine::load_scene(bool verbose) {
+	Mat camera_translation = Mat({ {0}, {0}, {0}, {0} }, 4, 1);
+
+	// Resets default camera position
+	this->default_camera_position = Mat({ {0}, {0}, {0}, {1} }, 4, 1);
+
+	// Resets default camera direction
+	this->default_camera_direction = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
+
+	// Resets default camera up
+	this->default_camera_up = Mat({ {0}, {1}, {0}, {0} }, 4, 1);
+
+	// Resets default camera right
+	this->default_camera_right = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
+
+	// Resets camera position
+	this->camera_position = this->default_camera_position;
+
+	// Resets camera direction and up vectors
+	this->camera_direction = this->default_camera_direction;
+	this->camera_up = this->default_camera_up;
+
+	// Resets camera orientation and rotation parameters
+	this->camera_orientation = Quaternion(0, 0, 0, 1);
+	this->camera_yaw = 0;
+	this->camera_pitch = 0;
+	this->camera_roll = 0;
+
+	// Resets view matrix
+	this->VIEW_MATRIX = Mat::identity_matrix(4);
+
+	// Resets the light source's position
+	this->light_source_pos = Mat(
+		{
+			{0},
+			{0},
+			{1},
+			{1},
+		}, 4, 1
+		);
+
+	// Resets the light source's direction
+	this->light_source_dir = Mat(
+		{
+			{0},
+			{0},
+			{1},
+			{0},
+		}, 4, 1
+		);
+
+	// Resets the light intensity and minimum exposure
+	this->light_intensity = this->default_light_intensity;
+	this->minimum_exposure = this->default_minimum_exposure;
+
+	Mat new_camera_direction = this->default_camera_direction;
+	Mat new_camera_up = this->default_camera_up;
+
+	bool rotation_given = false;
+	bool direction_given = false;
+	bool up_given = false;
+
+	// Loads scene metadata into class instance
+	this->current_scene = Scene(this->scenes_folder, this->scene_filename, this->models_folder, verbose, this->default_camera_position, camera_translation, this->default_camera_direction, new_camera_direction, this->default_camera_up, new_camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll, rotation_given, direction_given, up_given, this->use_scene_camera_settings);
+
+	// Updates camera position
+	this->camera_position = this->default_camera_position + camera_translation;
+
+	this->default_camera_right = Mat::CrossProduct3D(this->default_camera_up, this->default_camera_direction);
+
+	Mat camera_right = this->default_camera_right;
+
+	if (direction_given) this->camera_direction = new_camera_direction;
+	if (up_given) this->camera_up = new_camera_up;
+	if (direction_given || up_given) {
+		camera_right = Mat::CrossProduct3D(this->camera_up, this->camera_direction);
+	}
+
+	// If no rotation parameters were given, derive them from the direction vector
+	if (direction_given && !rotation_given) {
+		// Gets yaw and pitch representing the rotation from the default camera direction to the new camera direction
+		Quaternion::GetAnglesFromDirection(this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
+	}
+
+	// If direction was not given, but rotation was - rotates the default camera direction vectors by the rotation parameters
+	else if (!direction_given && rotation_given) {
+		this->camera_direction = Quaternion::RotatePoint(this->camera_direction, this->camera_up, this->camera_yaw, false);
+		camera_right = Quaternion::RotatePoint(camera_right, this->camera_up, this->camera_yaw, false);
+		this->camera_direction = Quaternion::RotatePoint(this->camera_direction, camera_right, this->camera_pitch, false);
+		this->camera_up = Quaternion::RotatePoint(this->camera_up, camera_right, this->camera_pitch, false);
+		this->camera_up = Quaternion::RotatePoint(this->camera_up, this->camera_direction, this->camera_roll, false);
+	}
+
+	if (up_given && !rotation_given) {
+		// Gets roll representing the rotation from the default camera up to the camera up
+		Engine::GetRoll(this->camera_direction, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
+	}
+
+	this->VIEW_MATRIX = Engine::LookAt(this->camera_position, this->camera_direction, this->camera_up);
+
+	// Logs camera/view information if enabled (might also include other scene relevant information such as number of meshes, instances, vertices, etc...)
+	if (verbose) {
+		std::cout << "Camera position: " << std::endl;
+		this->camera_position.print();
+
+		std::cout << "Yaw: " << this->camera_yaw << std::endl;
+		std::cout << "Pitch: " << this->camera_pitch << std::endl;
+		std::cout << "Roll: " << this->camera_roll << std::endl;
+
+		std::cout << "Camera direction: " << std::endl;
+		this->camera_direction.print();
+
+		std::cout << "Camera up: ";
+		this->camera_up.print();
+		std::cout << std::endl;
+
+		std::cout << "View matrix: " << std::endl;
+		this->VIEW_MATRIX.print();
+	}
+
+	
 }
