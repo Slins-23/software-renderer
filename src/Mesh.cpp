@@ -1,5 +1,64 @@
 #include "Mesh.h"
 
+Mesh::Mesh(uint32_t& total_meshes) {
+	// "Cube" dimensions
+	double width = 0.30;
+	double height = 0.30;
+	double depth = 0.30;
+
+	// Depth range is [0, 1] while other axes are [-1, 1], so twice as big to make it a cube
+	double origin_x = 0;
+	double origin_y = 0;
+	double origin_z = 0;
+
+	/// Front
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y + (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y + (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y - (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y - (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	faces_indices.push_back(std::vector<uint32_t>({ 1, 2, 3, 4 }));
+
+	/// Back
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y + (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y + (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y - (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y - (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	faces_indices.push_back(std::vector<uint32_t>({6, 5, 8, 7}));
+
+	/// Left
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y + (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y + (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y - (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y - (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	faces_indices.push_back(std::vector<uint32_t>({ 9, 10, 11, 12 }));
+
+	/// Right
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y + (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y + (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y - (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y - (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+
+	faces_indices.push_back(std::vector<uint32_t>({ 13, 14, 15, 16 }));
+
+	/// Top
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y + (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y + (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y + (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y + (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	faces_indices.push_back(std::vector<uint32_t>({ 17, 18, 19, 20 }));
+
+	/// Bottom
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y - (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y - (height / 2)}, {origin_z + (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x - (width / 2)}, {origin_y - (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	vertices.push_back(Mat({ {origin_x + (width / 2)}, {origin_y - (height / 2)}, {origin_z - (depth / 2)}, {1} }, 4, 1));
+	faces_indices.push_back(std::vector<uint32_t>({ 24, 23, 22, 21 }));
+
+	this->mesh_filename = "cube.obj";
+	this->mesh_id = total_meshes;
+	total_meshes++;
+}
+
 Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_meshes) {
 	this->mesh_filename = std::string(mesh_filename);
 
@@ -24,24 +83,15 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 					txt_stream >> sink >> vx >> vy >> vz;
 
 					vertex.set(vx, 1, 1);
-
-					// The coordinate system I use is a right-handed coordinate system where the positive y axis points down,
-					// and the positive z axis points into the screen (forward)
-					// They get flipped here because most models I found were on left-handed coordinate systems
-					// (positive y up, positive z outwards)
-
-					// Y axis is flipped here because most models I found were on left-handed coordinate systems
-					//vertex.set(-vy, 2, 1);
 					vertex.set(vy, 2, 1);
 
-					// Same as above, but for the Z axis
 					//vertex.set(vz, 3, 1);
+					// Z gets flipped here because the coordinate system is right-handed but z is treated as positive
 					vertex.set(-vz, 3, 1);
-
+					
 					vertices.push_back(vertex);
 				}
 
-				// Should also flip texture coordinates and normals to match y axis!!?!
 				// Texture coordinate
 				else if (line[1] == 't') {
 					Mat tex_coord = Mat({ {0}, {0} }, 2, 1);
@@ -54,17 +104,19 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 					tex_coords.push_back(tex_coord);
 				}
 
-				// Should also flip texture coordinates and normals to match y axis!!?!
 				// Normal direction
 				else if (line[1] == 'n') {
-					Mat normal = Mat({ {0}, {0}, {0} }, 3, 1);
+					Mat normal = Mat({ {0}, {0}, {0}, {0} }, 4, 1);
 					double x, y, z = 0;
 
 					txt_stream >> sink >> sink >> x >> y >> z;
 
 					normal.set(x, 1, 1);
 					normal.set(y, 2, 1);
+
+					
 					//normal.set(z, 3, 1);
+					// Z gets flipped here because the coordinate system is right-handed but z is treated as positive
 					normal.set(-z, 3, 1);
 
 					normals.push_back(normal);
@@ -90,7 +142,6 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 				std::string tmp_a = split_whitespace[1];
 				std::string cmp = "/";
 				bool has_textures = tmp_a.find(cmp) == std::string::npos;
-				bool has_normals = false;
 
 				for (int i = 1; i < split_whitespace.size(); i++) {
 					std::vector<uint32_t> split_slash;
@@ -120,7 +171,7 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 							textures_indices.push_back(texture_index);
 						}
 						else {
-							has_normals = true;
+							this->has_normals = true;
 							uint32_t normal_index = split_slash[1];
 							normals_indices.push_back(normal_index);
 						}
@@ -128,7 +179,7 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 
 					// Indices, textures, and normals?
 					else if (split_slash.size() == 3) {
-						has_normals = true;
+						this->has_normals = true;
 						uint32_t texture_index = split_slash[1];
 						uint32_t normal_index = split_slash[2];
 						textures_indices.push_back(texture_index);
@@ -142,9 +193,68 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 					tex_indices.push_back(textures_indices);
 				}
 
-				if (has_normals) {
+				if (this->has_normals) {
 					normal_indices.push_back(normals_indices);
 				}
+			}
+		}
+
+		if (!has_normals) {
+			has_normals = true;
+
+			normals = std::vector<Mat>();
+			normal_indices = std::vector<std::vector<uint32_t>>();
+			normal_indices = faces_indices;
+
+			for (uint32_t normal = 0; normal < vertices.size(); normal++) {
+				normals.push_back(Mat({ {0}, {0}, {0}, {0} }, 4, 1));
+			}
+
+			for (uint32_t face = 0; face < faces_indices.size(); face++) {
+				std::vector<uint32_t> indices = faces_indices[face];
+
+				if (indices.size() == 3) {
+					Mat& v0 = vertices[faces_indices[face][0] - 1];
+					Mat& v1 = vertices[faces_indices[face][1] - 1];
+					Mat& v2 = vertices[faces_indices[face][2] - 1];
+
+					Mat face_normal = Mat::CrossProduct3D(v0 - v1, v2 - v1);
+
+					Mat& v0_normal = normals[normal_indices[face][0] - 1];
+					Mat& v1_normal = normals[normal_indices[face][1] - 1];
+					Mat& v2_normal = normals[normal_indices[face][2] - 1];
+
+					v0_normal += face_normal;
+					v1_normal += face_normal;
+					v2_normal += face_normal;
+				}
+				else if (indices.size() == 4) {
+					Mat& v0 = vertices[faces_indices[face][0] - 1];
+					Mat& v1 = vertices[faces_indices[face][1] - 1];
+					Mat& v2 = vertices[faces_indices[face][2] - 1];
+					Mat& v3 = vertices[faces_indices[face][3] - 1];
+
+					Mat t0_face_normal = Mat::CrossProduct3D(v0 - v1, v2 - v1);
+					Mat t1_face_normal = Mat::CrossProduct3D(v0 - v2, v3 - v2);
+
+					Mat& v0_normal = normals[normal_indices[face][0] - 1];
+					Mat& v1_normal = normals[normal_indices[face][1] - 1];
+					Mat& v2_normal = normals[normal_indices[face][2] - 1];
+					Mat& v3_normal = normals[normal_indices[face][3] - 1];
+
+					v0_normal += t0_face_normal;
+					v1_normal += t0_face_normal;
+					v2_normal += t0_face_normal;
+
+					v0_normal += t1_face_normal;
+					v2_normal += t1_face_normal;
+					v3_normal += t1_face_normal;
+				}
+			}
+
+			for (uint32_t normal_idx = 0; normal_idx < normals.size(); normal_idx++) {
+				Mat& normal = normals[normal_idx];
+				normal.normalize();
 			}
 		}
 
@@ -152,12 +262,29 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 		total_meshes++;
 	}
 	else {
+		printf("Error: Could not open mesh file to load model '%s' at path '%s'.", mesh_filename, model_path);
 		throw std::runtime_error("Error: Could not load model.");
 	}
+
+	/*
+	if (strcmp(mesh_filename, "wolf.obj") == 0) {
+		std::cout << this->mesh_filename << std::endl;
+		std::cout << "Vertices: " << vertices.size() << std::endl;
+		std::cout << "Normals: " << normals.size() << std::endl;
+		std::cout << "Faces indices: " << faces_indices.size() << std::endl;
+		std::cout << "Normal faces indices: " << normal_indices.size() << std::endl;
+		exit(-1);
+	}
+	*/
+
 }
 
 uint32_t Mesh::total_vertices() const {
 	return vertices.size();
+}
+
+uint32_t Mesh::total_normals() const {
+	return normals.size();
 }
 
 uint32_t Mesh::total_faces() const {

@@ -182,6 +182,7 @@ Mat Mat::operator*(const double scalar) const{
 		anua_value(new_array, 0, this->rows, this->cols);
 
 		Mat new_mat = Mat(new_array, this->rows, this->cols);
+		Mat::free_resources(new_array, this->rows);
 		return new_mat;
 	}
 
@@ -199,6 +200,8 @@ void Mat::operator*=(const double scalar) {
 
 Mat Mat::operator/(const double scalar) const{
 	if (scalar == 0) {
+		std::cout << "Matrix: "; this->print();
+		std::cout << "Scalar: " << scalar << std::endl;
 		throw std::runtime_error("Error: Attempted to divide matrix by 0.");
 	}
 

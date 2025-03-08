@@ -1,7 +1,11 @@
 #include "Quaternion.h"
+#include <SDL_stdinc.h>
 
 Quaternion::Quaternion() {
-
+	this->x = 0;
+	this->y = 0;
+	this->z = 0;
+	this->w = 1;
 }
 
 Quaternion::Quaternion(double x, double y, double z, double w)
@@ -13,22 +17,42 @@ Quaternion::Quaternion(double x, double y, double z, double w)
 }
 
 
-void Quaternion::GetAngles(double& yaw, double& pitch, double& roll) const {
+void Quaternion::GetAngles(Orientation orientation, double& yaw, double& pitch, double& roll) const {
 	Mat rotation_matrix = this->get_rotationmatrix();
-	pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
 
-	if (abs(rotation_matrix.get(2, 3) < 0.9999999)) {
-		yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
-		roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
+	// Intrinsic rotation
+	if (orientation == Orientation::local) {
+		
+		//pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
+		pitch = asin(-rotation_matrix.get(2, 3));
+
+		if (abs(pitch) < 0.9999999) {
+			yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
+			roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
+		}
+		else {
+			yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
+			roll = 0;
+		}
 	}
-	else {
-		yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
-		roll = 0;
+
+	// For extrinsic/world orientation, we need to adjust the angles
+	if (orientation == Orientation::world) {
+		//pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
+		pitch = asin(rotation_matrix.get(3, 2));
+
+		if (abs(pitch) < 0.9999999) {
+			yaw = atan2(rotation_matrix.get(3, 1), rotation_matrix.get(3, 3));
+		}
+		else {
+			yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
+			roll = 0;
+		}
 	}
 }
 
 // Sets yaw, pitch, and roll from a direction vector (the displacement in each axis from the default direction vector)
-void Quaternion::GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll) {
+void Quaternion::GetAnglesFromDirection(Orientation orientation, const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll) {
 	const Mat normalized_v1 = default_direction_vector / default_direction_vector.norm();
 	const Mat normalized_v2 = direction_vector / direction_vector.norm();
 
@@ -38,7 +62,7 @@ void Quaternion::GetAnglesFromDirection(const Mat& default_direction_vector, con
 	double rotation_angle = acos(Mat::dot(normalized_v1, normalized_v2));
 	const Quaternion rotation = Quaternion::AngleAxis(rotation_axis.get(1, 1), rotation_axis.get(2, 1), rotation_axis.get(3, 1), rotation_angle);
 
-	rotation.GetAngles(yaw, pitch, roll);
+	rotation.GetAngles(orientation, yaw, pitch, roll);
 }
 
 Quaternion Quaternion::AngleAxis(double x, double y, double z, double angle) {
@@ -51,29 +75,38 @@ Quaternion Quaternion::AngleAxis(double x, double y, double z, double angle) {
 }
 
 // Defined in default coordinate system (i.e. positive x-axis to the right, positive y-axis up, positive z-axis outward/out of the screen)
-Quaternion Quaternion::FromYawPitchRoll(double yaw, double pitch, double roll) {
-	Mat y_axis = Mat({ {0}, {1}, {0}, {0} }, 4, 1);
-	Mat x_axis = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
-	Mat z_axis = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
+Quaternion Quaternion::FromYawPitchRoll(Orientation orientation, double yaw, double pitch, double roll, const Mat& default_x_axis, const Mat& default_y_axis, const Mat& default_z_axis) {
+	Quaternion rotation;
 
+	if (orientation == Orientation::world) {
+		Quaternion rotationY = Quaternion::AngleAxis(default_y_axis.get(1, 1), default_y_axis.get(2, 1), default_y_axis.get(3, 1), yaw);
+		Quaternion rotationX = Quaternion::AngleAxis(default_x_axis.get(1, 1), default_x_axis.get(2, 1), default_x_axis.get(3, 1), pitch);
+		Quaternion rotationZ = Quaternion::AngleAxis(default_z_axis.get(1, 1), default_z_axis.get(2, 1), default_z_axis.get(3, 1), roll);
 
-	Quaternion rotationY = Quaternion::AngleAxis(y_axis.get(1, 1), y_axis.get(2, 1), y_axis.get(3, 1), yaw);
+		rotation = rotationZ * rotationX * rotationY;
+	}
+	else if (orientation == Orientation::local) {
+		Mat y_axis = default_y_axis;
+		Mat x_axis = default_x_axis;
+		Mat z_axis = default_z_axis;
 
-	// Rotated x and z axes
-	x_axis = Quaternion::RotatePoint(x_axis, y_axis, yaw, false);
-	z_axis = Quaternion::RotatePoint(z_axis, y_axis, yaw, false);
+		Quaternion rotationY = Quaternion::AngleAxis(y_axis.get(1, 1), y_axis.get(2, 1), y_axis.get(3, 1), yaw);
 
-	Quaternion rotationX = Quaternion::AngleAxis(x_axis.get(1, 1), x_axis.get(2, 1), x_axis.get(3, 1), pitch);
+		// Rotated x and z axes
+		x_axis = Quaternion::RotatePoint(x_axis, y_axis, yaw, false);
+		z_axis = Quaternion::RotatePoint(z_axis, y_axis, yaw, false);
 
-	// Rotated y and z axes
-	y_axis = Quaternion::RotatePoint(y_axis, x_axis, pitch, false);
-	z_axis = Quaternion::RotatePoint(z_axis, x_axis, pitch, false);
+		Quaternion rotationX = Quaternion::AngleAxis(x_axis.get(1, 1), x_axis.get(2, 1), x_axis.get(3, 1), pitch);
 
-	Quaternion rotationZ = Quaternion::AngleAxis(z_axis.get(1, 1), z_axis.get(2, 1), z_axis.get(3, 1), roll);
+		// Rotated y and z axes
+		y_axis = Quaternion::RotatePoint(y_axis, x_axis, pitch, false);
+		z_axis = Quaternion::RotatePoint(z_axis, x_axis, pitch, false);
 
-	Quaternion orientation = rotationZ * rotationX * rotationY;
+		Quaternion rotationZ = Quaternion::AngleAxis(z_axis.get(1, 1), z_axis.get(2, 1), z_axis.get(3, 1), roll);
 
-	return orientation;
+		rotation = rotationZ * rotationX * rotationY;
+	}
+	return rotation;
 }
 
 Mat Quaternion::RotatePoint(const Mat& point, const Mat& axis, double angle, bool is_position) {
@@ -107,6 +140,17 @@ Mat Quaternion::RotatePoint(double point_x, double point_y, double point_z, cons
 	const Mat point = Mat({ {point_x}, {point_y}, {point_z}, {0} }, 4, 1);
 
 	return Quaternion::RotatePoint(point, axis, angle, is_position);
+}
+
+void Quaternion::RotatePoint(Quaternion& rotation, Mat& point, bool is_position) {
+	double fourth_dimension = is_position ? 1 : 0;
+	Quaternion q_point = Quaternion(point.get(1, 1), point.get(2, 1), point.get(3, 1), 0);
+	Quaternion q_conjugate = rotation.get_complexconjugate();
+
+	Quaternion rotated_point = rotation * q_point * q_conjugate;
+	point = rotated_point.get_4dvector();
+
+	point.set(fourth_dimension, 4, 1);
 }
 
 Mat Quaternion::get_3dvector(bool is_position) const {

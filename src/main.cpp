@@ -14,6 +14,9 @@ int main() {
 	bool quit = false;
 	std::vector<double> frametimes;
 	double last_tick = SDL_GetTicks();
+
+	
+
 	while (true) {
 		uint32_t frame_start = SDL_GetTicks();
 
@@ -23,6 +26,16 @@ int main() {
 		if (engine.playing) {
 			engine.draw();
 		}
+
+		if (engine.window_manager.show_window) {
+			ImGui_ImplSDLRenderer2_NewFrame();
+			ImGui_ImplSDL2_NewFrame();
+			ImGui::NewFrame();
+			engine.window_manager.handle_windows();
+			ImGui::ShowDemoWindow();
+			ImGui::Render();
+		}
+
 
 		engine.render();
 
@@ -44,7 +57,11 @@ int main() {
 			average /= frametimes.size();
 			frametimes.clear();
 
-			std::cout << "Rendered @ " << 1000 / average << " fps average" << std::endl;
+			double framerate = 1000.0 / average;
+
+			std::cout << "Rendered @ " << framerate << " fps average" << std::endl;
+
+			engine.window_manager.general_window.framerate = framerate;
 
 			last_tick = SDL_GetTicks();
 		}

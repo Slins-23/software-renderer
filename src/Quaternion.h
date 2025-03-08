@@ -2,6 +2,11 @@
 #include "Utils.h"
 #pragma once
 
+enum Orientation {
+	world,
+	local
+};
+
 struct Quaternion {
 	double x = 0;
 	double y = 0;
@@ -13,13 +18,13 @@ struct Quaternion {
 	Quaternion(double x, double y, double z, double w);
 
 	// Sets yaw, pitch, and roll from quaternion
-	void GetAngles(double& yaw, double& pitch, double& roll) const;
+	void GetAngles(Orientation orientation, double& yaw, double& pitch, double& roll) const;
 
-	static void GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
+	static void GetAnglesFromDirection(Orientation orientation, const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch, double& roll);
 
 	static Quaternion AngleAxis(double x, double y, double z, double angle);
 
-	static Quaternion FromYawPitchRoll(double yaw, double pitch, double roll);
+	static Quaternion FromYawPitchRoll(Orientation orientation, double yaw, double pitch, double roll, const Mat& default_x_axis, const Mat& default_y_axis, const Mat& default_z_axis);
 
 	static Mat RotatePoint(const Mat& point, const Mat& axis, double angle, bool is_position);
 
@@ -28,6 +33,8 @@ struct Quaternion {
 	static Mat RotatePoint(double point_x, double point_y, double point_z, double axis_x, double axis_y, double axis_z, double angle, bool is_position);
 
 	static Mat RotatePoint(double point_x, double point_y, double point_z, const Mat& axis, double angle, bool is_position);
+
+	static void RotatePoint(Quaternion& rotation, Mat& point, bool is_position);
 
 	Mat get_3dvector(bool is_position) const;
 

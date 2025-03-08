@@ -12,6 +12,14 @@
 #include "Mesh.h"
 #include "Instance.h"
 #include "Scene.h"
+#include "Light.h"
+#include "WindowManager.h"
+
+enum ShadingType {
+	Flat,
+	Gouraud,
+	Phong
+};
 
 class Engine {
 private:
@@ -35,6 +43,7 @@ private:
 		, 4, 4);
 	}
 
+	void update_view_inverse();
 
 	void LookAt();
 	void LookAt(const Mat& target_vector);
@@ -43,8 +52,8 @@ public:
 	uint16_t WIDTH = 800;
 	uint16_t HEIGHT = 600;
 
-	const uint8_t FPS = 144;
-	const uint8_t MSPERFRAME = 1000 / FPS;
+	const uint8_t FPS_LIMIT = 144;
+	const uint8_t MSPERFRAME = 1000.0 / FPS_LIMIT;
 
 	// SDL window clear/default color
 	const uint32_t CLEAR_COLOR = 0xFFFFFFFF;
@@ -56,7 +65,7 @@ public:
 	const uint32_t LINE_COLOR = 0x00FF00FF;
 	
 	// Rasterization color
-	const uint32_t FILL_COLOR = 0xFF0000FF;
+	const uint32_t FILL_COLOR = 0x66285CFF;
 
 	bool playing = true;
 
@@ -66,12 +75,21 @@ public:
 	bool depth_test = true; // Toggle 5
 	bool backface_cull = true; // Toggle 4
 	bool shade = true; // Toggle 3
-	bool rasterize = false; // Toggle 2
+	bool rasterize = true; // Toggle 2
 	bool wireframe_render = false; // Toggle 1
+	bool editing_mode = false; // Toggle 6
+
+	ShadingType shading_type = ShadingType::Flat;
+	
+	bool transform_light = false; // Toggle 7 | Whether transformations will be applied to the light source (true) or to the target instance (false)
+
+	// Which coordinate system is the reference orientation for instance transformations (use only world for now, I still need to implement and accomodate for some edge cases, especially when transitioning from one space to another)
+	bool using_instance_world_orientation = false;
+	bool using_instance_local_orientation = true;
 
 	double z_fighting_tolerance = 0.994;
 
-	double near = 0.1;
+	double near = 0.01;
 	double far = 1000;
 	double FOV = 60;
 	double FOVr = FOV * (M_PI / 180);
@@ -116,32 +134,6 @@ public:
 		}, 4, 1
 	);
 
-	Mat light_source_pos = Mat(
-		{
-			{0},
-			{0},
-			{1},
-			{1},
-		}, 4, 1
-		);
-
-	Mat light_source_dir = Mat(
-		{
-			{0},
-			{0},
-			{1},
-			{0},
-		}, 4, 1
-		);
-
-	double default_light_intensity = 0.3;
-	double default_minimum_exposure = 0.1;
-
-	double light_intensity = default_light_intensity;
-	double minimum_exposure = default_minimum_exposure;
-
-	uint32_t light_color = 0x66285CFF;
-
 	// Rotation angle
 	double rotation_angle_degrees = 10;
 	double rotation_angle = rotation_angle_degrees * (M_PI / 180);
@@ -158,7 +150,7 @@ public:
 	
 	Quaternion camera_orientation = Quaternion(0, 0, 0, 1);
 
-	Instance light_instance;
+	Light light_source;
 
 	Mat default_camera_direction = Mat({
 		{0},
@@ -206,6 +198,7 @@ public:
 	);
 
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
+	Mat VIEW_INVERSE = Mat::identity_matrix(4);
 
 
 	// For transforming from NDC space to Screen space (window coordinates)
@@ -233,53 +226,60 @@ public:
 	const char* scene_save_name = "tst.json";
 	//const char* light_mesh = "light.obj";
 	Scene current_scene;
+
+	Instance* target_instance = nullptr;
+
+	WindowManager window_manager;
+
+	bool show_window = false;
 	
 	bool setup();
+	bool imgui_setup();
 	bool handle_events();
 
-	void draw_instance(const Instance& instance, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
-	void draw_mesh(const Mesh& mesh, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
-	void draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v3, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
-	void draw_triangle(Mat v0, Mat v1, Mat v2, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade);
+	void draw_instance(const Instance& instance, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source);
+	void draw_mesh(const Mesh& mesh, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source);
+	void draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v3, Mat v0_normal, Mat v1_normal, Mat v2_normal, Mat v3_normal, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source);
+	void draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal, Mat v2_normal, const Mat& model_to_world, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source);
 	void draw_line(double x1, double y1, double x2, double y2, const Mat& vec_a, const Mat& vec_b, const double& vec_a_originalz, const double& vec_b_originalz, uint32_t outline_color);
 	void draw();
 	void render();
 
-	void fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const double& v0_originalz, const double& v1_originalz, const double& v2_originalz, uint32_t fill_color, bool shade);
+	void fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& world_v0_normal, const Mat& world_v1_normal, const Mat& world_v2_normal, const Mat& world_v0, const Mat& world_v1, const Mat& world_v2, const Mat& v0_color, const Mat& v1_color, const Mat& v2_color, uint32_t fill_color, bool shade, bool is_light_source);
  
-	static void rotateX(Instance& mesh, double radians);
-	static void rotateX(Mesh& mesh, double radians);
-	static void rotateX(Quad& quad, double radians);
-	static void rotateX(Triangle& triangle, double radians);
-	static void rotateX(Mat& matrix, double radians);
+	static void rotateX(Instance& instance, double radians, Orientation orientation, const Mat& default_camera_direction, const Mat& default_camera_up, const Mat& default_camera_right);
+	static void rotateX(Light& light_source, double radians, Orientation orientation, const Mat& default_world_direction, const Mat& default_world_up, const Mat& default_world_right);
+	static void rotateX(Mesh& mesh, double radians, const Mat& default_camera_right);
+	static void rotateX(Quad& quad, double radians, const Mat& default_camera_right);
+	static void rotateX(Triangle& triangle, double radians, const Mat& default_camera_right);
+	static void rotateX(Mat& matrix, double radians, const Mat& default_camera_right);
 	
-	static void rotateY(Instance& mesh, double radians);
-	static void rotateY(Mesh& mesh, double radians);
-	static void rotateY(Quad& quad, double radians);
-	static void rotateY(Triangle& triangle, double radians);
-	static void rotateY(Mat& matrix, double radians);
+	static void rotateY(Instance& instance, double radians, Orientation orientation, const Mat& default_camera_direction, const Mat& default_camera_up, const Mat& default_camera_right);
+	static void rotateY(Light& light_source, double radians, Orientation orientation, const Mat& default_world_direction, const Mat& default_world_up, const Mat& default_world_right);
+	static void rotateY(Mesh& mesh, double radians, const Mat& default_camera_up);
+	static void rotateY(Quad& quad, double radians, const Mat& default_camera_up);
+	static void rotateY(Triangle& triangle, double radians, const Mat& default_camera_up);
+	static void rotateY(Mat& matrix, double radians, const Mat& default_camera_up);
 
-	static void rotateZ(Instance& mesh, double radians);
-	static void rotateZ(Mesh& mesh, double radians);
-	static void rotateZ(Quad& quad, double radians);
-	static void rotateZ(Triangle& triangle, double radians);
-	static void rotateZ(Mat& matrix, double radians);
+	static void rotateZ(Instance& instance, double radians, Orientation orientation, const Mat& default_camera_direction, const Mat& default_camera_up, const Mat& default_camera_right);
+	static void rotateZ(Light& light_source, double radians, Orientation orientation, const Mat& default_world_direction, const Mat& default_world_up, const Mat& default_world_right);
+	static void rotateZ(Mesh& mesh, double radians, const Mat& default_camera_direction);
+	static void rotateZ(Quad& quad, double radians, const Mat& default_camera_direction);
+	static void rotateZ(Triangle& triangle, double radians, const Mat& default_camera_direction);
+	static void rotateZ(Mat& matrix, double radians, const Mat& default_camera_direction);
 
-	static void translate(Instance& mesh, double tx, double ty, double tz);
+	static void translate(Instance& instance, double tx, double ty, double tz);
 	static void translate(Mesh& mesh, double tx, double ty, double tz);
 	static void translate(Quad& quad, double tx, double ty, double tz);
 	static void translate(Triangle& triangle, double tx, double ty, double tz);
 	static void translate(Mat& matrix, double tx, double ty, double tz);
 
-	static void scale(Instance& instance, double sx, double sy, double sz);
+	static void scale(Instance& instance, double sx, double sy, double sz, bool set);
 	static void scale(Mesh& mesh, double sx, double sy, double sz);
 	static void scale(Quad& quad, double sx, double sy, double sz);
 	static void scale(Triangle& triangle, double sx, double sy, double sz);
 	static void scale(Mat& matrix, double sx, double sy, double sz);
 
-	static Mat quaternion_rotationX_matrix(double radians);
-	static Mat quaternion_rotationY_matrix(double radians);
-	static Mat quaternion_rotationZ_matrix(double radians);
 	static Mat euler_rotationX_matrix(double radians);
 	static Mat euler_rotationY_matrix(double radians);
 	static Mat euler_rotationZ_matrix(double radians);
@@ -293,7 +293,7 @@ public:
 
 	static void Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll);
 
-	static void GetRoll(const Mat& camera_direction, const Mat& camera_up, const double& yaw, const double& pitch, double& roll);
+	static void GetRoll(Orientation orientation, const Mat& direction, const Mat& up, double& yaw, const double& pitch, double& roll);
 
 
 	static Mat LookAt(const Mat& camera_position, const Mat& camera_direction, const Mat& camera_up);

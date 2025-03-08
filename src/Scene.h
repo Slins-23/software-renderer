@@ -3,6 +3,7 @@
 #include "Instance.h"
 #include "json.hpp"
 #include "Matrix.h"
+#include "Light.h"
 #pragma once
 
 struct Scene {
@@ -24,19 +25,19 @@ struct Scene {
 
 	Scene();
 
-	Scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_translation, Mat& default_camera_direction, Mat& new_camera_direction, Mat& default_camera_up, Mat& new_camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, bool& rotation_given, bool& direction_given, bool& up_given, bool use_scene_camera_settings);
+	Scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_translation, Mat& default_camera_direction, Mat& new_camera_direction, Mat& default_camera_up, Mat& new_camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, bool& rotation_given, bool& direction_given, bool& up_given, Light& light_source, bool& light_rotation_given, bool& light_direction_given, bool& light_up_given, bool use_scene_camera_settings, Orientation rotation_orientation);
 
 	/// <summary>
 	///  Load scene from a JSON file in the defined scene folder, with the given name.
 	///	(`scene_filename` is just the name of the scene, do not include the extension.)
 	/// </summary>
-	void load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_translation, Mat& default_camera_direction, Mat& new_camera_direction, Mat& default_camera_up, Mat& new_camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, bool& rotation_given, bool& direction_given, bool& up_given, bool use_scene_camera_settings);
+	void load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_translation, Mat& default_camera_direction, Mat& new_camera_direction, Mat& default_camera_up, Mat& new_camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, bool& rotation_given, bool& direction_given, bool& up_given, Light& light_source, bool& light_rotation_given, bool& light_direction_given, bool& light_up_given, bool use_scene_camera_settings, Orientation rotation_orientation);
 
 	/// <summary>
 	///  Save scene to a JSON file in the defined scene folder, with the given name.
 	///	(`scene_filename` is just the name of the scene, do not include the extension.)
 	/// </summary>
-	void save_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, const Mat& default_camera_position, const Mat& camera_position, const Mat& default_camera_direction, const Mat& camera_direction, const Mat& default_camera_up, const Mat& camera_up, double yaw, double pitch, double roll);
+	void save_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, const Mat& default_camera_position, const Mat& camera_position, const Mat& default_camera_direction, const Mat& camera_direction, const Mat& default_camera_up, const Mat& camera_up, double yaw, double pitch, double roll, const Light& light_source);
 
 	Mesh get_mesh(uint32_t mesh_id);
 	Mesh get_mesh(std::string mesh_filename);

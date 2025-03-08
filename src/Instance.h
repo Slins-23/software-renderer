@@ -4,6 +4,7 @@
 
 struct Instance {
 private:
+
 	void create_instance_nameid(uint32_t& total_instances);
 public:
 	std::string instance_name = "";
@@ -30,15 +31,18 @@ public:
 
 	Mat MODEL_TO_WORLD = Mat::identity_matrix(4);
 
+
+
 	bool show = true;
+	bool is_light_source = false;
 
 	Instance() {};
 
-	Instance(Mesh* mesh, double tx, double ty, double tz, const Quaternion& orientation, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances);
+	Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances);
 
-	Instance(Mesh* mesh, double tx, double ty, double tz, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_instances);
+	Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_instances);
 
-	Instance(Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances);
+	Instance(Orientation rotation_orientation, Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances);
 
 	Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, double yaw, double pitch, double roll, bool show, uint32_t& total_instances);
 
@@ -50,11 +54,11 @@ public:
 
 	Instance(std::string instance_name, Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, double yaw, double pitch, double roll, bool show, uint32_t& total_instances);
 
-	Instance(std::string instance_name, Mesh* mesh, double tx, double ty, double tz, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_instances);
+	Instance(std::string instance_name, Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_instances);
 
-	Instance(std::string instance_name, Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances);
+	Instance(std::string instance_name, Orientation rotation_orientation, Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances);
 
-	Instance(std::string instance_name, Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, bool show, uint32_t& total_instances);
+	Instance(std::string instance_name, Orientation rotation_orientation, Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, bool show, uint32_t& total_instances);
 
 	Instance(std::string instance_name, Mesh* mesh, Mat MODEL_TO_WORLD, bool show, uint32_t& total_instances);
 
