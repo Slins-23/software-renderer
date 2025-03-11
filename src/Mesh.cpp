@@ -199,6 +199,7 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 			}
 		}
 
+		// If not included, derives normals by calculating them at each vertex for each face and averaging them
 		if (!has_normals) {
 			has_normals = true;
 

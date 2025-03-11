@@ -1,6 +1,165 @@
 #include "Engine.h"
 
 bool Engine::handle_events() {
+	const uint8_t* keyboard_state = SDL_GetKeyboardState(nullptr);
+
+	if (keyboard_state[SDL_SCANCODE_W] && !this->window_manager.show_window) {
+		// Transforms camera and updates view matrix
+		if (!this->editing_mode) {
+			this->camera_position += tz * this->camera_direction;
+			Engine::LookAt();
+			Engine::update_view_inverse();
+		}
+		else {
+			if (!this->transform_light) {
+				// Transforms target instance
+				if (this->target_instance != nullptr) {
+					Engine::translate(*this->target_instance, 0, 0, tz);
+				}
+			}
+			// Transforms light source
+			else {
+				this->light_source.tz += tz;
+				Engine::translate(this->light_source.position, 0, 0, tz);
+
+				if (this->light_source.has_model) {
+					Engine::translate(*this->light_source.instance, 0, 0, tz);
+				}
+			}
+		}
+	}
+
+	if (keyboard_state[SDL_SCANCODE_S] && !this->window_manager.show_window) {
+		// Transforms camera and updates view matrix
+		this->camera_position -= tz * this->camera_direction;
+		Engine::LookAt();
+		Engine::update_view_inverse();
+
+		if (!this->transform_light) {
+			// Transforms target instance
+			if (this->target_instance != nullptr) {
+				Engine::translate(*this->target_instance, 0, 0, -tz);
+			}
+		}
+		// Transforms light source
+		else {
+			this->light_source.tz += -tz;
+			Engine::translate(this->light_source.position, 0, 0, -tz);
+
+			if (this->light_source.has_model) {
+				Engine::translate(*this->light_source.instance, 0, 0, -tz);
+			}
+		}
+	}
+	
+	if (keyboard_state[SDL_SCANCODE_A] && !this->window_manager.show_window) {
+		// Transforms camera and updates view matrix
+		if (!this->editing_mode) {
+			Mat camera_right = Mat::CrossProduct3D(this->camera_up, this->camera_direction);
+			this->camera_position += tx * camera_right;
+			Engine::LookAt();
+			Engine::update_view_inverse();
+		}
+		else {
+			if (!this->transform_light) {
+				// Transforms target instance
+				if (this->target_instance != nullptr) {
+					Engine::translate(*this->target_instance, tx, 0, 0);
+				}
+			}
+			// Transforms light source
+			else {
+				this->light_source.tx += tx;
+				Engine::translate(this->light_source.position, tx, 0, 0);
+
+				if (this->light_source.has_model) {
+					Engine::translate(*this->light_source.instance, tx, 0, 0);
+				}
+			}
+		}
+	}
+
+
+
+	if (keyboard_state[SDL_SCANCODE_D] && !this->window_manager.show_window) {
+		// Transforms camera and updates view matrix
+		if (!this->editing_mode) {
+			Mat camera_right = Mat::CrossProduct3D(this->camera_up, this->camera_direction);
+			this->camera_position -= tx * camera_right;
+			Engine::LookAt();
+			Engine::update_view_inverse();
+		}
+		else {
+			if (!this->transform_light) {
+				// Transforms target instance
+				if (this->target_instance != nullptr) {
+					Engine::translate(*this->target_instance, -tx, 0, 0);
+				}
+			}
+			// Transforms light source
+			else {
+				this->light_source.tx += -tx;
+				Engine::translate(this->light_source.position, -tx, 0, 0);
+
+				if (this->light_source.has_model) {
+					Engine::translate(*this->light_source.instance, -tx, 0, 0);
+				}
+			}
+		}
+	}
+
+	if (keyboard_state[SDL_SCANCODE_UP] && !this->window_manager.show_window) {
+		// Transforms camera and updates view matrix
+		if (!this->editing_mode) {
+			this->camera_position += ty * this->camera_up;
+			Engine::LookAt();
+			Engine::update_view_inverse();
+		}
+		else {
+			if (!this->transform_light) {
+				// Transforms target instance
+				if (this->target_instance != nullptr) {
+					Engine::translate(*this->target_instance, 0, ty, 0);
+				}
+			}
+			// Transforms light source
+			else {
+				this->light_source.ty += ty;
+				Engine::translate(this->light_source.position, 0, ty, 0);
+
+				if (this->light_source.has_model) {
+					Engine::translate(*this->light_source.instance, 0, ty, 0);
+				}
+			}
+		}
+	}
+
+	if (keyboard_state[SDL_SCANCODE_DOWN] && !this->window_manager.show_window) {
+		// Transforms camera and updates view matrix
+		if (!this->editing_mode) {
+			this->camera_position -= ty * this->camera_up;
+			Engine::LookAt();
+			Engine::update_view_inverse();
+		}
+		else {
+			if (!this->transform_light) {
+				// Transforms target instance
+				if (this->target_instance != nullptr) {
+					Engine::translate(*this->target_instance, 0, -ty, 0);
+				}
+			}
+			// Transforms light source
+			else {
+				this->light_source.ty += -ty;
+
+				Engine::translate(this->light_source.position, 0, -ty, 0);
+
+				if (this->light_source.has_model) {
+					Engine::translate(*this->light_source.instance, 0, -ty, 0);
+				}
+			}
+		}
+	}
 
 
 	while (SDL_PollEvent(&this->event)) {
@@ -65,6 +224,9 @@ bool Engine::handle_events() {
 
 			break;
 		case SDL_KEYDOWN:
+			// Ignores keyboard key presses if user is inputting text into any ImGUI input
+			if (ImGui::GetIO().WantTextInput) break;
+
 			switch (this->event.key.keysym.scancode) {
 			case SDL_SCANCODE_KP_ENTER:
 				this->transform_light = !this->transform_light;
@@ -210,6 +372,14 @@ bool Engine::handle_events() {
 				// Should I update the pixel buffer one last time to reflect the changes from the rendering mode instead of not allowing them to be changed if paused? Makes more sense for the "scene editor" behavior.
 
 				this->window_manager.show_window = !this->window_manager.show_window;
+
+				// Disables relative mouse tracking when the menu is open and re-enables once closed
+				if (this->window_manager.show_window) {
+					SDL_SetRelativeMouseMode(SDL_FALSE);
+				}
+				else {
+					SDL_SetRelativeMouseMode(SDL_TRUE);
+				}
 
 				if (!this->playing) break;
 
@@ -828,6 +998,7 @@ bool Engine::handle_events() {
 					}
 				}
 				break;
+			/*
 			case SDL_SCANCODE_A:
 				if (!this->playing) break;
 				{
@@ -996,152 +1167,58 @@ bool Engine::handle_events() {
 					}
 				}
 				break;
+				*/
 			default:
 				break;
 			}
 
 			break;
 		case SDL_MOUSEMOTION:
-			{
-			if (!this->window_manager.show_window) {
-				SDL_SetRelativeMouseMode(SDL_TRUE);
-
+		{
+			if (SDL_GetRelativeMouseMode()) {
 				double dx = event.motion.xrel;
 				double dy = event.motion.yrel;
 
 				double yaw_angle = 0;
 				double pitch_angle = 0;
 
-				///*
 				if (dy != 0) {
-					
-					Mat camera_right = Mat::CrossProduct3D(camera_up, camera_direction);
-					camera_right.normalize();
-
-					double rotation_degree = Utils::normalize(abs(dy), 0, this->HEIGHT, 0, M_PI);
+					double pitch_angle = Utils::normalize(abs(dy), 0, this->HEIGHT, 0, M_PI);
 
 					// Moving up
 					if (dy < 0) {
-						rotation_degree = -rotation_degree;
+						pitch_angle = -pitch_angle;
 					}
 
-					pitch_angle = rotation_degree;
-
-					/*
-					Quaternion rotationX = Quaternion::AngleAxis(camera_right.get(1, 1), camera_right.get(2, 1), camera_right.get(3, 1), rotation_degree);
-					Mat rotation = rotationX.get_rotationmatrix();
-
-					this->camera_direction = rotation * camera_direction;
-					this->camera_up = rotation * camera_up;
-
-					this->camera_direction.normalize();
-					this->camera_up.normalize();
-
-					this->camera_orientation = rotationX * this->camera_orientation;
-
-
-					Engine::LookAt();
-					Engine::update_view_inverse();
-
-					this->camera_orientation.GetAngles(Orientation::local, this->camera_yaw, this->camera_pitch, this->camera_roll);
-					*/
-
-					this->camera_pitch += rotation_degree;
-
-					Quaternion rotation = Quaternion::FromYawPitchRoll(Orientation::local, this->camera_yaw, this->camera_pitch, this->camera_roll, this->default_camera_right, this->default_camera_up, this->default_camera_direction);
-
-					this->camera_direction = rotation.get_rotationmatrix() * this->default_camera_direction;
-					this->camera_up = rotation.get_rotationmatrix() * this->default_camera_up;
-
-					Engine::LookAt();
-					Engine::update_view_inverse();
+					this->camera_pitch += pitch_angle * this->camera_rotation_speed_factor;
 				}
 
 				if (dx != 0) {
-					double rotation_degree = Utils::normalize(abs(dx), 0, this->WIDTH, 0, M_PI);
+					double yaw_angle = Utils::normalize(abs(dx), 0, this->WIDTH, 0, M_PI);
 
 					// Moving right
 					if (dx > 0) {
-						rotation_degree = -rotation_degree;
+						yaw_angle = -yaw_angle;
 					}
 
-					yaw_angle = rotation_degree;
+					this->camera_yaw += yaw_angle * this->camera_rotation_speed_factor;
+				}
 
-					this->camera_yaw += rotation_degree;
-
+				// Updates camera orientation quaternion, rotates the camera vectors, and updates the view matrix (and its inverse)
+				if (dy != 0 || dx != 0) {
 					Quaternion rotation = Quaternion::FromYawPitchRoll(Orientation::local, this->camera_yaw, this->camera_pitch, this->camera_roll, this->default_camera_right, this->default_camera_up, this->default_camera_direction);
+
+					this->camera_orientation = rotation;
 
 					this->camera_direction = rotation.get_rotationmatrix() * this->default_camera_direction;
 					this->camera_up = rotation.get_rotationmatrix() * this->default_camera_up;
 
 					Engine::LookAt();
 					Engine::update_view_inverse();
-
-					/*
-					Quaternion rotationY = Quaternion::AngleAxis(this->camera_up.get(1, 1), this->camera_up.get(2, 1), this->camera_up.get(3, 1), rotation_degree);
-					Mat rotation = rotationY.get_rotationmatrix();
-					this->camera_orientation = rotationY * this->camera_orientation;
-					this->camera_direction = rotation * this->camera_direction;
-					this->camera_direction.normalize();
-
-					Engine::LookAt();
-					Engine::update_view_inverse();
-
-					this->camera_orientation.GetAngles(Orientation::local, this->camera_yaw, this->camera_pitch, this->camera_roll);
-					*/
 				}
-				
-
-				//*/
-
-				/*
-				Quaternion orr = Quaternion::FromYawPitchRoll(Orientation::local, camera_yaw + yaw_angle, camera_pitch + pitch_angle, this->camera_roll, default_camera_right, default_camera_up, default_camera_direction);
-				Mat rotation = orr.get_rotationmatrix();
-
-				this->camera_orientation = orr;
-				this->camera_direction = orr.get_rotationmatrix() * this->default_camera_direction;
-				this->camera_up = orr.get_rotationmatrix() * this->default_camera_up;
-				*/
-
-				/*
-
-				Quaternion rotationY = Quaternion::AngleAxis(y_axis.get(1, 1), y_axis.get(2, 1), y_axis.get(3, 1), yaw_angle);
-				Mat rotationY_mat = rotationY.get_rotationmatrix();
-
-				Mat target = z_axis;
-				target = rotationY_mat * target;
-				target.normalize();
-
-				Mat x_axis = Mat::CrossProduct3D(y_axis, target);
-				x_axis.normalize();
-
-
-				Quaternion rotationX = Quaternion::AngleAxis(x_axis.get(1, 1), x_axis.get(2, 1), x_axis.get(3, 1), pitch_angle);
-				Mat rotationX_mat = rotationX.get_rotationmatrix();
-
-				target = rotationX_mat * target;
-				target.normalize();
-
-				this->camera_direction = target;
-				this->camera_up = Mat::CrossProduct3D(x_axis, this->camera_direction);
-				this->camera_up.normalize();
-
-				if (pitch_angle > 0.1) {
-					this->camera_up.print();
-
-					std::cout << "Pitch angle: " << yaw_angle << std::endl;
-					std::cout << "Final direction: " << target << std::endl;
-
-					exit(-1);
-				}
-				*/
-			}
-			else {
-				SDL_SetRelativeMouseMode(SDL_FALSE);
-			}
-
 
 			}
+		}
 			break;
 		}
 	}

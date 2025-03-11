@@ -32,7 +32,7 @@ bool Engine::setup() {
 	}
 
 	this->window_manager.initialize(this->window, this->renderer);
-	this->window_manager.general_window.initialize(nullptr, &this->wireframe_render, &this->rasterize, &this->shade, &this->fps_update_interval);
+	this->window_manager.general_window.initialize(nullptr, nullptr, &this->wireframe_render, &this->rasterize, &this->shade, &this->fps_update_interval);
 	//this->window_manager.transform_window.initialize(&this->target_instance);
 
 	this->pixel_buffer = (uint32_t*) malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
@@ -42,6 +42,10 @@ bool Engine::setup() {
 		this->pixel_buffer[i] = this->BG_COLOR;
 		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
+
+
+	// Enables relative mouse tracking (used for rotating the camera along with the mouse)
+	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	return 1;
 }
@@ -53,6 +57,13 @@ void Engine::draw_instance(const Instance& instance, bool draw_outline, uint32_t
 }
 
 void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source) {
+	uint32_t total_vertices_count = mesh.total_vertices();
+	uint32_t total_normals_count = 0;
+
+	if (mesh.has_normals) {
+		total_normals_count = mesh.total_normals() ;
+	}
+
 	for (uint32_t face = 0; face < mesh.total_faces(); face++) {
 		uint32_t idx_a = mesh.faces_indices[face][0] - 1;
 		uint32_t idx_b = mesh.faces_indices[face][1] - 1;
@@ -69,16 +80,8 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 			normal_idx_c = mesh.normal_indices[face][2] - 1;
 		}
 
-		uint32_t total_vertices_count = mesh.total_vertices() - 1;
-
-		uint32_t total_normals_count = 0;
-
-		if (mesh.has_normals) {
-			total_normals_count = mesh.total_normals() - 1;
-		}
-
 		// Skip if not a valid vertex
-		if ((idx_a > total_vertices_count || idx_b > total_vertices_count || idx_c > total_vertices_count)
+		if ((idx_a >= total_vertices_count || idx_b >= total_vertices_count || idx_c >= total_vertices_count)
 			||
 			(idx_a < 0 || idx_b < 0 || idx_c < 0)
 			) {
@@ -87,7 +90,7 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 
 		if (mesh.has_normals) {
 			// Skip if not a valid normal
-			if ((normal_idx_a > total_normals_count || normal_idx_b > total_normals_count || normal_idx_c > total_normals_count)
+			if ((normal_idx_a >= total_normals_count || normal_idx_b >= total_normals_count || normal_idx_c >= total_normals_count)
 				||
 				(normal_idx_a < 0 || normal_idx_b < 0 || normal_idx_c < 0)
 				) {
@@ -98,16 +101,11 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 
 		Mat vertices[4] = {mesh.vertices[idx_a], mesh.vertices[idx_b], mesh.vertices[idx_c], mesh.vertices[idx_c]};
 
-		Mat v0_normal = Mat::identity_matrix(3);
-		Mat v1_normal = Mat::identity_matrix(3);
-		Mat v2_normal = Mat::identity_matrix(3);
-		Mat v3_normal = Mat::identity_matrix(3);
-
 		// Include 4th vertex if face is given as a quad
 		if (mesh.faces_indices[face].size() == 4) {
 			uint32_t idx_d = mesh.faces_indices[face][3] - 1;
-			
-			if (idx_d > total_vertices_count || idx_d < 0) {
+
+			if (idx_d >= total_vertices_count || idx_d < 0) {
 				continue;
 			}
 
@@ -115,6 +113,11 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 
 
 		}
+
+		Mat v0_normal = Mat({ {0}, {0}, {0}, {0} }, 4, 1);
+		Mat v1_normal = Mat({ {0}, {0}, {0}, {0} }, 4, 1);
+		Mat v2_normal = Mat({ {0}, {0}, {0}, {0} }, 4, 1);
+		Mat v3_normal = Mat({ {0}, {0}, {0}, {0} }, 4, 1);
 
 		if (mesh.has_normals) {
 			Mat normals[4] = { mesh.normals[normal_idx_a], mesh.normals[normal_idx_b], mesh.normals[normal_idx_c], mesh.normals[normal_idx_c] };
@@ -126,7 +129,7 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 			if (mesh.faces_indices[face].size() == 4) {
 				uint32_t normal_idx_d = mesh.normal_indices[face][3] - 1;
 
-				if (normal_idx_d > total_normals_count || normal_idx_d < 0) {
+				if (normal_idx_d >= total_normals_count || normal_idx_d < 0) {
 					continue;
 				}
 
@@ -168,7 +171,6 @@ void Engine::update_view_inverse() {
 }
 
 void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal, Mat v2_normal, const Mat& MODEL_TO_WORLD,  bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source) {
-
 	// Vectors here are assumed to have 1 in the 4th dimension (position vectors)
 	Mat world_v0 = MODEL_TO_WORLD * v0;
 	Mat world_v1 = MODEL_TO_WORLD * v1;
@@ -1494,12 +1496,12 @@ void Engine::draw() {
 }
 
 void Engine::render() {
-	if (this->window_manager.show_window) SDL_RenderSetScale(this->renderer, this->window_manager.io.DisplayFramebufferScale.x, this->window_manager.io.DisplayFramebufferScale.y);
+	SDL_RenderSetScale(this->renderer, this->window_manager.io.DisplayFramebufferScale.x, this->window_manager.io.DisplayFramebufferScale.y);
 	SDL_SetRenderDrawColor(this->renderer, this->CLEAR_COLOR >> 24, this->CLEAR_COLOR >> 16, this->CLEAR_COLOR >> 8, this->CLEAR_COLOR);
 	SDL_RenderClear(this->renderer);
 	SDL_UpdateTexture(this->texture, nullptr, this->pixel_buffer, this->WIDTH * sizeof(uint32_t));
 	SDL_RenderCopy(this->renderer, this->texture, nullptr, nullptr);
-	if (this->window_manager.show_window) ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), this->renderer);
+	ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), this->renderer);
 	SDL_RenderPresent(this->renderer);
 }
 
@@ -2286,6 +2288,8 @@ void Engine::load_scene(bool verbose) {
 		this->window_manager.general_window.display_qw = this->window_manager.general_window.target_instance->orientation.w;
 	}
 
+	this->window_manager.general_window.light_source = &this->light_source;
+
 	// Updates camera position
 	this->camera_position = this->default_camera_position + camera_translation;
 	this->default_camera_right = Mat::CrossProduct3D(this->default_camera_up, this->default_camera_direction);
@@ -2382,6 +2386,10 @@ void Engine::load_scene(bool verbose) {
 	}
 	
 	//light_source.orientation.GetAngles(light_source.yaw, light_source.pitch, light_source.roll);
+	this->window_manager.general_window.light_display_qw = light_source.orientation.w;
+	this->window_manager.general_window.light_display_qx = light_source.orientation.x;
+	this->window_manager.general_window.light_display_qy = light_source.orientation.y;
+	this->window_manager.general_window.light_display_qz = light_source.orientation.z;
 
 	if (light_source.has_model) {
 		light_source.instance->yaw = light_source.yaw;

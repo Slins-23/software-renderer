@@ -5,6 +5,7 @@
 
 class Window {
 protected:
+	double window_alpha = 0.3;
 public:
 	void virtual draw() {
 		static uint32_t current_frame = 1;
@@ -40,23 +41,6 @@ private:
 		instance->MODEL_TO_WORLD = instance->TRANSLATION_MATRIX * instance->ROTATION_MATRIX * instance->SCALING_MATRIX;
 	}
 
-	void UpdateLightTranslation(Light* light_source, Instance* instance) {
-		UpdateInstanceTranslation(instance);
-
-		light_source->tx = instance->tx;
-		light_source->ty = instance->ty;
-		light_source->tz = instance->tz;
-
-		light_source->position = Mat(
-			{
-				{light_source->tx},
-				{light_source->ty},
-				{light_source->tz},
-				{1}
-			}
-		, 4, 1);
-	}
-
 	void UpdateInstanceRotation(Instance* instance, bool from_euler) {
 		// If updating euler angles
 		if (from_euler) {
@@ -67,14 +51,19 @@ private:
 			Quaternion orientation = Quaternion::FromYawPitchRoll(this->rotation_orientation, instance->yaw, instance->pitch, instance->roll, default_right, default_up, default_forward);
 
 			instance->orientation = orientation;
+
+			this->display_qx = orientation.x;
+			this->display_qy = orientation.y;
+			this->display_qz = orientation.z;
+			this->display_qw = orientation.w;
 		}
 
 		// If updating quaternion
 		else {
-			double qw = instance->orientation.w;
-			double qx = instance->orientation.x;
-			double qy = instance->orientation.y;
-			double qz = instance->orientation.z;
+			double qw = this->display_qw;
+			double qx = this->display_qx;
+			double qy = this->display_qy;
+			double qz = this->display_qz;
 
 			double mag = sqrt((qw * qw) + (qx * qx) + (qy * qy) + (qz * qz));
 			qw /= mag;
@@ -87,7 +76,36 @@ private:
 			instance->orientation.y = qy;
 			instance->orientation.z = qz;
 
-			instance->orientation.GetAngles(this->rotation_orientation, instance->yaw, instance->pitch, instance->roll);
+			// Normalizes the old yaw, pitch, and yaw values and adds the relative difference from the new angles, so that the values in the input box don't change to the normalized values of [-pi, pi]
+
+			double new_yaw = 0;
+			double new_pitch = 0;
+			double new_roll = 0;
+
+			instance->orientation.GetAngles(this->rotation_orientation, new_yaw, new_pitch, new_roll);
+
+			double old_normalized_yaw = fmod(instance->yaw, 2 * M_PI);
+
+			if (old_normalized_yaw > M_PI) old_normalized_yaw -= 2 * M_PI;
+			if (old_normalized_yaw < -M_PI) old_normalized_yaw += 2 * M_PI;
+
+			double old_normalized_pitch = fmod(instance->pitch, 2 * M_PI);
+
+			if (old_normalized_pitch > M_PI) old_normalized_pitch -= 2 * M_PI;
+			if (old_normalized_pitch < -M_PI) old_normalized_pitch += 2 * M_PI;
+
+			double old_normalized_roll = fmod(instance->roll, 2 * M_PI);
+
+			if (old_normalized_roll > M_PI) old_normalized_roll -= 2 * M_PI;
+			if (old_normalized_roll < -M_PI) old_normalized_roll += 2 * M_PI;
+
+			double yaw_difference = new_yaw - old_normalized_yaw;
+			double pitch_difference = new_pitch - old_normalized_pitch;
+			double roll_difference = new_roll - old_normalized_roll;
+
+			instance->yaw = instance->yaw + yaw_difference;
+			instance->pitch = instance->pitch + pitch_difference;
+			instance->roll = instance->roll + roll_difference;
 		}
 
 		instance->ROTATION_MATRIX = instance->orientation.get_rotationmatrix();
@@ -108,17 +126,122 @@ private:
 		*/
 	}
 
-	void UpdateLightRotation(Light* light_source, Instance* instance, bool from_euler) {
-		UpdateInstanceRotation(instance, from_euler);
+	void UpdateLightTranslation(Light* light_source) {
+		Mat TRANSLATION_MATRIX = Mat::translation_matrix(light_source->tx, light_source->ty, light_source->tz);
 
-		light_source->yaw = instance->yaw;
-		light_source->pitch = instance->pitch;
-		light_source->roll = instance->roll;
+		if (light_source->has_model) {
+			light_source->instance->TRANSLATION_MATRIX = TRANSLATION_MATRIX;
+			light_source->instance->MODEL_TO_WORLD = light_source->instance->TRANSLATION_MATRIX * light_source->instance->ROTATION_MATRIX * light_source->instance->SCALING_MATRIX;
 
-		light_source->direction = instance->ROTATION_MATRIX * light_source->default_direction;
-		light_source->up = instance->ROTATION_MATRIX * light_source->default_up;
+			light_source->instance->tx = light_source->tx;
+			light_source->instance->ty = light_source->ty;
+			light_source->instance->tz = light_source->tz;
+		}
 
+		light_source->position = Mat(
+			{
+				{light_source->tx},
+				{light_source->ty},
+				{light_source->tz},
+				{1}
+			}
+		, 4, 1);
+	}
 
+	void UpdateLightRotation(Light* light_source, bool from_euler) {
+		// If updating euler angles
+		if (from_euler) {
+			Mat default_right = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
+			Mat default_up = Mat({ {0}, {1}, {0}, {0} }, 4, 1);
+			Mat default_forward = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
+
+			Quaternion orientation = Quaternion::FromYawPitchRoll(this->rotation_orientation, light_source->yaw, light_source->pitch, light_source->roll, default_right, default_up, default_forward);
+
+			light_source->orientation = orientation;
+
+			if (light_source->has_model) {
+				light_source->instance->orientation = light_source->orientation;
+				light_source->instance->yaw = light_source->yaw;
+				light_source->instance->pitch = light_source->pitch;
+				light_source->instance->roll = light_source->roll;
+			}
+
+			this->light_display_qx = orientation.x;
+			this->light_display_qy = orientation.y;
+			this->light_display_qz = orientation.z;
+			this->light_display_qw = orientation.w;
+		}
+
+		// If updating quaternion
+		else {
+			double qw = this->light_display_qw;
+			double qx = this->light_display_qx;
+			double qy = this->light_display_qy;
+			double qz = this->light_display_qz;
+
+			double mag = sqrt((qw * qw) + (qx * qx) + (qy * qy) + (qz * qz));
+			qw /= mag;
+			qx /= mag;
+			qy /= mag;
+			qz /= mag;
+
+			light_source->orientation.w = qw;
+			light_source->orientation.x = qx;
+			light_source->orientation.y = qy;
+			light_source->orientation.z = qz;
+
+			if (light_source->has_model) {
+				light_source->instance->orientation.w = qw;
+				light_source->instance->orientation.x = qx;
+				light_source->instance->orientation.y = qy;
+				light_source->instance->orientation.z = qz;
+			}
+
+			// Normalizes the old yaw, pitch, and yaw values and adds the relative difference from the new angles, so that the values in the input box don't change to the normalized values of [-pi, pi]
+
+			double new_yaw = 0;
+			double new_pitch = 0;
+			double new_roll = 0;
+
+			light_source->orientation.GetAngles(this->rotation_orientation, new_yaw, new_pitch, new_roll);
+
+			double old_normalized_yaw = fmod(light_source->yaw, 2 * M_PI);
+
+			if (old_normalized_yaw > M_PI) old_normalized_yaw -= 2 * M_PI;
+			if (old_normalized_yaw < -M_PI) old_normalized_yaw += 2 * M_PI;
+
+			double old_normalized_pitch = fmod(light_source->pitch, 2 * M_PI);
+
+			if (old_normalized_pitch > M_PI) old_normalized_pitch -= 2 * M_PI;
+			if (old_normalized_pitch < -M_PI) old_normalized_pitch += 2 * M_PI;
+
+			double old_normalized_roll = fmod(light_source->roll, 2 * M_PI);
+
+			if (old_normalized_roll > M_PI) old_normalized_roll -= 2 * M_PI;
+			if (old_normalized_roll < -M_PI) old_normalized_roll += 2 * M_PI;
+
+			double yaw_difference = new_yaw - old_normalized_yaw;
+			double pitch_difference = new_pitch - old_normalized_pitch;
+			double roll_difference = new_roll - old_normalized_roll;
+
+			light_source->yaw += yaw_difference;
+			light_source->pitch += pitch_difference;
+			light_source->roll += roll_difference;
+
+			if (light_source->has_model) {
+				light_source->instance->yaw = light_source->yaw;
+				light_source->instance->pitch = light_source->pitch;
+				light_source->instance->roll = light_source->roll;
+			}
+		}
+
+		if (light_source->has_model) {
+			light_source->instance->ROTATION_MATRIX = light_source->instance->orientation.get_rotationmatrix();
+			light_source->instance->MODEL_TO_WORLD = light_source->instance->TRANSLATION_MATRIX * light_source->instance->ROTATION_MATRIX * light_source->instance->SCALING_MATRIX;
+		}
+
+		light_source->direction = light_source->orientation.get_rotationmatrix() * light_source->default_direction;
+		light_source->up = light_source->orientation.get_rotationmatrix() * light_source->default_up;
 	}
 
 	bool* wireframe_renderer = nullptr;
@@ -127,36 +250,58 @@ private:
 
 	double* fps_update_interval = nullptr;
 public:
-	double translation_speed = 0.001;
-	double minimum_translation_speed = zero;
-
-	double rotation_speed = 0.01;
-	double minimum_rotation_speed = zero;
-
 	double zero = 0;
+	double one = 1;
+
+	Orientation rotation_orientation = Orientation::local;
 
 	Instance* target_instance = nullptr;
 	Light* light_source = nullptr;
 
-	Orientation rotation_orientation = Orientation::local;
+	double translation_speed = 0.001;
+	double minimum_translation_speed = zero;
+
+	double light_translation_speed = 0.001;
+
+	double rotation_speed = 0.01;
+	double minimum_rotation_speed = zero;
+
+	double light_rotation_speed = 0.01;
+
 
 	double display_qx = 0;
 	double display_qy = 0;
 	double display_qz = 0;
 	double display_qw = 0;
 
+	double light_display_qx = 0;
+	double light_display_qy = 0;
+	double light_display_qz = 0;
+	double light_display_qw = 0;
+
 	double framerate = 0;
 
-	General() {};
+	
 
-	void initialize(Instance* target_instance, bool* wireframe_renderer, bool* rasterize, bool* shade, double* fps_update_interval) {
+	General() {
+		this->window_alpha = 0.3;
+	};
+
+	void initialize(Instance* target_instance, Light* light_source, bool* wireframe_renderer, bool* rasterize, bool* shade, double* fps_update_interval) {
 
 		if (target_instance != nullptr) {
 			this->target_instance = target_instance;
+			this->light_source = light_source;
+
 			this->display_qx = this->target_instance->orientation.x;
 			this->display_qy = this->target_instance->orientation.y;
 			this->display_qz = this->target_instance->orientation.z;
 			this->display_qw = this->target_instance->orientation.w;
+
+			this->light_display_qx = this->light_source->orientation.x;
+			this->light_display_qy = this->light_source->orientation.y;
+			this->light_display_qz = this->light_source->orientation.z;
+			this->light_display_qw = this->light_source->orientation.w;
 		}
 
 		this->wireframe_renderer = wireframe_renderer;
@@ -175,6 +320,10 @@ public:
 		ImGui::SameLine();
 		ImGui::PushItemWidth(40);
 		ImGui::DragScalar("##FPS calculation interval (in ms): ", ImGuiDataType_Double, this->fps_update_interval, 1.0f, &zero, nullptr, "%.0lf", ImGuiSliderFlags_None);
+
+		ImGui::Text("Window opacity:");
+		ImGui::SameLine();
+		ImGui::DragScalar("##Window opacity:", ImGuiDataType_Double, &this->window_alpha, 0.001f, &zero, &one, "%.2lf", ImGuiSliderFlags_None);
 
 		static uint32_t current_frame = 1;
 		static uint32_t total_clicks = 0;
@@ -241,22 +390,19 @@ public:
 		ImGui::SameLine();
 		
 		if (ImGui::DragScalar("##X:", ImGuiDataType_Double , (void*) &(target_instance->tx), translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			if (!this->target_instance->is_light_source) UpdateInstanceTranslation(target_instance);
-			else UpdateLightTranslation(light_source, target_instance);
+			UpdateInstanceTranslation(target_instance);
 		}
 
 		ImGui::Text("Y:");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##Y:", ImGuiDataType_Double, (void*)&(target_instance->ty), translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			if (!this->target_instance->is_light_source) UpdateInstanceTranslation(target_instance);
-			else UpdateLightTranslation(light_source, target_instance);
+			UpdateInstanceTranslation(target_instance);
 		}
 
 		ImGui::Text("Z:");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##Z:", ImGuiDataType_Double, (void*)&(target_instance->tz), translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			if (!this->target_instance->is_light_source) UpdateInstanceTranslation(target_instance);
-			else UpdateLightTranslation(light_source, target_instance);
+			UpdateInstanceTranslation(target_instance);
 		}
 
 		ImGui::Separator();
@@ -266,22 +412,19 @@ public:
 		ImGui::Text("Yaw:  ");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##Yaw:  ", ImGuiDataType_Double, (void*)&(target_instance->yaw), rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			if (!this->target_instance->is_light_source) UpdateInstanceRotation(target_instance, true);
-			else UpdateLightRotation(light_source, target_instance, true);
+			UpdateInstanceRotation(target_instance, true);
 		}
 
 		ImGui::Text("Pitch:");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##Pitch:", ImGuiDataType_Double, (void*)&(target_instance->pitch), rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			if (!this->target_instance->is_light_source) UpdateInstanceRotation(target_instance, true);
-			else UpdateLightRotation(light_source, target_instance, true);
+			UpdateInstanceRotation(target_instance, true);
 		}
 
 		ImGui::Text("Roll: ");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##Roll: ", ImGuiDataType_Double, (void*)&(target_instance->roll), rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			if (!this->target_instance->is_light_source) UpdateInstanceRotation(target_instance, true);
-			else UpdateLightRotation(light_source, target_instance, true);
+			UpdateInstanceRotation(target_instance, true);
 		}
 
 		ImGui::Spacing();
@@ -291,48 +434,120 @@ public:
 		ImGui::Text("X:");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##QX:", ImGuiDataType_Double, &display_qx, rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			target_instance->orientation.x = display_qx;
-
-			if (!this->target_instance->is_light_source) UpdateInstanceRotation(target_instance, false);
-			else UpdateLightRotation(light_source, target_instance, false);
+			UpdateInstanceRotation(target_instance, false);
 		}
 
 		ImGui::Text("Y:");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##QY:", ImGuiDataType_Double, &display_qy, rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			target_instance->orientation.y = display_qy;
-
-			if (!this->target_instance->is_light_source) UpdateInstanceRotation(target_instance, false);
-			else UpdateLightRotation(light_source, target_instance, false);
+			UpdateInstanceRotation(target_instance, false);
 		}
 
 		ImGui::Text("Z:");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##QZ:", ImGuiDataType_Double, &display_qz, rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			target_instance->orientation.z = display_qz;
-
-			if (!this->target_instance->is_light_source) UpdateInstanceRotation(target_instance, false);
-			else UpdateLightRotation(light_source, target_instance, false);
+			UpdateInstanceRotation(target_instance, false);
 		}
 
 		ImGui::Text("W:");
 		ImGui::SameLine();
 		if (ImGui::DragScalar("##QW:", ImGuiDataType_Double, &display_qw, rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			target_instance->orientation.w = display_qw;
+			UpdateInstanceRotation(target_instance, false);
+		}
 
-			if (!this->target_instance->is_light_source) UpdateInstanceRotation(target_instance, false);
-			else UpdateLightRotation(light_source, target_instance, false);
+		ImGui::Separator();
+	}
+
+	void draw_light_dropdown() {
+		ImGui::PushItemWidth(60);
+
+		ImGui::Text("Translation speed: ");
+		ImGui::SameLine();
+		ImGui::DragScalar("##Translation speed: ", ImGuiDataType_Double, &light_translation_speed, 0.01, &minimum_translation_speed, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::Separator();
+
+		ImGui::Text("Translation");
+		ImGui::Spacing();
+		ImGui::Text("X:");
+		ImGui::SameLine();
+
+		if (ImGui::DragScalar("##X:", ImGuiDataType_Double, (void*)&(light_source->tx), light_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightTranslation(light_source);
+		}
+
+		ImGui::Text("Y:");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##Y:", ImGuiDataType_Double, (void*)&(light_source->ty), light_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightTranslation(light_source);
+		}
+
+		ImGui::Text("Z:");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##Z:", ImGuiDataType_Double, (void*)&(light_source->tz), light_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightTranslation(light_source);
+		}
+
+		ImGui::Separator();
+
+		ImGui::Text("Rotation (YXZ)");
+		ImGui::Spacing();
+		ImGui::Text("Yaw:  ");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##Yaw:  ", ImGuiDataType_Double, (void*)&(light_source->yaw), light_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightRotation(light_source, true);
+		}
+
+		ImGui::Text("Pitch:");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##Pitch:", ImGuiDataType_Double, (void*)&(light_source->pitch), light_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightRotation(light_source, true);
+		}
+
+		ImGui::Text("Roll: ");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##Roll: ", ImGuiDataType_Double, (void*)&(light_source->roll), light_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightRotation(light_source, true);
+		}
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+
+		ImGui::Text("Quaternion");
+		ImGui::Text("X:");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##QX:", ImGuiDataType_Double, &light_display_qx, light_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightRotation(light_source, false);
+		}
+
+		ImGui::Text("Y:");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##QY:", ImGuiDataType_Double, &light_display_qy, light_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightRotation(light_source, false);
+		}
+
+		ImGui::Text("Z:");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##QZ:", ImGuiDataType_Double, &light_display_qz, light_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightRotation(light_source, false);
+		}
+
+		ImGui::Text("W:");
+		ImGui::SameLine();
+		if (ImGui::DragScalar("##QW:", ImGuiDataType_Double, &light_display_qw, light_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateLightRotation(light_source, false);
 		}
 
 		ImGui::Separator();
 	}
 
 	void draw() {
+		ImGui::SetNextWindowBgAlpha(this->window_alpha);
 		ImGui::Begin("General window");
 
 		if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None)) draw_debug_dropdown();
 		if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_None)) draw_scene_dropdown();
 		if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_None)) draw_transform_dropdown();
+		if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_None)) draw_light_dropdown();
 
 		ImGui::End();
 	}

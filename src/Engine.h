@@ -198,6 +198,8 @@ public:
 	);
 
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
+
+	// Used exclusively for getting the clipped triangle's world space vertices, as clipping is performed in view space
 	Mat VIEW_INVERSE = Mat::identity_matrix(4);
 
 
@@ -232,6 +234,8 @@ public:
 	WindowManager window_manager;
 
 	bool show_window = false;
+
+	double camera_rotation_speed_factor = 0.25;
 	
 	bool setup();
 	bool imgui_setup();

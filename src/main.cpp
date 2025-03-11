@@ -15,8 +15,6 @@ int main() {
 	std::vector<double> frametimes;
 	double last_tick = SDL_GetTicks();
 
-	
-
 	while (true) {
 		uint32_t frame_start = SDL_GetTicks();
 
@@ -27,16 +25,26 @@ int main() {
 			engine.draw();
 		}
 
+		
+
+		ImGui_ImplSDLRenderer2_NewFrame();
+		ImGui_ImplSDL2_NewFrame();
+		ImGui::NewFrame();
+
+		ImGui::GetForegroundDrawList()->AddText(ImVec2(10, 10), IM_COL32(255, 255, 255, 255), "Press '1' to open/close the settings", 0);
+
+		char fps_text[255];
+		sprintf_s(fps_text, 255, "Framerate: %.2lf", engine.window_manager.general_window.framerate);
+
+		ImGui::GetForegroundDrawList()->AddText(ImVec2(10, 30), IM_COL32(255, 255, 255, 255), fps_text, 0);
+
 		if (engine.window_manager.show_window) {
-			ImGui_ImplSDLRenderer2_NewFrame();
-			ImGui_ImplSDL2_NewFrame();
-			ImGui::NewFrame();
 			engine.window_manager.handle_windows();
 			ImGui::ShowDemoWindow();
-			ImGui::Render();
+
 		}
 
-
+		ImGui::Render();
 		engine.render();
 
 		uint32_t msperframe = SDL_GetTicks() - frame_start;
