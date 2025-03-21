@@ -1,10 +1,12 @@
 #include "Instance.h"
 
-void Instance::create_instance_nameid(uint32_t& total_instances) {
+void Instance::create_instance_nameid(uint32_t& total_ever_instances) {
 	std::string final_string = std::string(mesh->mesh_filename);
 	std::string new_id = "_";
 
-	this->instance_id = total_instances;
+	total_ever_instances++;
+
+	this->instance_id = total_ever_instances;
 
 	if (this->instance_id < 10) {
 		new_id += "00";
@@ -19,10 +21,10 @@ void Instance::create_instance_nameid(uint32_t& total_instances) {
 
 	this->instance_name = final_string;
 
-	total_instances++;
+	
 }
 
-Instance::Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
+Instance::Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_ever_instances) {
 	this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 	//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
 	this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
@@ -43,10 +45,10 @@ Instance::Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rota
 	this->mesh = mesh;
 	this->show = show;
 
-	this->create_instance_nameid(total_instances);
+	this->create_instance_nameid(total_ever_instances);
 }
 
-Instance::Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
+Instance::Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_ever_instances) {
 	this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
 	//this->ROTATION_MATRIX = aquaternion_rotationZ_matrix(roll) * aquaternion_rotationX_matrix(pitch) * aquaternion_rotationY_matrix(yaw);
 	this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
@@ -67,10 +69,10 @@ Instance::Instance(Mesh* mesh, double tx, double ty, double tz, Orientation rota
 	this->mesh = mesh;
 	this->show = show;
 
-	this->create_instance_nameid(total_instances);
+	this->create_instance_nameid(total_ever_instances);
 }
 
-Instance::Instance(Orientation rotation_orientation, Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
+Instance::Instance(Orientation rotation_orientation, Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_ever_instances) {
 	this->yaw = yaw;
 	this->pitch = pitch;
 	this->roll = roll;
@@ -99,10 +101,10 @@ Instance::Instance(Orientation rotation_orientation, Mesh* mesh, double tx, doub
 	this->mesh = mesh;
 	this->show = show;
 
-	this->create_instance_nameid(total_instances);
+	this->create_instance_nameid(total_ever_instances);
 }
 
-Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, double yaw, double pitch, double roll, bool show, uint32_t& total_instances) {
+Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, double yaw, double pitch, double roll, bool show, uint32_t& total_ever_instances) {
 	this->TRANSLATION_MATRIX = TRANSLATION_MATRIX;
 	this->ROTATION_MATRIX = ROTATION_MATRIX;
 	this->SCALING_MATRIX = SCALING_MATRIX;
@@ -125,11 +127,11 @@ Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat 
 	this->mesh = mesh;
 	this->show = show;
 
-	this->create_instance_nameid(total_instances);
+	this->create_instance_nameid(total_ever_instances);
 }
 
 
-Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, bool show, uint32_t& total_instances) {
+Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, bool show, uint32_t& total_ever_instances) {
 	this->TRANSLATION_MATRIX = TRANSLATION_MATRIX;
 	this->ROTATION_MATRIX = ROTATION_MATRIX;
 	this->SCALING_MATRIX = SCALING_MATRIX;
@@ -148,10 +150,10 @@ Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat 
 	this->mesh = mesh;
 	this->show = show;
 
-	this->create_instance_nameid(total_instances);
+	this->create_instance_nameid(total_ever_instances);
 }
 
-Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, double yaw, double pitch, double roll, bool show, uint32_t& total_instances) {
+Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, double yaw, double pitch, double roll, bool show, uint32_t& total_ever_instances) {
 	this->TRANSLATION_MATRIX = TRANSLATION_MATRIX;
 	this->ROTATION_MATRIX = ROTATION_MATRIX;
 	this->SCALING_MATRIX = SCALING_MATRIX;
@@ -172,10 +174,10 @@ Instance::Instance(Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat 
 	this->mesh = mesh;
 	this->show = show;
 
-	this->create_instance_nameid(total_instances);
+	this->create_instance_nameid(total_ever_instances);
 }
 
-Instance::Instance(Mesh* mesh, Mat MODEL_TO_WORLD, bool show, uint32_t& total_instances) {
+Instance::Instance(Mesh* mesh, Mat MODEL_TO_WORLD, bool show, uint32_t& total_ever_instances) {
 	this->MODEL_TO_WORLD = MODEL_TO_WORLD;
 	this->mesh = mesh;
 	this->show = show;
@@ -183,10 +185,10 @@ Instance::Instance(Mesh* mesh, Mat MODEL_TO_WORLD, bool show, uint32_t& total_in
 	this->mesh = mesh;
 	this->show = show;
 
-	this->create_instance_nameid(total_instances);
+	this->create_instance_nameid(total_ever_instances);
 }
 
-Instance::Instance(std::string instance_name, Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, double yaw, double pitch, double roll, bool show, uint32_t& total_instances) {
+Instance::Instance(std::string instance_name, Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, const Quaternion& orientation, double yaw, double pitch, double roll, bool show, uint32_t& total_ever_instances) {
 	this->orientation = orientation;
 	this->yaw = yaw;
 	this->pitch = pitch;
@@ -200,6 +202,8 @@ Instance::Instance(std::string instance_name, Mesh* mesh, Mat TRANSLATION_MATRIX
 	this->sy = SCALING_MATRIX.get(2, 2);
 	this->sz = SCALING_MATRIX.get(3, 3);
 
+	total_ever_instances++;
+
 	this->instance_name = instance_name;
 	this->mesh = mesh;
 	this->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
@@ -208,7 +212,7 @@ Instance::Instance(std::string instance_name, Mesh* mesh, Mat TRANSLATION_MATRIX
 	this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 	this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 	this->show = show;
-	this->instance_id = total_instances;
+	this->instance_id = total_ever_instances;
 
 
 
@@ -216,10 +220,10 @@ Instance::Instance(std::string instance_name, Mesh* mesh, Mat TRANSLATION_MATRIX
 
 
 
-	total_instances++;
+	
 }
 
-Instance::Instance(std::string instance_name, Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
+Instance::Instance(std::string instance_name, Mesh* mesh, double tx, double ty, double tz, Orientation rotation_orientation, const Quaternion& orientation, double sx, double sy, double sz, bool show, uint32_t& total_ever_instances) {
 	this->orientation = orientation;
 	this->instance_name = instance_name;
 	this->mesh = mesh;
@@ -229,7 +233,10 @@ Instance::Instance(std::string instance_name, Mesh* mesh, double tx, double ty, 
 	this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 	this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 	this->show = show;
-	this->instance_id = total_instances;
+
+	total_ever_instances++;
+
+	this->instance_id = total_ever_instances;
 
 	this->tx = tx;
 	this->ty = ty;
@@ -240,11 +247,9 @@ Instance::Instance(std::string instance_name, Mesh* mesh, double tx, double ty, 
 	this->sx = sx;
 	this->sy = sy;
 	this->sz = sz;
-
-	total_instances++;
 }
 
-Instance::Instance(std::string instance_name, Orientation rotation_orientation, Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_instances) {
+Instance::Instance(std::string instance_name, Orientation rotation_orientation, Mesh* mesh, double tx, double ty, double tz, double yaw, double pitch, double roll, double sx, double sy, double sz, bool show, uint32_t& total_ever_instances) {
 	Mat default_world_right = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
 	Mat default_world_up = Mat({ {0}, {1}, {0}, {0} }, 4, 1);
 	Mat default_world_forward = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
@@ -264,7 +269,10 @@ Instance::Instance(std::string instance_name, Orientation rotation_orientation, 
 	this->SCALING_MATRIX = Mat::scale_matrix(sx, sy, sz);
 	this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 	this->show = show;
-	this->instance_id = total_instances;
+
+	total_ever_instances++;
+
+	this->instance_id = total_ever_instances;
 
 	this->tx = tx;
 	this->ty = ty;
@@ -274,10 +282,10 @@ Instance::Instance(std::string instance_name, Orientation rotation_orientation, 
 	this->sy = sy;
 	this->sz = sz;
 
-	total_instances++;
+	
 }
 
-Instance::Instance(std::string instance_name, Orientation rotation_orientation, Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, bool show, uint32_t& total_instances) {
+Instance::Instance(std::string instance_name, Orientation rotation_orientation, Mesh* mesh, Mat TRANSLATION_MATRIX, Mat ROTATION_MATRIX, Mat SCALING_MATRIX, bool show, uint32_t& total_ever_instances) {
 	this->instance_name = instance_name;
 	this->mesh = mesh;
 	this->TRANSLATION_MATRIX = TRANSLATION_MATRIX;
@@ -285,7 +293,9 @@ Instance::Instance(std::string instance_name, Orientation rotation_orientation, 
 	this->SCALING_MATRIX = SCALING_MATRIX;
 	this->MODEL_TO_WORLD = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX;
 	this->show = show;
-	this->instance_id = total_instances;
+
+	total_ever_instances++;
+	this->instance_id = total_ever_instances;
 
 	double tx = TRANSLATION_MATRIX.get(1, 4);
 	double ty = TRANSLATION_MATRIX.get(2, 4);
@@ -319,17 +329,19 @@ Instance::Instance(std::string instance_name, Orientation rotation_orientation, 
 	this->sy = sy;
 	this->sz = sz;
 
-	total_instances++;
+	
 }
 
-Instance::Instance(std::string instance_name, Mesh* mesh, Mat MODEL_TO_WORLD, bool show, uint32_t& total_instances) {
+Instance::Instance(std::string instance_name, Mesh* mesh, Mat MODEL_TO_WORLD, bool show, uint32_t& total_ever_instances) {
 	this->instance_name = instance_name;
 	this->mesh = mesh;
 	this->MODEL_TO_WORLD = MODEL_TO_WORLD;
 	this->show = show;
-	this->instance_id = total_instances;
 
-	total_instances++;
+	total_ever_instances++;
+	this->instance_id = total_ever_instances;
+
+	
 }
 
 Mat Instance::GetCenterVertex() const {

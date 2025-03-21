@@ -1,5 +1,4 @@
 #include "Quaternion.h"
-#include <SDL_stdinc.h>
 
 Quaternion::Quaternion() {
 	this->x = 0;
@@ -235,4 +234,31 @@ Quaternion Quaternion::operator*(const Quaternion& other) {
 	result.w = (this->w * other.w) - (this->x * other.x) - (this->y * other.y) - (this->z * other.z);
 
 	return result;
+}
+
+void Quaternion::GetRoll(Orientation orientation, const Mat& direction, const Mat& up, double& yaw, const double& pitch, double& roll) {
+	if (orientation == Orientation::local) {
+		if (abs(direction.get(2, 1)) > 0.9999999) {
+			// In gimbal lock - collapse roll into yaw
+			roll = 0.0;
+		}
+		else {
+			// Normal case - extract roll from up vector
+			roll = -atan2(up.get(1, 1) * cos(yaw) - up.get(3, 1) * sin(yaw), up.get(2, 1) / cos(pitch));
+		}
+
+
+		//roll = -atan2(new_vector.get(1, 1) * cos(yaw) - new_vector.get(3, 1) * sin(yaw), new_vector.get(2, 1) / cos(pitch));
+	}
+
+	if (orientation == Orientation::world) {
+		if (abs(direction.get(2, 1)) > 0.9999999) {
+			// In gimbal lock - collapse roll into yaw
+			roll = 0.0;
+		}
+		else {
+			// Normal case - extract roll from up vector
+			roll = -atan2(up.get(1, 1) * cos(yaw) - up.get(3, 1) * sin(yaw), up.get(2, 1) / cos(pitch));
+		}
+	}
 }

@@ -24,4 +24,6 @@ namespace Utils {
 	static double clamp(double value, double min, double max) {
 		return fmax(min, fmin(max, value));
 	}
+
+
 }

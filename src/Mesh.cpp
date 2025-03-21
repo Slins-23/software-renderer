@@ -1,6 +1,6 @@
 #include "Mesh.h"
 
-Mesh::Mesh(uint32_t& total_meshes) {
+Mesh::Mesh() {
 	// "Cube" dimensions
 	double width = 0.30;
 	double height = 0.30;
@@ -55,11 +55,10 @@ Mesh::Mesh(uint32_t& total_meshes) {
 	faces_indices.push_back(std::vector<uint32_t>({ 24, 23, 22, 21 }));
 
 	this->mesh_filename = "cube.obj";
-	this->mesh_id = total_meshes;
-	total_meshes++;
+	this->mesh_id = 99699;
 }
 
-Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_meshes) {
+Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_ever_meshes) {
 	this->mesh_filename = std::string(mesh_filename);
 
 	std::ifstream file(model_path);
@@ -259,8 +258,8 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_me
 			}
 		}
 
-		this->mesh_id = total_meshes;
-		total_meshes++;
+		total_ever_meshes++;
+		this->mesh_id = total_ever_meshes;
 	}
 	else {
 		printf("Error: Could not open mesh file to load model '%s' at path '%s'.", mesh_filename, model_path);

@@ -1,6 +1,12 @@
+#pragma once
 #include "Matrix.h"
 #include "Utils.h"
-#pragma once
+
+enum RotationType {
+	RotationType_Euler,
+	RotationType_Quaternion,
+	RotationType_Direction
+};
 
 enum Orientation {
 	world,
@@ -55,4 +61,7 @@ struct Quaternion {
 	Quaternion operator-(const Quaternion& other);
 
 	Quaternion operator*(const Quaternion& other);
+
+	// Currently assumes a right-handed coordinate system where the default direction vector is (0, 0, 1) and the default up vector is (0, 1, 0)
+	static void GetRoll(Orientation orientation, const Mat& direction, const Mat& up, double& yaw, const double& pitch, double& roll);
 };

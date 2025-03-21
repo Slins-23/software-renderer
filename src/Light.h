@@ -1,18 +1,26 @@
+#pragma once
 #include "Quaternion.h"
 #include "Mesh.h"
 #include "Instance.h"
-#pragma once
+
 
 enum LightType {
-	point,
 	directional,
+	point,
 	spotlight
+};
+
+enum ShadingType {
+	Flat,
+	Gouraud,
+	Phong
 };
 
 struct Light {
 	Light() {};
 
-	LightType type = LightType::directional;
+	LightType lighting_type = LightType::directional;
+	ShadingType shading_type = ShadingType::Flat;
 
 	Mat default_direction = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
 	Mat	default_up = Mat({ {0}, {1}, {0}, {0} }, 4, 1);

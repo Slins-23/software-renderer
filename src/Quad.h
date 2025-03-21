@@ -1,6 +1,6 @@
+#pragma once
 #include "Matrix.h"
 #include "Triangle.h"
-#pragma once
 
 // Represented as 2 triangles (as is, wastes 2 vertices (duplicate) and draws 1 extra line (also duplicate))
 struct Quad {

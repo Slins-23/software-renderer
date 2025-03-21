@@ -1,8 +1,8 @@
+#pragma once
 #include "Matrix.h"
 #include <vector>
 #include <fstream>
 #include <strstream>
-#pragma once
 
 struct Mesh {
 	//Mat origin = Mat({ {(x_min + x_max) / 2}, {(y_min + y_max) / 2}, {(z_min + z_max) / 2} }, 3, 1);
@@ -27,11 +27,12 @@ struct Mesh {
 	uint32_t total_faces() const;
 	uint32_t total_normals() const;
 
-	Mesh() {};
-
 	// Defines a cube mesh
-	Mesh(uint32_t& total_meshes);
+	Mesh();
+
+	// Initializes a default mesh
+	Mesh(uint32_t& total_ever_meshes) { total_ever_meshes++; this->mesh_id = total_ever_meshes; };
 
 	// Loads from a .OBJ file
-	Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_meshes);
+	Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_ever_meshes);
 };

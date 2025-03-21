@@ -5,15 +5,114 @@
 #define M_PI 3.14159265358979323846264338327950288
 #endif
 
-Scene::Scene() {
+// Default scene
+Scene::Scene(const char* models_folder, Orientation rotation_orientation, bool verbose) {
+	this->scene_meshes.clear();
+	this->scene_instances.clear();
 
+	this->total_ever_meshes = 0;
+	this->total_meshes = 0;
+	this->total_ever_instances = 0;
+	this->total_instances = 0;
+	this->total_triangles = 0;
+	this->total_vertices = 0;
+
+	this->rendered_meshes = 0;
+	this->rendered_instances = 0;
+	this->rendered_triangles = 0;
+	this->rendered_vertices = 0;
+
+	this->scene_filepath = "None";
+	this->scene_data = nlohmann::ordered_json();
+
+	char light_model_path[255];
+	char cube_model_path[255];
+	std::string light_mesh_name = "arrow.obj";
+	std::string cube_mesh_name = "cube.obj";
+	sprintf_s(light_model_path, 255, "%s%s", models_folder, light_mesh_name.c_str());
+	sprintf_s(cube_model_path, 255, "%s%s", models_folder, cube_mesh_name.c_str());
+
+	Mesh light_mesh = Mesh(light_model_path, light_mesh_name.c_str(), this->total_ever_meshes);
+	this->total_instances++;
+	this->scene_meshes.push_back(std::move(light_mesh));
+
+	this->light_source = Light();
+
+	this->light_source.lighting_type = LightType::directional;
+	this->light_source.shading_type = ShadingType::Flat;
+	this->light_source.mesh = &this->scene_meshes[0];
+	this->light_source.tx = 0;
+	this->light_source.ty = 0;
+	this->light_source.tz = 0.5;
+	this->light_source.yaw = 0;
+	this->light_source.pitch = 0;
+	this->light_source.roll = 0;
+	this->light_source.has_model = true;
+
+	Instance light_instance = Instance("light_source", rotation_orientation, &this->scene_meshes[0], this->light_source.tx, this->light_source.ty, this->light_source.tz, this->light_source.yaw, this->light_source.pitch, this->light_source.roll, 1, 1, 1, true, this->total_ever_instances);
+
+	light_instance.is_light_source = true;
+	this->light_source.instance = &light_instance;
+	this->light_source.orientation = this->light_source.instance->orientation;
+
+	// Assumes rotation relative to world space coordinate system
+	Quaternion::RotatePoint(this->light_source.orientation, this->light_source.direction, false);
+	Quaternion::RotatePoint(this->light_source.orientation, this->light_source.up, false);
+
+	this->scene_instances.push_back(std::move(light_instance));
+	this->total_instances++;
+
+	Mesh cube_mesh = Mesh(cube_model_path, cube_mesh_name.c_str(), this->total_ever_meshes);
+	this->scene_meshes.push_back(std::move(cube_mesh));
+	this->total_meshes++;
+
+	Instance cube_instance = Instance(rotation_orientation, &this->scene_meshes[1], 0, 0, 1, 0, 0, 0, 1, 1, 1, true, this->total_ever_instances);
+
+	this->scene_instances.push_back(std::move(cube_instance));
+	this->total_instances++;
+
+	// Load transform axes mesh
+	char axes_model_path[255];
+	std::string axes_mesh_name = "axes.obj";
+	sprintf_s(axes_model_path, 255, "%s%s", models_folder, axes_mesh_name.c_str());
+
+	this->axes_mesh = Mesh(axes_model_path, axes_mesh_name.c_str(), this->total_ever_meshes);
+
+	this->camera.VIEW_MATRIX = Camera::LookAt(this->camera.position, this->camera.direction, this->camera.up);
+	this->camera.update_view_inverse();
+
+	if (verbose) {
+		std::cout << "Light dir: " << std::endl;
+		this->light_source.direction.print();
+		std::cout << "Light up: " << std::endl;
+		this->light_source.up.print();
+
+		std::cout << "Light yaw: " << this->light_source.yaw << std::endl;
+		std::cout << "Light pitch: " << this->light_source.pitch << std::endl;
+		std::cout << "Light roll: " << this->light_source.roll << std::endl;
+
+		std::cout << "Camera position: " << std::endl;
+		this->camera.position.print();
+
+		std::cout << "Yaw: " << this->camera.yaw << std::endl;
+		std::cout << "Pitch: " << this->camera.pitch << std::endl;
+		std::cout << "Roll: " << this->camera.roll << std::endl;
+
+		std::cout << "Camera direction: " << std::endl;
+		this->camera.direction.print();
+
+		std::cout << "Camera up: ";
+		this->camera.up.print();
+		std::cout << std::endl;
+
+		std::cout << "View matrix: " << std::endl;
+		this->camera.VIEW_MATRIX.print();
+	}
+
+	return;
 }
 
-Scene::Scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_translation, Mat& default_camera_direction, Mat& new_camera_direction, Mat& default_camera_up, Mat& new_camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, bool& rotation_given, bool& direction_given, bool& up_given, Light& light_source, bool& light_rotation_given, bool& light_direction_given, bool& light_up_given, bool use_scene_camera_settings, Orientation rotation_orientation) {
-	this->load_scene(scenes_folder, scene_filename, models_folder, verbose, default_camera_position, camera_translation, default_camera_direction, new_camera_direction, default_camera_up, new_camera_up, camera_yaw, camera_pitch, camera_roll, rotation_given, direction_given, up_given, light_source, light_rotation_given, light_direction_given, light_up_given, use_scene_camera_settings, rotation_orientation);
-}
-
-void Scene::load_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, Mat& default_camera_position, Mat& camera_translation, Mat& default_camera_direction, Mat& new_camera_direction, Mat& default_camera_up, Mat& new_camera_up, double& camera_yaw, double& camera_pitch, double& camera_roll, bool& rotation_given, bool& direction_given, bool& up_given, Light& light_source, bool& light_rotation_given, bool& light_direction_given, bool& light_up_given, bool use_scene_camera_settings, Orientation rotation_orientation) {
+Scene::Scene(const char* scene_folder, const char* scene_filename, const char* models_folder, Orientation rotation_orientation, bool update_camera_settings, bool verbose) {
 	this->scene_meshes.clear();
 	this->scene_instances.clear();
 
@@ -28,75 +127,39 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 	this->rendered_vertices = 0;
 
 	char scene_filepath[255];
-	sprintf_s(scene_filepath, 255, "%s%s", scenes_folder, scene_filename);
+	sprintf_s(scene_filepath, 255, "%s%s", scene_folder, scene_filename);
 	std::ifstream file = std::ifstream(scene_filepath);
 
+	// Loads default cube scene if could not load the given file
 	if (file.fail()) {
 		printf("Error: Could not open scene file '%s' at path '%s'.\n", scene_filename, scene_filepath);
-		printf("Defaulting to the default cube scene.\n");
-
-		this->scene_filepath = "None";
-		this->scene_data = nlohmann::ordered_json();
-
-		char light_model_path[255];
-		char cube_model_path[255];
-		std::string light_mesh_name = "arrow.obj";
-		std::string cube_mesh_name = "cube.obj";
-		sprintf_s(light_model_path, 255, "%s%s", models_folder, light_mesh_name.c_str());
-		sprintf_s(cube_model_path, 255, "%s%s", models_folder, cube_mesh_name.c_str());
-
-		Mesh light_mesh = Mesh(light_model_path, light_mesh_name.c_str(), this->total_meshes);
-		this->scene_meshes.push_back(std::move(light_mesh));
-
-		light_source = Light();
-		
-		light_source.type = LightType::directional;
-		light_source.mesh = light_source.instance->mesh;
-		light_source.tx = 0;
-		light_source.ty = 0;
-		light_source.tz = 0.5;
-		light_source.yaw = 0;
-		light_source.pitch = 0;
-		light_source.roll = 0;
-		light_source.has_model = true;
-
-		Instance light_instance = Instance("light_source", rotation_orientation, &this->scene_meshes[0], light_source.tx, light_source.ty, light_source.tz, light_source.yaw, light_source.pitch, light_source.roll, 1, 1, 1, true, this->total_instances);
-		light_instance.is_light_source = true;
-		light_source.instance = std::move(&light_instance);
-		light_source.instance->is_light_source = true;
-		light_source.orientation = light_source.instance->orientation;
-
-
-		// Assumes rotation relative to world space coordinate system
-		Quaternion::RotatePoint(light_source.orientation, light_source.direction, false);
-		Quaternion::RotatePoint(light_source.orientation, light_source.up, false);
-
-		this->scene_instances.push_back(std::move(light_instance));
-
-		Mesh cube_mesh = Mesh(cube_model_path, cube_mesh_name.c_str(), this->total_meshes);
-		this->scene_meshes.push_back(std::move(cube_mesh));
-
-		Instance cube_instance = Instance(rotation_orientation, &this->scene_meshes[0], 0, 0, 1, 0, 0, 0, 1, 1, 1, true, this->total_instances);
-		this->scene_instances.push_back(std::move(cube_instance));
-
+		printf("Defaulting to the cube scene.\n");
+		*this = Scene(models_folder, rotation_orientation, verbose);
 		return;
-
 		//throw std::runtime_error("Error: Could not load scene.");
 	}
 
 	this->scene_filepath = scene_filepath;
 	this->scene_data = nlohmann::ordered_json::parse(file);
 
+	bool rotation_given = false;
+	bool direction_given = false;
+	bool up_given = false;
+
 	// Then translates the camera
-	if (use_scene_camera_settings && this->scene_data.contains("camera")) {
+	if (update_camera_settings && this->scene_data.contains("camera")) {
 		if (this->scene_data["camera"].contains("default_position")) {
 			double x = this->scene_data["camera"]["default_position"]["x"].get<double>();
 			double y = this->scene_data["camera"]["default_position"]["y"].get<double>();
 			double z = this->scene_data["camera"]["default_position"]["z"].get<double>();
 
-			default_camera_position.set(x, 1, 1);
-			default_camera_position.set(y, 2, 1);
-			default_camera_position.set(z, 3, 1);
+			this->camera.default_position = Mat(
+				{ 
+					{x},
+					{y},
+					{z},
+					{1}
+				}, 4, 1);
 		}
 
 		// Loads scene camera parameters (position, direction, and orientation)
@@ -105,29 +168,31 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double ty = this->scene_data["camera"]["translation"]["y"].get<double>();
 			double tz = this->scene_data["camera"]["translation"]["z"].get<double>();
 
-			camera_translation.set(tx, 1, 1);
-			camera_translation.set(ty, 2, 1);
-			camera_translation.set(tz, 3, 1);
+			this->camera.position = Mat(
+				{ 
+					{this->camera.default_position.get(1, 1) + tx},
+					{this->camera.default_position.get(2, 1) + ty},
+					{this->camera.default_position.get(3, 1) + tz},
+					{1}
+				}, 4, 1);
 		}
 	}
 
-	// The default vectors here represent the world coordinate system, not the camera/view space. The light source does not depend on the camera at all. Ideally I should implement separate variables for these within the Engine class, but I haven't had the time yet.
-	// These are used in order to rotate in world space.
-	Mat default_world_up = Mat({ {0}, {1}, {0}, {0}}, 4, 1);
-	Mat default_world_right = Mat({ {1}, {0}, {0}, {0}}, 4, 1);
-	Mat default_world_forward = Mat({ {0}, {0}, {1}, {0}}, 4, 1);
-
 	// Then rotates the camera
-	if (use_scene_camera_settings) {
+	if (update_camera_settings) {
 
 		if (this->scene_data["camera"].contains("default_direction")) {
 			double default_x = this->scene_data["camera"]["default_direction"]["x"].get<double>();
 			double default_y = this->scene_data["camera"]["default_direction"]["y"].get<double>();
 			double default_z = this->scene_data["camera"]["default_direction"]["z"].get<double>();
 
-			default_camera_direction.set(default_x, 1, 1);
-			default_camera_direction.set(default_y, 2, 1);
-			default_camera_direction.set(default_z, 3, 1);
+			this->camera.default_direction = Mat(
+				{
+					{default_x},
+					{default_y},
+					{default_z},
+					{0}
+				}, 4, 1);
 		}
 
 		if (this->scene_data["camera"].contains("default_up")) {
@@ -135,9 +200,13 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double default_y = this->scene_data["camera"]["default_up"]["y"].get<double>();
 			double default_z = this->scene_data["camera"]["default_up"]["z"].get<double>();
 
-			default_camera_up.set(default_x, 1, 1);
-			default_camera_up.set(default_y, 2, 1);
-			default_camera_up.set(default_z, 3, 1);
+			this->camera.default_up = Mat(
+				{
+					{default_x},
+					{default_y},
+					{default_z},
+					{0}
+				}, 4, 1);
 		}
 
 		if (this->scene_data["camera"].contains("rotation")) {
@@ -146,15 +215,15 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			// Should be described in degrees
 
 			if (this->scene_data["camera"]["rotation"].contains("y")) {
-				camera_yaw = this->scene_data["camera"]["rotation"]["y"].get<double>() * (M_PI / 180);
+				this->camera.yaw = this->scene_data["camera"]["rotation"]["y"].get<double>() * (M_PI / 180);
 			}
 
 			if (this->scene_data["camera"]["rotation"].contains("x")) {
-				camera_pitch = this->scene_data["camera"]["rotation"]["x"].get<double>() * (M_PI / 180);
+				this->camera.pitch = this->scene_data["camera"]["rotation"]["x"].get<double>() * (M_PI / 180);
 			}
 
 			if (this->scene_data["camera"]["rotation"].contains("z")) {
-				camera_roll = this->scene_data["camera"]["rotation"]["z"].get<double>() * (M_PI / 180);
+				this->camera.roll = this->scene_data["camera"]["rotation"]["z"].get<double>() * (M_PI / 180);
 			}
 		}
 
@@ -166,9 +235,13 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double y = this->scene_data["camera"]["direction"]["y"].get<double>();
 			double z = this->scene_data["camera"]["direction"]["z"].get<double>();
 
-			new_camera_direction.set(x, 1, 1);
-			new_camera_direction.set(y, 2, 1);
-			new_camera_direction.set(z, 3, 1);
+			this->camera.direction = Mat(
+				{
+					{x},
+					{y},
+					{z},
+					{0}
+				}, 4, 1);
 		}
 
 		if (this->scene_data["camera"].contains("up")) {
@@ -178,47 +251,61 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double y = this->scene_data["camera"]["up"]["y"].get<double>();
 			double z = this->scene_data["camera"]["up"]["z"].get<double>();
 
-			new_camera_up.set(x, 1, 1);
-			new_camera_up.set(y, 2, 1);
-			new_camera_up.set(z, 3, 1);
+			this->camera.up = Mat(
+				{
+					{x},
+					{y},
+					{z},
+					{0}
+				}, 4, 1);
 		}
 	}
 
+	bool light_given = false;
+	bool light_rotation_given = false;
+	bool light_direction_given = false;
+	bool light_up_given = false;
+
 	if (this->scene_data.contains("light")) {
+		light_given = true;
+
 		if (this->scene_data["light"].contains("model")) {
-			light_source.has_model = true;
+			this->light_source.has_model = true;
 			char model_path[255];
 			std::string light_mesh_name = this->scene_data["light"]["model"].get<std::string>();
 			sprintf_s(model_path, 255, "%s%s", models_folder, light_mesh_name.c_str());
 
-			Mesh light_mesh = Mesh(model_path, light_mesh_name.c_str(), this->total_meshes);
+			Mesh light_mesh = Mesh(model_path, light_mesh_name.c_str(), this->total_ever_meshes);
 
 			this->scene_meshes.push_back(std::move(light_mesh));
+			this->total_meshes++;
 
-			Instance light_instance = Instance("light_source", rotation_orientation, &this->scene_meshes[0], 0, 0, 0.5, 0, 0, 0, 1, 1, 1, true, this->total_instances);
+			Instance light_instance = Instance("light_source", rotation_orientation, &this->scene_meshes[0], 0, 0, 0.5, 0, 0, 0, 1, 1, 1, true, this->total_ever_instances);
+
+			this->total_instances++;
 			light_instance.is_light_source = true;
 			
 			this->scene_instances.push_back(std::move(light_instance));
 
-			light_source.mesh = &this->scene_meshes[0];
-			light_source.instance = &this->scene_instances[0];
-			light_source.tz = light_source.instance->tz;
+			this->light_source.mesh = &this->scene_meshes[0];
+			this->light_source.instance = &this->scene_instances[0];
+			this->light_source.tz = this->light_source.instance->tz;
 		}
 
 		if (this->scene_data["light"].contains("type")) {
 			std::string light_type = this->scene_data["light"]["type"].get<std::string>();
 
 			if (light_type == "point") {
-				light_source.type = LightType::point;
+				this->light_source.lighting_type = LightType::point;
 			}
 			else if (light_type == "directional") {
-				light_source.type = LightType::directional;
+				this->light_source.lighting_type = LightType::directional;
 			}
 			else if (light_type == "spotlight") {
-				light_source.type = LightType::spotlight;
+				this->light_source.lighting_type = LightType::spotlight;
 			}
 			else {
-				std::cout << "Invalid light source type: '" << light_source.type << "', must be 'point', 'directional', or 'spotlight'." << std::endl;
+				std::cout << "Invalid light source type: '" << this->light_source.lighting_type << "', must be 'point', 'directional', or 'spotlight'." << std::endl;
 				throw std::runtime_error("Invalid light source type.");
 				exit(-1);
 			}
@@ -231,19 +318,19 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			uint8_t blue = this->scene_data["light"]["color"]["b"].get<uint8_t>();
 
 			uint32_t light_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
-			light_source.color = light_color;
+			this->light_source.color = light_color;
 		}
 
 		if (this->scene_data["light"].contains("enabled")) {
-			light_source.enabled = this->scene_data["light"]["enabled"].get<bool>();
+			this->light_source.enabled = this->scene_data["light"]["enabled"].get<bool>();
 		}
 
 		if (this->scene_data["light"].contains("intensity")) {
-			light_source.intensity = this->scene_data["light"]["intensity"].get<double>();
+			this->light_source.intensity = this->scene_data["light"]["intensity"].get<double>();
 		}
 
 		if (this->scene_data["light"].contains("minimum_exposure")) {
-			light_source.minimum_exposure = this->scene_data["light"]["minimum_exposure"].get<double>();
+			this->light_source.minimum_exposure = this->scene_data["light"]["minimum_exposure"].get<double>();
 		}
 
 		if (this->scene_data["light"].contains("position")) {
@@ -251,20 +338,20 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double ty = this->scene_data["light"]["position"]["y"].get<double>();
 			double tz = this->scene_data["light"]["position"]["z"].get<double>();
 
-			light_source.tx = tx;
-			light_source.ty = ty;
-			light_source.tz = tz;
+			this->light_source.tx = tx;
+			this->light_source.ty = ty;
+			this->light_source.tz = tz;
 
 			Mat position_vector = Mat({ {tx}, {ty}, {tz}, {1} }, 4, 1);
 
-			light_source.position = position_vector;
+			this->light_source.position = position_vector;
 
-			if (light_source.has_model) {
-				light_source.instance->tx = tx;
-				light_source.instance->ty = ty;
-				light_source.instance->tz = tz;
-				light_source.instance->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
-				light_source.instance->MODEL_TO_WORLD = light_source.instance->TRANSLATION_MATRIX * light_source.instance->ROTATION_MATRIX * light_source.instance->SCALING_MATRIX;
+			if (this->light_source.has_model) {
+				this->light_source.instance->tx = tx;
+				this->light_source.instance->ty = ty;
+				this->light_source.instance->tz = tz;
+				this->light_source.instance->TRANSLATION_MATRIX = Mat::translation_matrix(tx, ty, tz);
+				this->light_source.instance->MODEL_TO_WORLD = this->light_source.instance->TRANSLATION_MATRIX * this->light_source.instance->ROTATION_MATRIX * this->light_source.instance->SCALING_MATRIX;
 			}
 		}
 
@@ -280,15 +367,15 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			// Should be described in degrees
 
 			if (this->scene_data["light"]["rotation"].contains("y")) {
-				light_source.yaw = this->scene_data["light"]["rotation"]["y"].get<double>() * (M_PI / 180);
+				this->light_source.yaw = this->scene_data["light"]["rotation"]["y"].get<double>() * (M_PI / 180);
 			}
 
 			if (this->scene_data["light"]["rotation"].contains("x")) {
-				light_source.pitch = this->scene_data["light"]["rotation"]["x"].get<double>() * (M_PI / 180);
+				this->light_source.pitch = this->scene_data["light"]["rotation"]["x"].get<double>() * (M_PI / 180);
 			}
 
 			if (this->scene_data["light"]["rotation"].contains("z")) {
-				light_source.roll = this->scene_data["light"]["rotation"]["z"].get<double>() * (M_PI / 180);
+				this->light_source.roll = this->scene_data["light"]["rotation"]["z"].get<double>() * (M_PI / 180);
 			}
 		}
 
@@ -299,9 +386,10 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double y = this->scene_data["light"]["direction"]["y"].get<double>();
 			double z = this->scene_data["light"]["direction"]["z"].get<double>();
 
-			light_source.direction.set(x, 1, 1);
-			light_source.direction.set(y, 2, 1);
-			light_source.direction.set(z, 3, 1);
+			this->light_source.direction.set(x, 1, 1);
+			this->light_source.direction.set(y, 2, 1);
+			this->light_source.direction.set(z, 3, 1);
+			this->light_source.direction.set(0, 4, 1);
 		}
 
 		if (this->scene_data["light"].contains("up")) {
@@ -311,18 +399,131 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 			double y = this->scene_data["light"]["up"]["y"].get<double>();
 			double z = this->scene_data["light"]["up"]["z"].get<double>();
 
-			light_source.up.set(x, 1, 1);
-			light_source.up.set(y, 2, 1);
-			light_source.up.set(z, 3, 1);
+			this->light_source.up.set(x, 1, 1);
+			this->light_source.up.set(y, 2, 1);
+			this->light_source.up.set(z, 3, 1);
+			this->light_source.up.set(0, 4, 1);
 		}
 	}
+
+	if (!light_given) {
+		this->light_source = Light();
+		this->light_source.enabled = false;
+
+		if (this->light_source.has_model) {
+			this->light_source.instance->show = false;
+		}
+	}
+
+	// Updates camera position
+	this->camera.default_right = Mat::CrossProduct3D(this->camera.default_up, this->camera.default_direction);
+
+	Mat camera_right = this->camera.default_right;
+
+	if (direction_given || up_given) {
+		camera_right = Mat::CrossProduct3D(this->camera.up, this->camera.direction);
+	}
+
+	// If no rotation parameters were given, derive them from the direction vector
+	if (direction_given && !rotation_given) {
+		// Gets yaw and pitch representing the rotation from the default camera direction to the new camera direction
+		Quaternion::GetAnglesFromDirection(Orientation::local, this->camera.default_direction, this->camera.direction, this->camera.yaw, this->camera.pitch, this->camera.roll);
+	}
+
+	if (up_given && !rotation_given) {
+		// Gets roll representing the rotation from the default camera up to the camera up
+		// Assumes default direction of (0, 0, 1)
+		Quaternion::GetRoll(Orientation::local, this->camera.direction, this->camera.up, this->camera.yaw, this->camera.pitch, this->camera.roll);
+	}
+
+	this->camera.orientation = Quaternion::FromYawPitchRoll(Orientation::local, this->camera.yaw, this->camera.pitch, this->camera.roll, default_world_right, default_world_up, default_world_forward);
+
+	// If direction was not given, but rotation was - rotates the default camera direction vectors by the rotation parameters
+	if ((!direction_given || !up_given) && rotation_given) {
+		this->camera.direction = this->camera.default_direction;
+		this->camera.up = this->camera.default_up;
+
+		Quaternion::RotatePoint(this->camera.orientation, this->camera.direction, false);
+		Quaternion::RotatePoint(this->camera.orientation, this->camera.up, false);
+
+		camera_right = Mat::CrossProduct3D(this->camera.up, this->camera.direction);
+		/*
+		this->camera.direction = Quaternion::RotatePoint(this->camera.direction, this->camera.up, this->camera.yaw, false);
+		camera_right = Quaternion::RotatePoint(camera_right, this->camera.up, this->camera.yaw, false);
+		this->camera.direction = Quaternion::RotatePoint(this->camera.direction, camera_right, this->camera.pitch, false);
+		this->camera.up = Quaternion::RotatePoint(this->camera.up, camera_right, this->camera.pitch, false);
+		this->camera.up = Quaternion::RotatePoint(this->camera.up, this->camera.direction, this->camera.roll, false);
+		*/
+	}
+
+	std::cout << "R0: " << this->light_source.roll << std::endl;
+
+	if (light_direction_given && !light_rotation_given) {
+		Quaternion::GetAnglesFromDirection(rotation_orientation, this->light_source.default_direction, this->light_source.direction, this->light_source.yaw, this->light_source.pitch, this->light_source.roll);
+	}
+
+	/*
+	std::cout << "Light source yaw: " << light_source.yaw << std::endl;
+	std::cout << "Light source pitch: " << light_source.pitch << std::endl;
+	std::cout << "Light source roll: " << light_source.roll << std::endl;
+
+	printf("\n");
+	*/
+
+	std::cout << "Roll before GETROLL: " << this->light_source.roll << std::endl;
+
+
+	if (light_up_given && !light_rotation_given) {
+		// Gets roll representing the rotation from the default camera up to the camera up
+		// Assumes default direction of (0, 0, 1)
+		Quaternion::GetRoll(rotation_orientation, this->light_source.direction, this->light_source.up, this->light_source.yaw, this->light_source.pitch, this->light_source.roll);
+	}
+
+	std::cout << "Roll after GETROLL: " << this->light_source.roll << std::endl;
+
+	/*
+	std::cout << "Light source yaw: " << light_source.yaw << std::endl;
+	std::cout << "Light source pitch: " << light_source.pitch << std::endl;
+	std::cout << "Light source roll: " << light_source.roll << std::endl;
+
+	exit(-1);
+	*/
+
+	//this->camera.orientation.GetAngles(this->camera.yaw, this->camera.pitch, this->camera.roll);
+
+
+
+	this->light_source.orientation = Quaternion::FromYawPitchRoll(rotation_orientation, this->light_source.yaw, this->light_source.pitch, this->light_source.roll, default_world_right, default_world_up, default_world_forward);
+
+	if ((!light_direction_given || !light_up_given) && light_rotation_given) {
+		this->light_source.direction = this->light_source.default_direction;
+		this->light_source.up = this->light_source.default_up;
+
+		Quaternion::RotatePoint(this->light_source.orientation, this->light_source.direction, false);
+		Quaternion::RotatePoint(this->light_source.orientation, this->light_source.up, false);
+	}
+
+	//light_source.orientation.GetAngles(light_source.yaw, light_source.pitch, light_source.roll);
+
+	if (this->light_source.has_model) {
+		this->light_source.instance->yaw = this->light_source.yaw;
+		this->light_source.instance->pitch = this->light_source.pitch;
+		this->light_source.instance->roll = this->light_source.roll;
+		this->light_source.instance->orientation = this->light_source.orientation;
+		this->light_source.instance->ROTATION_MATRIX = this->light_source.instance->orientation.get_rotationmatrix();
+		this->light_source.instance->MODEL_TO_WORLD = this->light_source.instance->TRANSLATION_MATRIX * this->light_source.instance->ROTATION_MATRIX * this->light_source.instance->SCALING_MATRIX;
+	}
+
+	this->camera.VIEW_MATRIX = Camera::LookAt(this->camera.position, this->camera.direction, this->camera.up);
+	this->camera.update_view_inverse();
 
 	// Loads meshes and instances into the scene
 	for (auto model = this->scene_data["models"].begin(); model != this->scene_data["models"].end(); model++) {
 		const char* model_filename = model.key().c_str();
 		char model_path[255];
 		sprintf_s(model_path, 255, "%s%s", models_folder, model_filename);
-		Mesh current_model = Mesh(model_path, model_filename, this->total_meshes);
+		Mesh current_model = Mesh(model_path, model_filename, this->total_ever_meshes);
+		this->total_meshes++;
 
 		this->scene_meshes.push_back(std::move(current_model));
 
@@ -379,7 +580,7 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 				pitch = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["x"].get<double>() * (M_PI / 180);
 				roll = this->scene_data["models"][model_filename]["instances"][instance_name]["rotation"]["z"].get<double>() * (M_PI / 180);
 
-				orientation = Quaternion::FromYawPitchRoll(rotation_orientation, yaw, pitch, roll, default_world_right, default_world_up, default_world_forward);
+				orientation = Quaternion::FromYawPitchRoll(rotation_orientation, yaw, pitch, roll, this->default_world_right, this->default_world_up, this->default_world_forward);
 				rotation = orientation.get_rotationmatrix();
 			}
 
@@ -412,7 +613,7 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 				}
 			}
 			else {
-				MODEL_TO_WORLD = translation * scale * rotation;
+				MODEL_TO_WORLD = translation * rotation * scale;
 			}
 
 			bool show = true;
@@ -425,15 +626,16 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 
 			// Loads from model-to-world if it's the only available information
 			if (!has_translation && !has_scaling && !has_rotation && has_model_to_world) {
-				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], MODEL_TO_WORLD, show, this->total_instances);
+				mesh_instance = Instance(instance_name, &this->scene_meshes[this->total_meshes - 1], MODEL_TO_WORLD, show, this->total_ever_instances);
 			}
 
 			// Loads from parameters
 			else {
-				mesh_instance = Instance(instance_name, rotation_orientation, &this->scene_meshes[this->total_meshes - 1], translation_x, translation_y, translation_z, yaw, pitch, roll, scale_x, scale_y, scale_z, show, this->total_instances);
+				mesh_instance = Instance(instance_name, rotation_orientation, &this->scene_meshes[this->total_meshes - 1], translation_x, translation_y, translation_z, yaw, pitch, roll, scale_x, scale_y, scale_z, show, this->total_ever_instances);
 			}
 
 			this->scene_instances.push_back(std::move(mesh_instance));
+			this->total_instances++;
 
 			//std::cout << "Total instances: " << this->total_instances << " | Total meshes: " << this->total_meshes << std::endl;
 			//std::cout << "-----------------------" << std::endl;
@@ -442,91 +644,127 @@ void Scene::load_scene(const char* scenes_folder, const char* scene_filename, co
 		}
 
 	}
+
+	// Load transform axes mesh
+	char axes_model_path[255];
+	std::string axes_mesh_name = "axes.obj";
+	sprintf_s(axes_model_path, 255, "%s%s", models_folder, axes_mesh_name.c_str());
+
+
+	this->axes_mesh = Mesh(axes_model_path, axes_mesh_name.c_str(), this->total_ever_meshes);
+
+	// Logs camera/view information if enabled (might also include other scene relevant information such as number of meshes, instances, vertices, etc...)
+	if (verbose) {
+		std::cout << "Light dir: " << std::endl;
+		this->light_source.direction.print();
+		std::cout << "Light up: " << std::endl;
+		this->light_source.up.print();
+
+		std::cout << "Light yaw: " << this->light_source.yaw << std::endl;
+		std::cout << "Light pitch: " << this->light_source.pitch << std::endl;
+		std::cout << "Light roll: " << this->light_source.roll << std::endl;
+
+		std::cout << "Camera position: " << std::endl;
+		this->camera.position.print();
+
+		std::cout << "Yaw: " << this->camera.yaw << std::endl;
+		std::cout << "Pitch: " << this->camera.pitch << std::endl;
+		std::cout << "Roll: " << this->camera.roll << std::endl;
+
+		std::cout << "Camera direction: " << std::endl;
+		this->camera.direction.print();
+
+		std::cout << "Camera up: ";
+		this->camera.up.print();
+		std::cout << std::endl;
+
+		std::cout << "View matrix: " << std::endl;
+		this->camera.VIEW_MATRIX.print();
+	}
 }
 
 
-void Scene::save_scene(const char* scenes_folder, const char* scene_filename, const char* models_folder, bool verbose, const Mat& default_camera_position, const Mat& camera_position, const Mat& default_camera_direction, const Mat& camera_direction, const Mat& default_camera_up, const Mat& camera_up, double yaw, double pitch, double roll, const Light& light_source) {
+void Scene::save(const char* scene_folder, const char* scene_filename) const {
 	char scene_filepath[255];
-	sprintf_s(scene_filepath, 255, "%s%s", scenes_folder, scene_filename);
+	sprintf_s(scene_filepath, 255, "%s%s", scene_folder, scene_filename);
 	nlohmann::ordered_json json_object;
 
 	json_object["scene"] = scene_filename;
 
 	// The default camera position is considered to be the world coordinate in which the camera will be considered to be (0, 0, 0)
-	json_object["camera"]["default_position"]["x"] = default_camera_position.get(1, 1);
-	json_object["camera"]["default_position"]["y"] = default_camera_position.get(2, 1);
-	json_object["camera"]["default_position"]["z"] = default_camera_position.get(3, 1);
+	json_object["camera"]["default_position"]["x"] = this->camera.default_position.get(1, 1);
+	json_object["camera"]["default_position"]["y"] = this->camera.default_position.get(2, 1);
+	json_object["camera"]["default_position"]["z"] = this->camera.default_position.get(3, 1);
 
 	// Camera position relative to the default camera position
-	json_object["camera"]["translation"]["x"] = camera_position.get(1, 1);
-	json_object["camera"]["translation"]["y"] = camera_position.get(2, 1);
-	json_object["camera"]["translation"]["z"] = camera_position.get(3, 1);
+	json_object["camera"]["translation"]["x"] = this->camera.position.get(1, 1);
+	json_object["camera"]["translation"]["y"] = this->camera.position.get(2, 1);
+	json_object["camera"]["translation"]["z"] = this->camera.position.get(3, 1);
 
-	json_object["camera"]["default_direction"]["x"] = default_camera_direction.get(1, 1);
-	json_object["camera"]["default_direction"]["y"] = default_camera_direction.get(2, 1);
-	json_object["camera"]["default_direction"]["z"] = default_camera_direction.get(3, 1);
+	json_object["camera"]["default_direction"]["x"] = this->camera.default_direction.get(1, 1);
+	json_object["camera"]["default_direction"]["y"] = this->camera.default_direction.get(2, 1);
+	json_object["camera"]["default_direction"]["z"] = this->camera.default_direction.get(3, 1);
 
-	json_object["camera"]["direction"]["x"] = camera_direction.get(1, 1);
-	json_object["camera"]["direction"]["y"] = camera_direction.get(2, 1);
-	json_object["camera"]["direction"]["z"] = camera_direction.get(3, 1);
+	json_object["camera"]["direction"]["x"] = this->camera.direction.get(1, 1);
+	json_object["camera"]["direction"]["y"] = this->camera.direction.get(2, 1);
+	json_object["camera"]["direction"]["z"] = this->camera.direction.get(3, 1);
 
-	json_object["camera"]["default_up"]["x"] = default_camera_up.get(1, 1);
-	json_object["camera"]["default_up"]["y"] = default_camera_up.get(2, 1);
-	json_object["camera"]["default_up"]["z"] = default_camera_up.get(3, 1);
+	json_object["camera"]["default_up"]["x"] = this->camera.default_up.get(1, 1);
+	json_object["camera"]["default_up"]["y"] = this->camera.default_up.get(2, 1);
+	json_object["camera"]["default_up"]["z"] = this->camera.default_up.get(3, 1);
 
-	json_object["camera"]["up"]["x"] = camera_up.get(1, 1);
-	json_object["camera"]["up"]["y"] = camera_up.get(2, 1);
-	json_object["camera"]["up"]["z"] = camera_up.get(3, 1);
+	json_object["camera"]["up"]["x"] = this->camera.up.get(1, 1);
+	json_object["camera"]["up"]["y"] = this->camera.up.get(2, 1);
+	json_object["camera"]["up"]["z"] = this->camera.up.get(3, 1);
 
-	json_object["camera"]["rotation"]["x"] = pitch * (180 / M_PI);
-	json_object["camera"]["rotation"]["y"] = yaw * (180 / M_PI);
-	json_object["camera"]["rotation"]["z"] = roll * (180 / M_PI);
+	json_object["camera"]["rotation"]["x"] = this->camera.pitch * (180 / M_PI);
+	json_object["camera"]["rotation"]["y"] = this->camera.yaw * (180 / M_PI);
+	json_object["camera"]["rotation"]["z"] = this->camera.roll * (180 / M_PI);
 
-	if (light_source.type == LightType::point) {
+	if (this->light_source.lighting_type == LightType::point) {
 		json_object["light"]["type"] = "point";
 	}
-	else if (light_source.type == LightType::directional) {
+	else if (this->light_source.lighting_type == LightType::directional) {
 		json_object["light"]["type"] = "directional";
 	}
-	else if (light_source.type == LightType::spotlight) {
+	else if (this->light_source.lighting_type == LightType::spotlight) {
 		json_object["light"]["type"] = "spotlight";
 	}
 
-	json_object["light"]["enabled"] = light_source.enabled;
-	json_object["light"]["color"]["r"] = (uint8_t)(light_source.color >> 24);
-	json_object["light"]["color"]["g"] = (uint8_t)(light_source.color >> 16);
-	json_object["light"]["color"]["b"] = (uint8_t)(light_source.color >> 8);
+	json_object["light"]["enabled"] = this->light_source.enabled;
+	json_object["light"]["color"]["r"] = (uint8_t)(this->light_source.color >> 24);
+	json_object["light"]["color"]["g"] = (uint8_t)(this->light_source.color >> 16);
+	json_object["light"]["color"]["b"] = (uint8_t)(this->light_source.color >> 8);
 
-	json_object["light"]["intensity"] = light_source.intensity;
-	json_object["light"]["minimum_exposure"] = light_source.minimum_exposure;
+	json_object["light"]["intensity"] = this->light_source.intensity;
+	json_object["light"]["minimum_exposure"] = this->light_source.minimum_exposure;
 
-	if (light_source.has_model) {
-		json_object["light"]["model"] = light_source.mesh->mesh_filename;
+	if (this->light_source.has_model) {
+		json_object["light"]["model"] = this->light_source.mesh->mesh_filename;
 	}
 
-	json_object["light"]["position"]["x"] = light_source.tx;
-	json_object["light"]["position"]["y"] = light_source.ty;
-	json_object["light"]["position"]["z"] = light_source.tz;
+	json_object["light"]["position"]["x"] = this->light_source.tx;
+	json_object["light"]["position"]["y"] = this->light_source.ty;
+	json_object["light"]["position"]["z"] = this->light_source.tz;
 
-	json_object["light"]["rotation"]["x"] = light_source.pitch * (180 / M_PI);
-	json_object["light"]["rotation"]["y"] = light_source.yaw * (180 / M_PI);
-	json_object["light"]["rotation"]["z"] = light_source.roll * (180 / M_PI);
+	json_object["light"]["rotation"]["x"] = this->light_source.pitch * (180 / M_PI);
+	json_object["light"]["rotation"]["y"] = this->light_source.yaw * (180 / M_PI);
+	json_object["light"]["rotation"]["z"] = this->light_source.roll * (180 / M_PI);
 
-	json_object["light"]["direction"]["x"] = light_source.direction.get(1, 1);
-	json_object["light"]["direction"]["y"] = light_source.direction.get(2, 1);
-	json_object["light"]["direction"]["z"] = light_source.direction.get(3, 1);
+	json_object["light"]["direction"]["x"] = this->light_source.direction.get(1, 1);
+	json_object["light"]["direction"]["y"] = this->light_source.direction.get(2, 1);
+	json_object["light"]["direction"]["z"] = this->light_source.direction.get(3, 1);
 
-	json_object["light"]["up"]["x"] = light_source.up.get(1, 1);
-	json_object["light"]["up"]["y"] = light_source.up.get(2, 1);
-	json_object["light"]["up"]["z"] = light_source.up.get(3, 1);
+	json_object["light"]["up"]["x"] = this->light_source.up.get(1, 1);
+	json_object["light"]["up"]["y"] = this->light_source.up.get(2, 1);
+	json_object["light"]["up"]["z"] = this->light_source.up.get(3, 1);
 
 	std::vector<std::string> models;
-	std::vector<Instance*> instances;
 	for (auto instance = this->scene_instances.begin(); instance != this->scene_instances.end(); instance++) {
 		std::string mesh_filename = instance->mesh->mesh_filename;
 
 		// Ignore if instance represents light source
-		if (mesh_filename == light_source.mesh->mesh_filename) continue;
+		if (mesh_filename == this->light_source.mesh->mesh_filename) continue;
 
 		bool model_already_included = false;
 		for (size_t model_n = 0; model_n < models.size(); model_n++) {
@@ -541,8 +779,6 @@ void Scene::save_scene(const char* scenes_folder, const char* scene_filename, co
 		if (!model_already_included) {
 			models.push_back(mesh_filename);
 		}
-
-		instances.push_back(&*instance);
 	}
 
 	for (auto model = models.begin(); model != models.end(); model++) {
@@ -550,8 +786,8 @@ void Scene::save_scene(const char* scenes_folder, const char* scene_filename, co
 		txt_array.push_back("instances");
 
 		std::vector<std::string> instance_ids;
-		for (size_t instance_id = 0; instance_id < this->total_instances; instance_id++) {
-			Instance* instance = Scene::get_instance_ptr(instance_id);
+		for (size_t n_instance = 0; n_instance < this->total_instances; n_instance++) {
+			const Instance* instance = &this->scene_instances[n_instance];
 			std::string mesh_filename = instance->mesh->mesh_filename;
 
 			if (mesh_filename == *model) {
@@ -591,26 +827,28 @@ void Scene::save_scene(const char* scenes_folder, const char* scene_filename, co
 
 Mesh Scene::get_mesh(uint32_t mesh_id) {
 	for (int i = 0; i < this->scene_meshes.size(); i++) {
-		Mesh* current_mesh = &this->scene_meshes[i];
+		const Mesh* current_mesh = &this->scene_meshes[i];
 
 		if (current_mesh->mesh_id == mesh_id) {
 			return *current_mesh;
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find mesh by id for the given mesh id of: " + std::to_string(mesh_id) + ".");
+	return Mesh(this->total_ever_meshes);
+	//throw std::runtime_error("Error: Could not find mesh by id for the given mesh id of: " + std::to_string(mesh_id) + ".");
 }
 
 Mesh Scene::get_mesh(std::string mesh_filename) {
 	for (int i = 0; i < this->scene_meshes.size(); i++) {
-		Mesh* current_mesh = &this->scene_meshes[i];
+		const Mesh* current_mesh = &this->scene_meshes[i];
 
 		if (current_mesh->mesh_filename == mesh_filename) {
 			return *current_mesh;
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
+	return Mesh(this->total_ever_meshes);
+	//throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
 }
 
 Mesh* Scene::get_mesh_ptr(uint32_t mesh_id) {
@@ -622,7 +860,8 @@ Mesh* Scene::get_mesh_ptr(uint32_t mesh_id) {
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find mesh by id for the given mesh id of: " + std::to_string(mesh_id) + ".");
+	return nullptr;
+	//throw std::runtime_error("Error: Could not find mesh by id for the given mesh id of: " + std::to_string(mesh_id) + ".");
 }
 
 Mesh* Scene::get_mesh_ptr(std::string mesh_filename) {
@@ -634,31 +873,34 @@ Mesh* Scene::get_mesh_ptr(std::string mesh_filename) {
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
+	return nullptr;
+	//throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
 }
 
 Instance Scene::get_instance(uint32_t instance_id) {
 	for (int i = 0; i < this->scene_instances.size(); i++) {
-		Instance* current_instance = &this->scene_instances[i];
+		const Instance* current_instance = &this->scene_instances[i];
 
 		if (current_instance->instance_id == instance_id) {
 			return *current_instance;
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find instance by id for the given instance id of: " + std::to_string(instance_id) + ".");
+	return Instance(this->total_ever_instances);
+	//throw std::runtime_error("Error: Could not find instance by id for the given instance id of: " + std::to_string(instance_id) + ".");
 }
 
 Instance Scene::get_instance(std::string instance_name) {
 	for (int i = 0; i < this->scene_instances.size(); i++) {
-		Instance* current_instance = &this->scene_instances[i];
+		const Instance* current_instance = &this->scene_instances[i];
 
 		if (current_instance->instance_name == instance_name) {
 			return *current_instance;
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find instance by name for the given instance name of: " + instance_name + ".");
+	return Instance(this->total_ever_instances);
+	//throw std::runtime_error("Error: Could not find instance by name for the given instance name of: " + instance_name + ".");
 }
 
 Instance* Scene::get_instance_ptr(uint32_t instance_id) {
@@ -670,7 +912,8 @@ Instance* Scene::get_instance_ptr(uint32_t instance_id) {
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find instance by id for the given instance id of: " + std::to_string(instance_id) + ".");
+	return nullptr;
+	//throw std::runtime_error("Error: Could not find instance by id for the given instance id of: " + std::to_string(instance_id) + ".");
 }
 
 Instance* Scene::get_instance_ptr(std::string instance_name) {
@@ -682,5 +925,6 @@ Instance* Scene::get_instance_ptr(std::string instance_name) {
 		}
 	}
 
-	throw std::runtime_error("Error: Could not find instance by name for the given instance name of: " + instance_name + ".");
+	return nullptr;
+	//throw std::runtime_error("Error: Could not find instance by name for the given instance name of: " + instance_name + ".");
 }

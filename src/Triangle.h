@@ -1,6 +1,6 @@
+#pragma once
 #include "Matrix.h"
 #include <string>
-#pragma once
 
 // Represented as 3 vertices
 struct Triangle {

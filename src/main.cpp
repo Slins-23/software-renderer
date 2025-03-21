@@ -9,7 +9,13 @@ int main() {
 		return -1;
 	}
 
-	engine.load_scene(true);
+	char models_folder[255] = "D:/Programming/Graphics/Prototyping/models/";
+	char scene_folder[255] = "D:/Programming/Graphics/Prototyping/scenes/";
+	char scene_load_name[255] = "hallway.json";
+	char scene_save_name[255] = "tst.json";
+
+	//engine.window_manager.general_window.scene_tab.load_scene(scene_folder, scene_load_name, models_folder, true, true);
+	//engine.window_manager.general_window.scene_tab.load_scene();
 		
 	bool quit = false;
 	std::vector<double> frametimes;
@@ -21,11 +27,7 @@ int main() {
 		quit = engine.handle_events();
 		if (quit) break;
 
-		if (engine.playing) {
-			engine.draw();
-		}
-
-		
+		engine.draw();		
 
 		ImGui_ImplSDLRenderer2_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
@@ -34,7 +36,7 @@ int main() {
 		ImGui::GetForegroundDrawList()->AddText(ImVec2(10, 10), IM_COL32(255, 255, 255, 255), "Press '1' to open/close the settings", 0);
 
 		char fps_text[255];
-		sprintf_s(fps_text, 255, "Framerate: %.2lf", engine.window_manager.general_window.framerate);
+		sprintf_s(fps_text, 255, "Framerate: %.2lf", engine.window_manager.general_window.settings_tab.framerate);
 
 		ImGui::GetForegroundDrawList()->AddText(ImVec2(10, 30), IM_COL32(255, 255, 255, 255), fps_text, 0);
 
@@ -49,14 +51,14 @@ int main() {
 
 		uint32_t msperframe = SDL_GetTicks() - frame_start;
 
-		if (msperframe < engine.MSPERFRAME) {
-			SDL_Delay(engine.MSPERFRAME - msperframe);
+		if (msperframe < engine.window_manager.general_window.settings_tab.MSPERFRAME) {
+			SDL_Delay(engine.window_manager.general_window.settings_tab.MSPERFRAME - msperframe);
 		}	
 
 		double frametime = SDL_GetTicks() - frame_start;
 		frametimes.push_back(frametime);
 
-		if (SDL_GetTicks() - last_tick >= engine.fps_update_interval) {
+		if (SDL_GetTicks() - last_tick >= engine.window_manager.general_window.settings_tab.fps_update_interval) {
 			double average = 0;
 			for (int i = 0; i < frametimes.size(); i++) {
 				average += frametimes[i];
@@ -69,7 +71,7 @@ int main() {
 
 			std::cout << "Rendered @ " << framerate << " fps average" << std::endl;
 
-			engine.window_manager.general_window.framerate = framerate;
+			engine.window_manager.general_window.settings_tab.framerate = framerate;
 
 			last_tick = SDL_GetTicks();
 		}

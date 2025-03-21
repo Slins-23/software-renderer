@@ -1,4 +1,8 @@
 ﻿#include "Engine.h"
+#include "Windows/Tabs/CameraTab.h"
+#include "Windows/Tabs/InstancesTab.h"
+#include "Windows/Tabs/LightTab.h"
+
 #include <cassert>
 bool Engine::setup() {
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -31,17 +35,16 @@ bool Engine::setup() {
 		return 0;
 	}
 
-	this->window_manager.initialize(this->window, this->renderer);
-	this->window_manager.general_window.initialize(nullptr, nullptr, &this->wireframe_render, &this->rasterize, &this->shade, &this->fps_update_interval);
-	//this->window_manager.transform_window.initialize(&this->target_instance);
+	window_manager.initialize(this->window, this->renderer);
 
 	this->pixel_buffer = (uint32_t*) malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
 	this->depth_buffer = (double*)malloc(sizeof(double) * this->WIDTH * this->HEIGHT);
 
 	for (int i = 0; i < WIDTH * HEIGHT; i++) {
-		this->pixel_buffer[i] = this->BG_COLOR;
+		this->pixel_buffer[i] = window_manager.general_window.settings_tab.BG_COLOR;
 		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
+
 
 
 	// Enables relative mouse tracking (used for rotating the camera along with the mouse)
@@ -52,11 +55,11 @@ bool Engine::setup() {
 
 
 
-void Engine::draw_instance(const Instance& instance, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source) {
-	draw_mesh(*instance.mesh, instance.MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source);
+void Engine::draw_instance(const Instance& instance, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade) {
+	draw_mesh(*instance.mesh, instance.MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, instance.is_light_source, instance.is_axes);
 }
 
-void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source) {
+void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source, bool is_axes) {
 	uint32_t total_vertices_count = mesh.total_vertices();
 	uint32_t total_normals_count = 0;
 
@@ -141,36 +144,24 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 
 		// Draw quad if face is rectangular
 		if (mesh.faces_indices[face].size() == 4) {
-			draw_quad(vertices[0], vertices[1], vertices[2], vertices[3], v0_normal, v1_normal, v2_normal, v3_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source);
+			draw_quad(vertices[0], vertices[1], vertices[2], vertices[3], v0_normal, v1_normal, v2_normal, v3_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source, is_axes);
 		}
 
 		// Draw triangle if face is triangular
 		else if (mesh.faces_indices[face].size() == 3) {
-			draw_triangle(vertices[0], vertices[1], vertices[2], v0_normal, v1_normal, v2_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source);
+			draw_triangle(vertices[0], vertices[1], vertices[2], v0_normal, v1_normal, v2_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source, is_axes);
 		}
 
 	}
 }
 
 
-void Engine::draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v3, Mat v0_normal, Mat v1_normal, Mat v2_normal, Mat v3_normal, const Mat& MODEL_TO_WORLD, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source) {
-	draw_triangle(v0, v1, v2, v0_normal, v1_normal, v2_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source);
-	draw_triangle(v0, v2, v3, v0_normal, v2_normal, v3_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source);
+void Engine::draw_quad(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& v3, Mat v0_normal, Mat v1_normal, Mat v2_normal, Mat v3_normal, const Mat& MODEL_TO_WORLD, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source, bool is_axes) {
+	draw_triangle(v0, v1, v2, v0_normal, v1_normal, v2_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source, is_axes);
+	draw_triangle(v0, v2, v3, v0_normal, v2_normal, v3_normal, MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, is_light_source, is_axes);
 }
 
-void Engine::update_view_inverse() {
-	Mat VIEW_TRANSPOSED = VIEW_MATRIX.transposed();
-	Mat VIEW_INVERSE_ROT = VIEW_TRANSPOSED;
-	VIEW_INVERSE_ROT.set(0, 4, 1);
-	VIEW_INVERSE_ROT.set(0, 4, 2);
-	VIEW_INVERSE_ROT.set(0, 4, 3);
-
-	Mat VIEW_INVERSE_TRANS = Mat::translation_matrix(-VIEW_MATRIX.get(1, 4), -VIEW_MATRIX.get(2, 4), -VIEW_MATRIX.get(3, 4));
-
-	this->VIEW_INVERSE = VIEW_INVERSE_ROT * VIEW_INVERSE_TRANS;
-}
-
-void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal, Mat v2_normal, const Mat& MODEL_TO_WORLD,  bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source) {
+void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal, Mat v2_normal, const Mat& MODEL_TO_WORLD,  bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source, bool is_axes) {
 	// Vectors here are assumed to have 1 in the 4th dimension (position vectors)
 	Mat world_v0 = MODEL_TO_WORLD * v0;
 	Mat world_v1 = MODEL_TO_WORLD * v1;
@@ -185,9 +176,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 	double world_v1z = world_v1.get(3, 1);
 	double world_v2z = world_v2.get(3, 1);
 
-	v0 =  this->VIEW_MATRIX * world_v0;
-	v1 =  this->VIEW_MATRIX * world_v1;
-	v2 =  this->VIEW_MATRIX * world_v2;
+	v0 =  window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v0;
+	v1 =  window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v1;
+	v2 =  window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v2;
 
 	Mat view_v0 = v0;
 	Mat view_v1 = v1;
@@ -197,14 +188,14 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 	Mat view_v1_normal = v1_normal;
 	Mat view_v2_normal = v2_normal;
 
-	Quaternion::RotatePoint(this->camera_orientation, view_v0_normal, false);
-	Quaternion::RotatePoint(this->camera_orientation, view_v1_normal, false);
-	Quaternion::RotatePoint(this->camera_orientation, view_v2_normal, false);
+	Quaternion::RotatePoint(window_manager.general_window.scene_tab.current_scene.camera.orientation, view_v0_normal, false);
+	Quaternion::RotatePoint(window_manager.general_window.scene_tab.current_scene.camera.orientation, view_v1_normal, false);
+	Quaternion::RotatePoint(window_manager.general_window.scene_tab.current_scene.camera.orientation, view_v2_normal, false);
 
 	// MODEL SPACE -> WORLD SPACE ->  NOW IN CAMERA SPACE
 
 	// Cull triangle if all vertices are further than the far plane
-	if (abs(v0.get(3, 1)) > this->far || abs(v1.get(3, 1)) > this->far || abs(v2.get(3, 1)) > this->far) {
+	if (abs(v0.get(3, 1)) > window_manager.general_window.scene_tab.current_scene.camera.far || abs(v1.get(3, 1)) > window_manager.general_window.scene_tab.current_scene.camera.far || abs(v2.get(3, 1)) > window_manager.general_window.scene_tab.current_scene.camera.far) {
 		return;
 	}
 
@@ -221,7 +212,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 		{ 
 			{0},
 			{0},
-			{this->near},
+			{window_manager.general_window.scene_tab.current_scene.camera.near},
 			{0}
 		}
 	, 4, 1);
@@ -240,16 +231,16 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 	if (n_clipped_triangles == 0) return;
 	
-	double new_near = near;
+	double new_near = window_manager.general_window.scene_tab.current_scene.camera.near;
 
-	double xright = new_near * tan(FOVr / 2);
+	double xright = new_near * tan(window_manager.general_window.scene_tab.current_scene.camera.FOVr / 2);
 	double xleft = -xright;
-	double ytop = xright / AR;
+	double ytop = xright / window_manager.general_window.scene_tab.current_scene.camera.AR;
 	double ybottom = -ytop;
 
 	Mat left_plane_normal = Mat(
 		{
-			{near / xright},
+			{window_manager.general_window.scene_tab.current_scene.camera.near / xright},
 			{0},
 			{1},
 			{0}
@@ -261,7 +252,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 	Mat right_plane_normal = Mat(
 		{
-			{-near / xright},
+			{-window_manager.general_window.scene_tab.current_scene.camera.near / xright},
 			{0},
 			{1},
 			{0}
@@ -273,7 +264,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 	Mat top_plane_normal = Mat(
 		{
 			{0},
-			{-near/ ytop},
+			{-window_manager.general_window.scene_tab.current_scene.camera.near/ ytop},
 			{1},
 			{0}
 		}
@@ -284,7 +275,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 	Mat bottom_plane_normal = Mat(
 		{
 			{0},
-			{near / ytop},
+			{window_manager.general_window.scene_tab.current_scene.camera.near / ytop},
 			{1},
 			{0}
 		}
@@ -296,7 +287,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 		{
 			{xleft},
 			{0},
-			{this->near},
+			{window_manager.general_window.scene_tab.current_scene.camera.near},
 			{0}
 		}
 	, 4, 1);
@@ -305,7 +296,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 		{
 			{xright},
 			{0},
-			{this->near},
+			{window_manager.general_window.scene_tab.current_scene.camera.near},
 			{0}
 		}
 	, 4, 1);
@@ -314,7 +305,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 		{
 			{0},
 			{ytop},
-			{near},
+			{window_manager.general_window.scene_tab.current_scene.camera.near},
 			{0}
 		}
 	, 4, 1);
@@ -323,7 +314,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 		{
 			{0},
 			{ybottom},
-			{near},
+			{window_manager.general_window.scene_tab.current_scene.camera.near},
 			{0}
 		}
 	, 4, 1);
@@ -378,9 +369,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				Mat v1 = current_triangle.vertices[1];
 				Mat v2 = current_triangle.vertices[2];
 
-				Mat clipped_world_v0 = VIEW_INVERSE * v0;
-				Mat clipped_world_v1 = VIEW_INVERSE * v1;
-				Mat clipped_world_v2 = VIEW_INVERSE * v2;
+				Mat clipped_world_v0 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_INVERSE * v0;
+				Mat clipped_world_v1 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_INVERSE * v1;
+				Mat clipped_world_v2 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_INVERSE * v2;
 
 				world_v0z = clipped_world_v0.get(3, 1);
 				world_v1z = clipped_world_v1.get(3, 1);
@@ -392,9 +383,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				// So, the range after the projection of the `z` coordinate is (0, far), not (0, 1)
 				// This is so that after the perspective divide, which happens in the sequence, it becomes (0, 1), already including it
 
-				v0 = this->PROJECTION_MATRIX * v0;
-				v1 = this->PROJECTION_MATRIX * v1;
-				v2 = this->PROJECTION_MATRIX * v2;
+				v0 = window_manager.general_window.scene_tab.current_scene.camera.PROJECTION_MATRIX * v0;
+				v1 = window_manager.general_window.scene_tab.current_scene.camera.PROJECTION_MATRIX * v1;
+				v2 = window_manager.general_window.scene_tab.current_scene.camera.PROJECTION_MATRIX * v2;
 
 				// NOW IN CLIP SPACE FOR SOME GRAPHICS LIBRARIES
 
@@ -408,27 +399,27 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 				/*
 				std::cout << "View: " << std::endl;
-				this->VIEW_MATRIX.print();
+				window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX.print();
 				std::cout << "Inversion: " << std::endl;
-				(VIEW_INVERSE_ROT * (VIEW_INVERSE_TRANS * this->VIEW_MATRIX)).print();
+				(VIEW_INVERSE_ROT * (VIEW_INVERSE_TRANS * window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX)).print();
 				*/
 
-				Mat clipped_view_v0 = VIEW_MATRIX * clipped_world_v0;
-				Mat clipped_view_v1 = VIEW_MATRIX * clipped_world_v1;
-				Mat clipped_view_v2 = VIEW_MATRIX * clipped_world_v2;
+				Mat clipped_view_v0 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * clipped_world_v0;
+				Mat clipped_view_v1 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * clipped_world_v1;
+				Mat clipped_view_v2 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * clipped_world_v2;
 
 				// Cull triangle if all vertices are further than the far plane
-				//if (v0_originalz > this->far && v1_originalz > this->far && v2_originalz > this->far) continue;
+				//if (v0_originalz > window_manager.general_window.scene_tab.current_scene.camera.far && v1_originalz > window_manager.general_window.scene_tab.current_scene.camera.far && v2_originalz > window_manager.general_window.scene_tab.current_scene.camera.far) continue;
 
 				/*
-				world_v0.set(((1 / (tan(this->FOVr/2))) * world_v0.get(1, 1)) / abs(world_v0z), 1, 1);
-				world_v0.set(((1 / (tan(this->FOVr / 2))) * this->AR * world_v0.get(2, 1)) / abs(world_v0z), 2, 1);
+				world_v0.set(((1 / (tan(window_manager.general_window.scene_tab.current_scene.camera.FOVr/2))) * world_v0.get(1, 1)) / abs(world_v0z), 1, 1);
+				world_v0.set(((1 / (tan(window_manager.general_window.scene_tab.current_scene.camera.FOVr / 2))) * window_manager.general_window.scene_tab.current_scene.camera.AR * world_v0.get(2, 1)) / abs(world_v0z), 2, 1);
 
-				world_v1.set(((1 / (tan(this->FOVr / 2))) * world_v1.get(1, 1)) / world_v1z, 1, 1);
-				world_v1.set(((1 / (tan(this->FOVr / 2))) * this->AR * world_v1.get(2, 1)) / abs(world_v1z), 2, 1);
+				world_v1.set(((1 / (tan(window_manager.general_window.scene_tab.current_scene.camera.FOVr / 2))) * world_v1.get(1, 1)) / world_v1z, 1, 1);
+				world_v1.set(((1 / (tan(window_manager.general_window.scene_tab.current_scene.camera.FOVr / 2))) * window_manager.general_window.scene_tab.current_scene.camera.AR * world_v1.get(2, 1)) / abs(world_v1z), 2, 1);
 
-				world_v2.set(((1 / (tan(this->FOVr / 2)))* world_v2.get(1, 1)) / world_v2z, 1, 1);
-				world_v2.set(((1 / (tan(this->FOVr / 2)))* this->AR* world_v2.get(2, 1)) / abs(world_v2z), 2, 1);
+				world_v2.set(((1 / (tan(window_manager.general_window.scene_tab.current_scene.camera.FOVr / 2)))* world_v2.get(1, 1)) / world_v2z, 1, 1);
+				world_v2.set(((1 / (tan(window_manager.general_window.scene_tab.current_scene.camera.FOVr / 2)))* window_manager.general_window.scene_tab.current_scene.camera.AR* world_v2.get(2, 1)) / abs(world_v2z), 2, 1);
 				*/
 
 
@@ -441,7 +432,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 				bool cull_triangle = false;
 
-				if (this->backface_cull) {
+				if (window_manager.general_window.settings_tab.backface_cull) {
 					Mat vec_a = v0 - v1;
 					vec_a.normalize();
 					Mat vec_b = v2 - v1;
@@ -471,9 +462,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				Mat clipped_view_v1_normal = clipped_v1_normal;
 				Mat clipped_view_v2_normal = clipped_v2_normal;
 
-				Quaternion::RotatePoint(this->camera_orientation, clipped_view_v0_normal, false);
-				Quaternion::RotatePoint(this->camera_orientation, clipped_view_v1_normal, false);
-				Quaternion::RotatePoint(this->camera_orientation, clipped_view_v2_normal, false);
+				Quaternion::RotatePoint(window_manager.general_window.scene_tab.current_scene.camera.orientation, clipped_view_v0_normal, false);
+				Quaternion::RotatePoint(window_manager.general_window.scene_tab.current_scene.camera.orientation, clipped_view_v1_normal, false);
+				Quaternion::RotatePoint(window_manager.general_window.scene_tab.current_scene.camera.orientation, clipped_view_v2_normal, false);
 
 				Mat clipped_v0_color = Mat({ {0}, {0}, {0}, {255} }, 4, 1);
 				Mat clipped_v1_color = Mat({ {0}, {0}, {0}, {255} }, 4, 1);
@@ -481,7 +472,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 				// Triangle lighting/shading happens here
 				// Using world vertices for entire triangle instead of clipped triangles since flat shading is the same for the entire triangle despite subdivisions, since the surface normal is the same for the entire triangle
-				if (!is_light_source && shade && light_source.enabled && shading_type == ShadingType::Flat) {
+				if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Flat) {
 					Mat a_vec_a = world_v0 - world_v1;
 					a_vec_a.normalize();
 					Mat a_vec_b = world_v2 - world_v1;
@@ -495,26 +486,26 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 					triangle_world_center.set((world_v0.get(2, 1) + world_v1.get(2, 1) + world_v2.get(2, 1)) / 3, 2, 1);
 					triangle_world_center.set((world_v0.get(3, 1) + world_v1.get(3, 1) + world_v2.get(3, 1)) / 3, 3, 1);
 
-					Mat normalized_light_source = light_source.position - triangle_world_center;
+					Mat normalized_light_source = window_manager.general_window.scene_tab.current_scene.light_source.position - triangle_world_center;
 					double distance = normalized_light_source.norm();
 					normalized_light_source /= distance;
 
-					double world_similarity = Mat::dot(light_source.direction, world_normal);
+					double world_similarity = Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, world_normal);
 					//double view_similarity = Mat::dot(normalized_light_source, triangle_normal);
 
 					double similarity = -world_similarity;
 
 					// If the triangle faces the light source (and the triangle is not part of the light source model), interpolate the fill color (the default color for all models) with the light source color, proportional to the light intensity for the given triangle
-					if (light_source.type == LightType::point) {
+					if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::point) {
 						similarity = Mat::dot(normalized_light_source, world_normal);
 						//similarity = 1;
 					}
-					else if (light_source.type == LightType::directional) {
-						similarity = -Mat::dot(light_source.direction, world_normal);
+					else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::directional) {
+						similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, world_normal);
 					}
-					else if (light_source.type == LightType::spotlight) {
+					else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::spotlight) {
 						// How similar the light ray and the light direction are (represents whether the triangle is within the field of view of the light)
-						double direction_similarity = -Mat::dot(light_source.direction, world_normal);
+						double direction_similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, world_normal);
 
 						// How similar the light ray and the triangle normal vectors are (represents the light intensity)
 						double position_similarity = Mat::dot(normalized_light_source, world_normal);
@@ -522,7 +513,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 						// If either the light direction does not positively correlate with the triangle's negative normal = direction_similarity (a backface relative to the light)
 						// Or the triangle is a backface relative to the light source's position = position_similarity
 						// Set the similarity to 0 / unlit
-						if (Mat::dot(light_source.direction, -1 * normalized_light_source) < 0) {
+						if (Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, -1 * normalized_light_source) < 0) {
 							similarity = 0;
 						}
 						else if (direction_similarity && position_similarity > 0) {
@@ -539,56 +530,56 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 					if (similarity > 0) {
 						double attenuation = 0;
 
-						if (light_source.type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
+						if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
 						else attenuation = 1.0;
 
 						//double distance_multiplier = light_intensity * attenuation * base_intensity;
 						//distance_multiplier = Utils::clamp(distance_multiplier, 0, 1);
 
 						//light_intensity = light_intensity * distance_multiplier;
-						double light_intensity = similarity * light_source.intensity * attenuation;
+						double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 						light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-						uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-						uint8_t light_color_red = (light_source.color >> 24) & 0x000000FF;
+						uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+						uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 						
-						uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-						uint8_t light_color_green = (light_source.color >> 16) & 0x000000FF;
+						uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+						uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 						
-						uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
-						uint8_t light_color_blue = (light_source.color >> 8) & 0x000000FF;
+						uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+						uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
-						uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-						uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-						uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+						uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+						uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+						uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 						uint8_t red = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_red, light_color_red);
 						uint8_t green = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_green, light_color_green);
 						uint8_t blue = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_blue, light_color_blue);
 
-						//uint8_t red = (uint8_t)(light_intensity * ((light_source.color >> 24) & 0x000000FF));
-						//uint8_t green = (uint8_t)(light_intensity * ((light_source.color >> 16) & 0x000000FF));
-						//uint8_t blue = (uint8_t)(light_intensity * ((light_source.color >> 8) & 0x000000FF));
+						//uint8_t red = (uint8_t)(light_intensity * ((light_source->color >> 24) & 0x000000FF));
+						//uint8_t green = (uint8_t)(light_intensity * ((light_source->color >> 16) & 0x000000FF));
+						//uint8_t blue = (uint8_t)(light_intensity * ((light_source->color >> 8) & 0x000000FF));
 
 						fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 					}
 
 					// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 					else {
-						uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-						uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-						uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
+						uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+						uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+						uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
 
-						uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-						uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-						uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+						uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+						uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+						uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 						fill_color = 0x000000FF | (minimum_red << 24) | (minimum_green << 16) | (minimum_blue << 8);
 					}
 				}
 
 				// Calculate and store vertex colors and/or normals in order to interpolate them depending on Gouraud or Phong shading
-				else if (!is_light_source && shade && light_source.enabled && shading_type != ShadingType::Flat) {
+				else if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx != ShadingType::Flat) {
 					for (uint8_t vertex = 0; vertex < 3; vertex++) {
 						const Mat* current_clipped_vertex = &clipped_world_v0;
 						if (vertex == 0) {
@@ -698,7 +689,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 						interpolated_clipped_normal.normalize();
 
-						if (shading_type == ShadingType::Phong) {
+						if (window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Phong) {
 							if (vertex == 0) {
 								clipped_v0_normal = interpolated_clipped_normal;
 							}
@@ -709,12 +700,12 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 								clipped_v2_normal = interpolated_clipped_normal;
 							}
 						}
-						else if (this->shading_type == ShadingType::Gouraud) {
+						else if (window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Gouraud) {
 							// Calculates and updates the color for the given vertex if using Gouraud shading
 							Mat vertex_color = Mat({ {0}, {0}, {0}, {255} }, 4, 1);
 
 							// Vertex lighting/shading happens here
-							Mat normalized_light_source = light_source.position - *current_clipped_vertex;
+							Mat normalized_light_source = window_manager.general_window.scene_tab.current_scene.light_source.position - *current_clipped_vertex;
 
 							double distance = normalized_light_source.norm();
 							normalized_light_source /= distance;
@@ -722,18 +713,18 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 							double similarity = 0;
 
 							// If the triangle faces the light source (and the triangle is not part of the light source model), interpolate the fill color (the default color for all models) with the light source color, proportional to the light intensity for the given triangle
-							if (light_source.type == LightType::point) {
+							if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::point) {
 								similarity = Mat::dot(normalized_light_source, interpolated_clipped_normal);
 								//similarity = 1;
 							}
-							else if (light_source.type == LightType::directional) {
+							else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::directional) {
 
 
-								similarity = -Mat::dot(light_source.direction, interpolated_clipped_normal);
+								similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, interpolated_clipped_normal);
 							}
-							else if (light_source.type == LightType::spotlight) {
+							else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::spotlight) {
 								// How similar the light ray and the light direction are (represents whether the triangle is within the field of view of the light)
-								double direction_similarity = -Mat::dot(light_source.direction, normalized_light_source);
+								double direction_similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, normalized_light_source);
 
 								// How similar the light ray and the triangle normal vectors are (represents the light intensity)
 								double position_similarity = Mat::dot(interpolated_clipped_normal, normalized_light_source);
@@ -753,24 +744,24 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 							if (similarity > 0) {
 								double attenuation = 0;
 
-								if (light_source.type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
+								if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
 								else attenuation = 1.0;
 
-								double light_intensity = similarity * light_source.intensity * attenuation;
+								double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 								light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-								uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-								uint8_t light_color_red = (light_source.color >> 24) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 
-								uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-								uint8_t light_color_green = (light_source.color >> 16) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 
-								uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
-								uint8_t light_color_blue = (light_source.color >> 8) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
-								uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-								uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-								uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+								uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+								uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 								uint8_t red = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_red, light_color_red);
 								uint8_t green = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_green, light_color_green);
@@ -783,13 +774,13 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 							// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 							else {
-								uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-								uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-								uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
 
-								uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-								uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-								uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+								uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+								uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 								vertex_color.set(minimum_red, 1, 1);
 								vertex_color.set(minimum_green, 2, 1);
@@ -809,18 +800,18 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 					}
 				}
 				// If shading but light source is disabled, use default fill color
-				else if (!is_light_source && shade && !light_source.enabled) {
-					uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-					uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-					uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
+				else if (!is_light_source && shade && !window_manager.general_window.scene_tab.current_scene.light_source.enabled) {
+					uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+					uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+					uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
 
 					fill_color = 0x000000FF | (fill_color_red << 24) | (fill_color_green << 16) | (fill_color_blue << 8);
 				}
 				// Light source model is always lit up to the maximum
-				else if (is_light_source && shade && light_source.enabled) {
-					uint8_t red = light_source.color >> 24;
-					uint8_t green = (light_source.color >> 16) & 0x000000FF;
-					uint8_t blue = (light_source.color >> 8) & 0x000000FF;
+				else if (is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled) {
+					uint8_t red = window_manager.general_window.scene_tab.current_scene.light_source.color >> 24;
+					uint8_t green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
+					uint8_t blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
 					fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 				}
@@ -843,9 +834,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				// Transformation into screen space coordinates (i.e. 2D window x-y)
 				// Positive x is to the right
 				// Positive y is down (i.e. top is 0 and bottom is window height - 1)
-				v0 = this->SCALE_MATRIX * v0;
-				v1 = this->SCALE_MATRIX * v1;
-				v2 = this->SCALE_MATRIX * v2;
+				v0 = window_manager.general_window.scene_tab.current_scene.camera.SCALE_MATRIX * v0;
+				v1 = window_manager.general_window.scene_tab.current_scene.camera.SCALE_MATRIX * v1;
+				v2 = window_manager.general_window.scene_tab.current_scene.camera.SCALE_MATRIX * v2;
 
 				// Gives triangles random colors each frame
 				/*
@@ -894,7 +885,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 						return;
 					}
 
-					fill_triangle(v0, v1, v2, clipped_v0_normal, clipped_v1_normal, clipped_v2_normal, clipped_world_v0, clipped_world_v1, clipped_world_v2, clipped_v0_color, clipped_v1_color, clipped_v2_color, fill_color, shade, is_light_source);
+					fill_triangle(v0, v1, v2, clipped_v0_normal, clipped_v1_normal, clipped_v2_normal, clipped_world_v0, clipped_world_v1, clipped_world_v2, clipped_v0_color, clipped_v1_color, clipped_v2_color, fill_color, shade, is_light_source, is_axes);
 				}
 
 				if (draw_outline) {
@@ -905,7 +896,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 							v1.get(1, 1), v1.get(2, 1),
 							v0, v1,
 							view_v0z, view_v1z,
-							outline_color
+							outline_color,
+							is_axes
 						);
 					}
 					
@@ -915,7 +907,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 							v2.get(1, 1), v2.get(2, 1),
 							v1, v2,
 							view_v1z, view_v2z,
-							outline_color
+							outline_color,
+							is_axes
 						);
 					}
 
@@ -925,7 +918,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 							v0.get(1, 1), v0.get(2, 1),
 							v2, v0,
 							view_v2z, view_v0z,
-							outline_color
+							outline_color,
+							is_axes
 						);
 					}
 				}
@@ -936,7 +930,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 	}
 }
 
-void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& vec_a, const Mat& vec_b, const double& vec_a_originalz, const double& vec_b_originalz, uint32_t outline_color) {
+void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& vec_a, const Mat& vec_b, const double& vec_a_originalz, const double& vec_b_originalz, uint32_t outline_color, bool is_axes) {
 	// If not a vertical line
 	// (if x's are too close it's considered a vertical line, this accounts for small floating point errors)
 
@@ -999,7 +993,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 				// Check and update depth buffer, or only do so when rasterizing?
 
-				if (!this->depth_test) {
+				if (!window_manager.general_window.settings_tab.depth_test || is_axes) {
 					this->pixel_buffer[(WIDTH * rounded_y) + x] = outline_color;
 				}
 				else {
@@ -1014,15 +1008,15 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 					double a = alpha;
 					double b = 1 - alpha;
 
-					
 					//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 					double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
-					if (this->rasterize) interpolated_z *= z_fighting_tolerance;
+					if (window_manager.general_window.settings_tab.rasterize) interpolated_z *= window_manager.general_window.settings_tab.z_fighting_tolerance;
 					//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 
 					if (interpolated_z <= this->depth_buffer[(this->WIDTH * rounded_y) + x]) {
 						this->pixel_buffer[(this->WIDTH * rounded_y) + x] = outline_color;
 					}
+
 				}
 
 				y += dy;
@@ -1061,7 +1055,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 				//this->pixel_buffer[(WIDTH * (int16_t)y) + rounded_x] = outline_color;
 
-				if (!this->depth_test) {
+				if (!window_manager.general_window.settings_tab.depth_test || is_axes) {
 					this->pixel_buffer[(WIDTH * y) + rounded_x] = outline_color;
 				}
 				else {
@@ -1078,13 +1072,14 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 					//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 					double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
-					if (this->rasterize) interpolated_z *= z_fighting_tolerance;
+					if (window_manager.general_window.settings_tab.rasterize) interpolated_z *= window_manager.general_window.settings_tab.z_fighting_tolerance;
 					//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 					//double interpolated_z = ((start_vector_original_z) + (alpha * ((end_vector_original_z) - (start_vector_original_z))));
 
 					if (interpolated_z <= this->depth_buffer[(this->WIDTH * y) + rounded_x]) {
 						this->pixel_buffer[(this->WIDTH * y) + rounded_x] = outline_color;
 					}
+
 				}
 
 				x += abs_dx;
@@ -1120,7 +1115,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 		for (y; y < (uint16_t)round(fmax(y1, y2)); y++) {
 			// Check and update depth buffer, or only do so when rasterizing?
 
-			if (!this->depth_test) {
+			if (!window_manager.general_window.settings_tab.depth_test || is_axes) {
 				this->pixel_buffer[(WIDTH * y) + x] = outline_color;
 			}
 			else {
@@ -1138,7 +1133,7 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 				//double interpolated_z = 1 / (((1 / start_vector_original_z) * b) + ((1 / end_vector_original_z) * a));
 				double interpolated_z = (start_vector_original_z * b) + (end_vector_original_z * a);
 
-				if (this->rasterize) interpolated_z *= z_fighting_tolerance;
+				if (window_manager.general_window.settings_tab.rasterize) interpolated_z *= window_manager.general_window.settings_tab.z_fighting_tolerance;
 				//double interpolated_z = 1 / (((1 / start_vector.get(3, 1)) * b) + ((1 / end_vector.get(3, 1) * a)));
 
 				if (interpolated_z <= this->depth_buffer[(this->WIDTH * y) + x]) {
@@ -1151,11 +1146,11 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 }
 
-void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& world_v0_normal, const Mat& world_v1_normal, const Mat& world_v2_normal, const Mat& world_v0, const Mat& world_v1, const Mat& world_v2, const Mat& v0_color, const Mat& v1_color, const Mat& v2_color, uint32_t fill_color, bool shade, bool is_light_source) {
+void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& world_v0_normal, const Mat& world_v1_normal, const Mat& world_v2_normal, const Mat& world_v0, const Mat& world_v1, const Mat& world_v2, const Mat& v0_color, const Mat& v1_color, const Mat& v2_color, uint32_t fill_color, bool shade, bool is_light_source, bool is_axes) {
 
-	Mat view_v0 = VIEW_MATRIX * world_v0;
-	Mat view_v1 = VIEW_MATRIX * world_v1;
-	Mat view_v2 = VIEW_MATRIX * world_v2;
+	Mat view_v0 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v0;
+	Mat view_v1 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v1;
+	Mat view_v2 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v2;
 
 	double view_v0z = view_v0.get(3, 1);
 	double view_v1z = view_v1.get(3, 1);
@@ -1184,10 +1179,10 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 	double vec_b_x = vec_b.get(1, 1);
 	double vec_b_y = vec_b.get(2, 1);
 
-	Mat view_light_direction = this->light_source.direction;
-	Quaternion::RotatePoint(this->camera_orientation, view_light_direction, false);
+	Mat view_light_direction = window_manager.general_window.scene_tab.current_scene.light_source.direction;
+	Quaternion::RotatePoint(window_manager.general_window.scene_tab.current_scene.camera.orientation, view_light_direction, false);
 
-	Mat view_light_position = (this->VIEW_MATRIX * light_source.position);
+	Mat view_light_position = (window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * window_manager.general_window.scene_tab.current_scene.light_source.position);
 
 	for (uint16_t pixel_y = bounding_box_top_y; pixel_y <= bounding_box_bottom_y; pixel_y++) {
 		if (pixel_y >= this->HEIGHT || pixel_y < 0) return;
@@ -1260,7 +1255,12 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 
 				if (pixel_y < this->HEIGHT && pixel_y >= 0 && pixel_x >= 0 && pixel_x < this->WIDTH) {
-					if (this->depth_test) {
+					if (is_axes) {
+						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+						continue;
+					}
+
+					if (window_manager.general_window.settings_tab.depth_test) {
 						//double interpolated_z = 1 / (((1 / v0_originalz) * a) + ((1 / v1_originalz) * c) + ((1 / v2_originalz) * b));
 						double interpolated_z = (view_v0z * a) + (view_v1z * c) + (view_v2z * b);
 
@@ -1280,12 +1280,12 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 						if (interpolated_z <= this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
 							if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
 
-							if (!is_light_source && shade && light_source.enabled && shading_type == ShadingType::Gouraud) {
+							if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Gouraud) {
 								Mat color = ((v0_color * a) + (v1_color * c) + (v2_color * b));
 
 								fill_color = (uint8_t)color.get(1, 1) << 24 | (uint8_t)color.get(2, 1) << 16 | (uint8_t)color.get(3, 1) << 8 | (uint8_t)color.get(4, 1);
 							}
-							else if (!is_light_source && shade && light_source.enabled && shading_type == ShadingType::Phong) {
+							else if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Phong) {
 								// Vertex lighting/shading happens here
 								Mat interpolated_normal = ((world_v0_normal * a) + (world_v1_normal * c) + (world_v2_normal * b));
 								interpolated_normal.normalize();
@@ -1293,7 +1293,7 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 								Mat current_triangle_vertex = (world_v0 * a) + (world_v1 * c) + (world_v2 * b);
 								current_triangle_vertex.set(1, 4, 1);
 
-								Mat normalized_light_source = light_source.position - current_triangle_vertex;
+								Mat normalized_light_source = window_manager.general_window.scene_tab.current_scene.light_source.position - current_triangle_vertex;
 
 								double distance = normalized_light_source.norm();
 								normalized_light_source /= distance;
@@ -1301,16 +1301,16 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 								double similarity = 0;
 
 								// If the triangle faces the light source (and the triangle is not part of the light source model), interpolate the fill color (the default color for all models) with the light source color, proportional to the light intensity for the given triangle
-								if (light_source.type == LightType::point) {
+								if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::point) {
 									similarity = Mat::dot(normalized_light_source, interpolated_normal);
 									//similarity = 1;
 								}
-								else if (light_source.type == LightType::directional) {
-									similarity = -Mat::dot(light_source.direction, interpolated_normal);
+								else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::directional) {
+									similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, interpolated_normal);
 								}
-								else if (light_source.type == LightType::spotlight) {
+								else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::spotlight) {
 									// How similar the light ray and the light direction are (represents whether the triangle is within the field of view of the light)
-									double direction_similarity = -Mat::dot(light_source.direction, interpolated_normal);
+									double direction_similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, interpolated_normal);
 
 									// How similar the light ray and the triangle normal vectors are (represents the light intensity)
 									double position_similarity = Mat::dot(normalized_light_source, interpolated_normal);
@@ -1330,24 +1330,24 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 								if (similarity > 0) {
 									double attenuation = 0;
 
-									if (light_source.type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
+									if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
 									else attenuation = 1.0;
 
-									double light_intensity = similarity * light_source.intensity * attenuation;
+									double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 									light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-									uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-									uint8_t light_color_red = (light_source.color >> 24) & 0x000000FF;
+									uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+									uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 
-									uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-									uint8_t light_color_green = (light_source.color >> 16) & 0x000000FF;
+									uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+									uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 
-									uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
-									uint8_t light_color_blue = (light_source.color >> 8) & 0x000000FF;
+									uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+									uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
-									uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-									uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-									uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+									uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+									uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+									uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 									uint8_t red = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_red, light_color_red);
 									uint8_t green = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_green, light_color_green);
@@ -1358,13 +1358,13 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 								// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 								else {
-									uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-									uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-									uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
+									uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+									uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+									uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
 
-									uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-									uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-									uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+									uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+									uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+									uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 									fill_color = 0x000000FF | (minimum_red << 24) | (minimum_green << 16) | (minimum_blue << 8);
 								}
@@ -1372,17 +1372,15 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 							this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
 						}
-						else {
-						}
 						
 					}
 					else {
-						if (!is_light_source && shade && light_source.enabled && shading_type == ShadingType::Gouraud) {
+						if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Gouraud) {
 							Mat color = ((v0_color * a) + (v1_color * c) + (v2_color * b));
 
 							fill_color = (uint8_t)color.get(1, 1) << 24 | (uint8_t)color.get(2, 1) << 16 | (uint8_t)color.get(3, 1) << 8 | (uint8_t)color.get(4, 1);
 						}
-						else if (!is_light_source && shade && light_source.enabled && shading_type == ShadingType::Phong) {
+						else if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Phong) {
 							// Vertex lighting/shading happens here
 							Mat interpolated_normal = ((world_v0_normal * a) + (world_v1_normal * c) + (world_v2_normal * b));
 							interpolated_normal.normalize();
@@ -1390,7 +1388,7 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 							Mat current_triangle_vertex = (world_v0 * a) + (world_v1 * c) + (world_v2 * b);
 							current_triangle_vertex.set(1, 4, 1);
 
-							Mat normalized_light_source = light_source.position - current_triangle_vertex;
+							Mat normalized_light_source = window_manager.general_window.scene_tab.current_scene.light_source.position - current_triangle_vertex;
 
 							double distance = normalized_light_source.norm();
 							normalized_light_source /= distance;
@@ -1398,16 +1396,16 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 							double similarity = 0;
 
 							// If the triangle faces the light source (and the triangle is not part of the light source model), interpolate the fill color (the default color for all models) with the light source color, proportional to the light intensity for the given triangle
-							if (light_source.type == LightType::point) {
+							if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::point) {
 								similarity = Mat::dot(normalized_light_source, interpolated_normal);
 								//similarity = 1;
 							}
-							else if (light_source.type == LightType::directional) {
-								similarity = -Mat::dot(light_source.direction, interpolated_normal);
+							else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::directional) {
+								similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, interpolated_normal);
 							}
-							else if (light_source.type == LightType::spotlight) {
+							else if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::spotlight) {
 								// How similar the light ray and the light direction are (represents whether the triangle is within the field of view of the light)
-								double direction_similarity = -Mat::dot(light_source.direction, interpolated_normal);
+								double direction_similarity = -Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, interpolated_normal);
 
 								// How similar the light ray and the triangle normal vectors are (represents the light intensity)
 								double position_similarity = Mat::dot(normalized_light_source, interpolated_normal);
@@ -1427,24 +1425,24 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 							if (similarity > 0) {
 								double attenuation = 0;
 
-								if (light_source.type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
+								if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type != LightType::directional && distance != 0) attenuation = 1.0 / (distance * distance);
 								else attenuation = 1.0;
 
-								double light_intensity = similarity * light_source.intensity * attenuation;
+								double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 								light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-								uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-								uint8_t light_color_red = (light_source.color >> 24) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 
-								uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-								uint8_t light_color_green = (light_source.color >> 16) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 
-								uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
-								uint8_t light_color_blue = (light_source.color >> 8) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
-								uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-								uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-								uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+								uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+								uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 								uint8_t red = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_red, light_color_red);
 								uint8_t green = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_green, light_color_green);
@@ -1455,13 +1453,13 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 							// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 							else {
-								uint8_t fill_color_red = (this->FILL_COLOR >> 24) & 0x000000FF;
-								uint8_t fill_color_green = (this->FILL_COLOR >> 16) & 0x000000FF;
-								uint8_t fill_color_blue = (this->FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
 
-								uint8_t minimum_red = (uint8_t)(light_source.minimum_exposure * fill_color_red);
-								uint8_t minimum_green = (uint8_t)(light_source.minimum_exposure * fill_color_green);
-								uint8_t minimum_blue = (uint8_t)(light_source.minimum_exposure * fill_color_blue);
+								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
+								uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
+								uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
 								fill_color = 0x000000FF | (minimum_red << 24) | (minimum_green << 16) | (minimum_blue << 8);
 							}
@@ -1486,18 +1484,24 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 void Engine::draw() {
 	// Clears pixel buffer to the background/clear color
 	for (int i = 0; i < this->WIDTH * this->HEIGHT; i++) {
-		this->pixel_buffer[i] = this->BG_COLOR;
+		this->pixel_buffer[i] = window_manager.general_window.settings_tab.BG_COLOR;
 		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
 
-	for (const Instance& instance : this->current_scene.scene_instances) {
-		if (instance.show) draw_instance(instance, this->wireframe_render, this->LINE_COLOR, this->rasterize, this->FILL_COLOR, this->shade, instance.is_light_source);
+	for (const Instance& instance : window_manager.general_window.scene_tab.current_scene.scene_instances) {
+		if (instance.show) {
+			draw_instance(instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.settings_tab.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.settings_tab.FILL_COLOR, window_manager.general_window.settings_tab.shade);
+
+			if (instance.is_axes && window_manager.general_window.scene_tab.show_transform_axes && (window_manager.general_window.scene_tab.is_instances_open || window_manager.general_window.scene_tab.is_light_open)) {
+				draw_instance(window_manager.general_window.scene_tab.current_scene.axes_instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.settings_tab.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.settings_tab.FILL_COLOR, false);
+			}
+		}
 	}
 }
 
 void Engine::render() {
-	SDL_RenderSetScale(this->renderer, this->window_manager.io.DisplayFramebufferScale.x, this->window_manager.io.DisplayFramebufferScale.y);
-	SDL_SetRenderDrawColor(this->renderer, this->CLEAR_COLOR >> 24, this->CLEAR_COLOR >> 16, this->CLEAR_COLOR >> 8, this->CLEAR_COLOR);
+	SDL_RenderSetScale(this->renderer, window_manager.io.DisplayFramebufferScale.x, window_manager.io.DisplayFramebufferScale.y);
+	SDL_SetRenderDrawColor(this->renderer, window_manager.general_window.settings_tab.CLEAR_COLOR >> 24, window_manager.general_window.settings_tab.CLEAR_COLOR >> 16, window_manager.general_window.settings_tab.CLEAR_COLOR >> 8, window_manager.general_window.settings_tab.CLEAR_COLOR);
 	SDL_RenderClear(this->renderer);
 	SDL_UpdateTexture(this->texture, nullptr, this->pixel_buffer, this->WIDTH * sizeof(uint32_t));
 	SDL_RenderCopy(this->renderer, this->texture, nullptr, nullptr);
@@ -1988,452 +1992,11 @@ void Engine::close() {
 	free(this->pixel_buffer);
 	free(this->depth_buffer);
 
-	this->window_manager.close();
+	window_manager.close();
 
 	SDL_DestroyTexture(this->texture);
 	SDL_DestroyRenderer(this->renderer);
 	SDL_DestroyWindow(this->window);
 
 	SDL_Quit();
-}
-
-/// <summary>
-/// Updates the view matrix to look at the current camera direction vector in the current camera position, with the current camera up vector.
-/// </summary>
-void Engine::LookAt() {
-
-	// Setting 4th dimension to 0 for dot product
-	Mat camera_position = this->camera_position;
-	camera_position.set(0, 4, 1);
-
-	Mat cam_z_axis = ((camera_direction + camera_position) - camera_position);
-	cam_z_axis.set(0, 4, 1);
-	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
-
-	this->VIEW_MATRIX = Mat::identity_matrix(4);
-
-	this->VIEW_MATRIX.set(cam_x_axis.get(1, 1), 1, 1);
-	this->VIEW_MATRIX.set(cam_x_axis.get(2, 1), 1, 2);
-	this->VIEW_MATRIX.set(cam_x_axis.get(3, 1), 1, 3);
-
-	this->VIEW_MATRIX.set(cam_y_axis.get(1, 1), 2, 1);
-	this->VIEW_MATRIX.set(cam_y_axis.get(2, 1), 2, 2);
-	this->VIEW_MATRIX.set(cam_y_axis.get(3, 1), 2, 3);
-
-	this->VIEW_MATRIX.set(cam_z_axis.get(1, 1), 3, 1);
-	this->VIEW_MATRIX.set(cam_z_axis.get(2, 1), 3, 2);
-	this->VIEW_MATRIX.set(cam_z_axis.get(3, 1), 3, 3);
-
-	this->VIEW_MATRIX.set(-Mat::dot(cam_x_axis, camera_position), 1, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_y_axis, camera_position), 2, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_z_axis, camera_position), 3, 4);
-
-	this->VIEW_MATRIX.set(0, 4, 1);
-	this->VIEW_MATRIX.set(0, 4, 2);
-	this->VIEW_MATRIX.set(0, 4, 3);
-	this->VIEW_MATRIX.set(1, 4, 4);
-}
-
-/// <summary>
-/// Updates the view matrix to look at the target vector.
-/// </summary>
-/// <param name="target_vector">Vector to look at</param>
-void Engine::LookAt(const Mat& target_vector) {
-
-	// Setting 4th dimension to 0 for dot product
-	Mat camera_position = this->camera_position;
-	camera_position.set(0, 4, 1);
-
-	Mat tmp_target_vector = target_vector;
-	tmp_target_vector.set(0, 4, 1);
-
-	Mat cam_z_axis = target_vector - camera_position;
-	cam_z_axis.set(0, 4, 1);
-	cam_z_axis.normalize();
-	this->camera_direction = cam_z_axis;
-
-	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
-	this->camera_up = cam_y_axis;
-
-	this->VIEW_MATRIX.set(cam_x_axis.get(1, 1), 1, 1);
-	this->VIEW_MATRIX.set(cam_x_axis.get(2, 1), 1, 2);
-	this->VIEW_MATRIX.set(cam_x_axis.get(3, 1), 1, 3);
-
-	this->VIEW_MATRIX.set(cam_y_axis.get(1, 1), 2, 1);
-	this->VIEW_MATRIX.set(cam_y_axis.get(2, 1), 2, 2);
-	this->VIEW_MATRIX.set(cam_y_axis.get(3, 1), 2, 3);
-
-	this->VIEW_MATRIX.set(cam_z_axis.get(1, 1), 3, 1);
-	this->VIEW_MATRIX.set(cam_z_axis.get(2, 1), 3, 2);
-	this->VIEW_MATRIX.set(cam_z_axis.get(3, 1), 3, 3);
-
-	this->VIEW_MATRIX.set(-Mat::dot(cam_x_axis, camera_position), 1, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_y_axis, camera_position), 2, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_z_axis, camera_position), 3, 4);
-
-	this->VIEW_MATRIX.set(0, 4, 1);
-	this->VIEW_MATRIX.set(0, 4, 2);
-	this->VIEW_MATRIX.set(0, 4, 3);
-	this->VIEW_MATRIX.set(1, 4, 4);
-}
-
-/// <summary>
-/// Returns a view matrix which looks at the given camera direction vector in the given camera position, with the given camera up vector.
-/// </summary>
-/// <param name="camera_position">Camera position vector</param>
-/// <param name="camera_direction">Camera direction vector</param>
-/// <param name="camera_up">Camera up vector</param>
-/// <returns>A 4x4 view matrix looking at the camera direction in the camera position, with the camera up vector.</returns>
-Mat Engine::LookAt(const Mat& camera_position, const Mat& camera_direction, const Mat& camera_up) {
-
-	// Setting 4th dimension to 0 for dot product
-	Mat tmp_camera_position = camera_position;
-	tmp_camera_position.set(0, 4, 1);
-
-	Mat cam_z_axis = ((camera_direction + camera_position) - tmp_camera_position);
-
-	cam_z_axis.set(0, 4, 1);
-	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
-
-	Mat VIEW_MATRIX = Mat::identity_matrix(4);
-
-	VIEW_MATRIX.set(cam_x_axis.get(1, 1), 1, 1);
-	VIEW_MATRIX.set(cam_x_axis.get(2, 1), 1, 2);
-	VIEW_MATRIX.set(cam_x_axis.get(3, 1), 1, 3);
-
-	VIEW_MATRIX.set(cam_y_axis.get(1, 1), 2, 1);
-	VIEW_MATRIX.set(cam_y_axis.get(2, 1), 2, 2);
-	VIEW_MATRIX.set(cam_y_axis.get(3, 1), 2, 3);
-
-	VIEW_MATRIX.set(cam_z_axis.get(1, 1), 3, 1);
-	VIEW_MATRIX.set(cam_z_axis.get(2, 1), 3, 2);
-	VIEW_MATRIX.set(cam_z_axis.get(3, 1), 3, 3);
-
-	VIEW_MATRIX.set(-Mat::dot(cam_x_axis, tmp_camera_position), 1, 4);
-	VIEW_MATRIX.set(-Mat::dot(cam_y_axis, tmp_camera_position), 2, 4);
-	VIEW_MATRIX.set(-Mat::dot(cam_z_axis, tmp_camera_position), 3, 4);
-
-	VIEW_MATRIX.set(0, 4, 1);
-	VIEW_MATRIX.set(0, 4, 2);
-	VIEW_MATRIX.set(0, 4, 3);
-	VIEW_MATRIX.set(1, 4, 4);
-
-	return VIEW_MATRIX;
-}
-
-/// <summary>
-/// Returns a view matrix which looks at the given target vector, and updates the camera direction and camera up vectors accordingly.
-/// </summary>
-/// <param name="camera_position">Camera position vector</param>
-/// <param name="camera_direction">Camera direction vector</param>
-/// <param name="target_vector">Vector to look at</param>
-/// <param name="camera_up">Camera up vector</param>
-/// <returns>A 4x4 view matrix looking at the camera direction in the camera position, with the camera up vector.</returns>
-Mat Engine::LookAt(const Mat& camera_position, Mat& camera_direction, const Mat& target_vector, Mat& camera_up) {
-
-	// Setting 4th dimension to 0 for dot product
-	Mat tmp_camera_position = camera_position;
-	tmp_camera_position.set(0, 4, 1);
-	Mat tmp_target_vector = target_vector;
-	tmp_target_vector.set(0, 4, 1);
-
-	Mat cam_z_axis = target_vector - tmp_camera_position;
-
-	cam_z_axis.set(0, 4, 1);
-	cam_z_axis.normalize();
-	camera_direction = cam_z_axis;
-
-	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
-	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
-	camera_up = cam_y_axis;
-
-	Mat VIEW_MATRIX = Mat::identity_matrix(4);
-
-	VIEW_MATRIX.set(cam_x_axis.get(1, 1), 1, 1);
-	VIEW_MATRIX.set(cam_x_axis.get(2, 1), 1, 2);
-	VIEW_MATRIX.set(cam_x_axis.get(3, 1), 1, 3);
-
-	VIEW_MATRIX.set(cam_y_axis.get(1, 1), 2, 1);
-	VIEW_MATRIX.set(cam_y_axis.get(2, 1), 2, 2);
-	VIEW_MATRIX.set(cam_y_axis.get(3, 1), 2, 3);
-
-	VIEW_MATRIX.set(cam_z_axis.get(1, 1), 3, 1);
-	VIEW_MATRIX.set(cam_z_axis.get(2, 1), 3, 2);
-	VIEW_MATRIX.set(cam_z_axis.get(3, 1), 3, 3);
-
-	VIEW_MATRIX.set(-Mat::dot(cam_x_axis, tmp_camera_position), 1, 4);
-	VIEW_MATRIX.set(-Mat::dot(cam_y_axis, tmp_camera_position), 2, 4);
-	VIEW_MATRIX.set(-Mat::dot(cam_z_axis, tmp_camera_position), 3, 4);
-
-	VIEW_MATRIX.set(0, 4, 1);
-	VIEW_MATRIX.set(0, 4, 2);
-	VIEW_MATRIX.set(0, 4, 3);
-	VIEW_MATRIX.set(1, 4, 4);
-
-	return VIEW_MATRIX;
-}
-
-// Currently assumes a right-handed coordinate system where the default direction vector is (0, 0, 1) and the default up vector is (0, 1, 0)
-void Engine::GetRoll(Orientation orientation, const Mat& direction, const Mat& up, double& yaw, const double& pitch, double& roll) {
-	if (orientation == Orientation::local) {
-		if (abs(direction.get(2, 1)) > 0.9999999) {
-			// In gimbal lock - collapse roll into yaw
-			roll = 0.0;
-		}
-		else {
-			// Normal case - extract roll from up vector
-			roll = -atan2(up.get(1, 1) * cos(yaw) - up.get(3, 1) * sin(yaw), up.get(2, 1) / cos(pitch));
-		}
-
-
-		//roll = -atan2(new_vector.get(1, 1) * cos(yaw) - new_vector.get(3, 1) * sin(yaw), new_vector.get(2, 1) / cos(pitch));
-	}
-
-	if (orientation == Orientation::world) {
-		if (abs(direction.get(2, 1)) > 0.9999999) {
-			// In gimbal lock - collapse roll into yaw
-			roll = 0.0;
-		}
-		else {
-			// Normal case - extract roll from up vector
-			roll = -atan2(up.get(1, 1) * cos(yaw) - up.get(3, 1) * sin(yaw), up.get(2, 1) / cos(pitch));
-		}
-	}
-}
-
-void Engine::load_scene(bool verbose) {
-	Mat camera_translation = Mat({ {0}, {0}, {0}, {0} }, 4, 1);
-
-	// Resets default camera position
-	this->default_camera_position = Mat({ {0}, {0}, {0}, {1} }, 4, 1);
-
-	// Resets default camera direction
-	this->default_camera_direction = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
-
-	// Resets default camera up
-	this->default_camera_up = Mat({ {0}, {1}, {0}, {0} }, 4, 1);
-
-	// Resets default camera right
-	this->default_camera_right = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
-
-	// Resets camera position
-	this->camera_position = this->default_camera_position;
-
-	// Resets camera direction and up vectors
-	this->camera_direction = this->default_camera_direction;
-	this->camera_up = this->default_camera_up;
-
-	// Resets camera orientation and rotation parameters
-	this->camera_orientation = Quaternion(0, 0, 0, 1);
-	this->camera_yaw = 0;
-	this->camera_pitch = 0;
-	this->camera_roll = 0;
-
-	// Resets view matrix
-	this->VIEW_MATRIX = Mat::identity_matrix(4);
-	this->VIEW_INVERSE = Mat::identity_matrix(4);
-
-	// Resets the light source
-	this->light_source = Light();
-
-	Mat new_camera_direction = this->default_camera_direction;
-	Mat new_camera_up = this->default_camera_up;
-
-	bool rotation_given = false;
-	bool direction_given = false;
-	bool up_given = false;
-
-	bool light_rotation_given = false;
-	bool light_direction_given = false;
-	bool light_up_given = false;
-
-
-
-	// Default world space light direction and up vectors (used for rotations with respect to world space, as well as retrieving yaw, pitch, and roll from the current orientation of the light source in terms of deviation from these default vectors)
-	Mat default_light_direction = this->light_source.default_direction;
-	Mat default_light_up = this->light_source.default_up;
-	Mat default_light_right = this->light_source.default_right;
-
-	Mat new_light_direction = default_light_direction;
-	Mat new_light_up = default_light_up;
-
-	Orientation rotation_orientation = Orientation::world;
-
-	if (this->using_instance_world_orientation) {
-		rotation_orientation = Orientation::world;
-	}
-	else if (this->using_instance_local_orientation) {
-		rotation_orientation = Orientation::local;
-	}
-
-	// Loads scene metadata into class instance
-	this->current_scene = Scene(this->scenes_folder, this->scene_filename, this->models_folder, verbose, this->default_camera_position, camera_translation, this->default_camera_direction, new_camera_direction, this->default_camera_up, new_camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll, rotation_given, direction_given, up_given, this->light_source, light_rotation_given, light_direction_given, light_up_given,  this->use_scene_camera_settings, rotation_orientation);
-
-	// Sets the non light source target instance (which will be transformed when edit mode is enabled)
-	if (this->light_source.has_model && this->current_scene.total_instances > 1) {
-		this->window_manager.general_window.target_instance = &this->current_scene.scene_instances[1];
-		this->window_manager.general_window.display_qx = this->window_manager.general_window.target_instance->orientation.x;
-		this->window_manager.general_window.display_qy = this->window_manager.general_window.target_instance->orientation.y;
-		this->window_manager.general_window.display_qz = this->window_manager.general_window.target_instance->orientation.z;
-		this->window_manager.general_window.display_qw = this->window_manager.general_window.target_instance->orientation.w;
-	}
-	else if (!this->light_source.has_model && this->current_scene.total_instances > 0) {
-		this->window_manager.general_window.target_instance = &this->current_scene.scene_instances[0];
-		this->window_manager.general_window.display_qx = this->window_manager.general_window.target_instance->orientation.x;
-		this->window_manager.general_window.display_qy = this->window_manager.general_window.target_instance->orientation.y;
-		this->window_manager.general_window.display_qz = this->window_manager.general_window.target_instance->orientation.z;
-		this->window_manager.general_window.display_qw = this->window_manager.general_window.target_instance->orientation.w;
-	}
-
-	this->window_manager.general_window.light_source = &this->light_source;
-
-	// Updates camera position
-	this->camera_position = this->default_camera_position + camera_translation;
-	this->default_camera_right = Mat::CrossProduct3D(this->default_camera_up, this->default_camera_direction);
-
-	Mat camera_right = this->default_camera_right;
-
-	if (direction_given) this->camera_direction = new_camera_direction;
-	if (up_given) this->camera_up = new_camera_up;
-	if (direction_given || up_given) {
-		camera_right = Mat::CrossProduct3D(this->camera_up, this->camera_direction);
-	}
-
-	// If no rotation parameters were given, derive them from the direction vector
-	if (direction_given && !rotation_given) {
-		// Gets yaw and pitch representing the rotation from the default camera direction to the new camera direction
-		Quaternion::GetAnglesFromDirection(Orientation::local, this->default_camera_direction, this->camera_direction, this->camera_yaw, this->camera_pitch, this->camera_roll);
-	}
-
-	if (up_given && !rotation_given) {
-		// Gets roll representing the rotation from the default camera up to the camera up
-		// Assumes default direction of (0, 0, 1)
-		Engine::GetRoll(Orientation::local, this->camera_direction, this->camera_up, this->camera_yaw, this->camera_pitch, this->camera_roll);
-	}
-
-	Mat default_world_direction = Mat({ {0}, {0}, {1}, {0} }, 4, 1);
-	Mat default_world_up = Mat({ {0}, {1}, {0}, {0} }, 4, 1);
-	Mat default_world_right = Mat({ {1}, {0}, {0}, {0} }, 4, 1);
-
-	this->camera_orientation = Quaternion::FromYawPitchRoll(Orientation::local, this->camera_yaw, this->camera_pitch, this->camera_roll, default_world_right, default_world_up, default_world_direction);
-
-	// If direction was not given, but rotation was - rotates the default camera direction vectors by the rotation parameters
-	if ((!direction_given || !up_given) && rotation_given) {
-		this->camera_direction = this->default_camera_direction;
-		this->camera_up = this->default_camera_up;
-
-		Quaternion::RotatePoint(this->camera_orientation, this->camera_direction, false);
-		Quaternion::RotatePoint(this->camera_orientation, this->camera_up, false);
-
-		camera_right = Mat::CrossProduct3D(this->camera_up, this->camera_direction);
-		/*
-		this->camera_direction = Quaternion::RotatePoint(this->camera_direction, this->camera_up, this->camera_yaw, false);
-		camera_right = Quaternion::RotatePoint(camera_right, this->camera_up, this->camera_yaw, false);
-		this->camera_direction = Quaternion::RotatePoint(this->camera_direction, camera_right, this->camera_pitch, false);
-		this->camera_up = Quaternion::RotatePoint(this->camera_up, camera_right, this->camera_pitch, false);
-		this->camera_up = Quaternion::RotatePoint(this->camera_up, this->camera_direction, this->camera_roll, false);
-		*/
-	}
-
-	std::cout << "R0: " << light_source.roll << std::endl;
-
-	if (light_direction_given && !light_rotation_given) {
-		Quaternion::GetAnglesFromDirection(rotation_orientation, default_light_direction, this->light_source.direction, this->light_source.yaw, this->light_source.pitch, this->light_source.roll);
-	}
-
-	/*
-	std::cout << "Light source yaw: " << light_source.yaw << std::endl;
-	std::cout << "Light source pitch: " << light_source.pitch << std::endl;
-	std::cout << "Light source roll: " << light_source.roll << std::endl;
-
-	printf("\n");
-	*/
-
-	std::cout << "R1: " << light_source.roll << std::endl;
-	
-
-	if (light_up_given && !light_rotation_given) {
-		// Gets roll representing the rotation from the default camera up to the camera up
-		// Assumes default direction of (0, 0, 1)
-		Engine::GetRoll(rotation_orientation, this->light_source.direction, this->light_source.up, this->light_source.yaw, this->light_source.pitch, this->light_source.roll);
-	}
-
-	std::cout << "R2: " << light_source.roll << std::endl;
-
-	/*
-	std::cout << "Light source yaw: " << light_source.yaw << std::endl;
-	std::cout << "Light source pitch: " << light_source.pitch << std::endl;
-	std::cout << "Light source roll: " << light_source.roll << std::endl;
-
-	exit(-1);
-	*/
-
-	//this->camera_orientation.GetAngles(this->camera_yaw, this->camera_pitch, this->camera_roll);
-
-
-
-	light_source.orientation = Quaternion::FromYawPitchRoll(rotation_orientation, light_source.yaw, light_source.pitch, light_source.roll, default_world_right, default_world_up, default_world_direction);
-	
-	if ((!light_direction_given || !light_up_given) && light_rotation_given) {
-		this->light_source.direction = this->light_source.default_direction;
-		this->light_source.up = this->light_source.default_up;
-
-		Quaternion::RotatePoint(light_source.orientation, this->light_source.direction, false);
-		Quaternion::RotatePoint(light_source.orientation, this->light_source.up, false);
-	}
-	
-	//light_source.orientation.GetAngles(light_source.yaw, light_source.pitch, light_source.roll);
-	this->window_manager.general_window.light_display_qw = light_source.orientation.w;
-	this->window_manager.general_window.light_display_qx = light_source.orientation.x;
-	this->window_manager.general_window.light_display_qy = light_source.orientation.y;
-	this->window_manager.general_window.light_display_qz = light_source.orientation.z;
-
-	if (light_source.has_model) {
-		light_source.instance->yaw = light_source.yaw;
-		light_source.instance->pitch = light_source.pitch;
-		light_source.instance->roll = light_source.roll;
-		light_source.instance->orientation = light_source.orientation;
-		light_source.instance->ROTATION_MATRIX = light_source.instance->orientation.get_rotationmatrix();
-		light_source.instance->MODEL_TO_WORLD = light_source.instance->TRANSLATION_MATRIX * light_source.instance->ROTATION_MATRIX * light_source.instance->SCALING_MATRIX;
-	}
-
-	std::cout << "Light dir: " << std::endl;
-	light_source.direction.print();
-	std::cout << "Light up: " << std::endl;
-	light_source.up.print();
-
-	std::cout << "Light yaw: " << light_source.yaw << std::endl;
-	std::cout << "Light pitch: " << light_source.pitch << std::endl;
-	std::cout << "Light roll: " << light_source.roll << std::endl;
-
-	//exit(-1);
-
-
-	this->VIEW_MATRIX = Engine::LookAt(this->camera_position, this->camera_direction, this->camera_up);
-	this->update_view_inverse();
-
-	// Logs camera/view information if enabled (might also include other scene relevant information such as number of meshes, instances, vertices, etc...)
-	if (verbose) {
-		std::cout << "Camera position: " << std::endl;
-		this->camera_position.print();
-
-		std::cout << "Yaw: " << this->camera_yaw << std::endl;
-		std::cout << "Pitch: " << this->camera_pitch << std::endl;
-		std::cout << "Roll: " << this->camera_roll << std::endl;
-
-		std::cout << "Camera direction: " << std::endl;
-		this->camera_direction.print();
-
-		std::cout << "Camera up: ";
-		this->camera_up.print();
-		std::cout << std::endl;
-
-		std::cout << "View matrix: " << std::endl;
-		this->VIEW_MATRIX.print();
-	}
-
-	
 }
