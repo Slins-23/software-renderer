@@ -14,7 +14,7 @@ public:
 	double display_qx = 0;
 	double display_qy = 0;
 	double display_qz = 0;
-	double display_qw = 0;
+	double display_qw = 1;
 
 	std::string chosen_instance_name = "";
 	uint32_t chosen_instance_id = 0;

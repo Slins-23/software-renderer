@@ -116,6 +116,8 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 	this->scene_meshes.clear();
 	this->scene_instances.clear();
 
+	this->total_ever_instances = 0;
+	this->total_ever_meshes = 0;
 	this->total_meshes = 0;
 	this->total_instances = 0;
 	this->total_triangles = 0;
@@ -135,6 +137,7 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		printf("Error: Could not open scene file '%s' at path '%s'.\n", scene_filename, scene_filepath);
 		printf("Defaulting to the cube scene.\n");
 		*this = Scene(models_folder, rotation_orientation, verbose);
+		this->load_error = true;
 		return;
 		//throw std::runtime_error("Error: Could not load scene.");
 	}
@@ -523,9 +526,10 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		char model_path[255];
 		sprintf_s(model_path, 255, "%s%s", models_folder, model_filename);
 		Mesh current_model = Mesh(model_path, model_filename, this->total_ever_meshes);
+		this->scene_meshes.push_back(std::move(current_model));
 		this->total_meshes++;
 
-		this->scene_meshes.push_back(std::move(current_model));
+		
 
 		for (auto instance = this->scene_data["models"][model_filename]["instances"].begin(); instance != this->scene_data["models"][model_filename]["instances"].end(); instance++) {
 			const char* instance_name = instance.key().c_str();
@@ -683,6 +687,43 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 	}
 }
 
+Scene& Scene::operator=(Scene&& original_scene) noexcept {
+	if (this != &original_scene) {
+		std::swap(this->total_ever_instances, original_scene.total_ever_instances);
+		std::swap(this->total_ever_meshes, original_scene.total_ever_meshes);
+
+		std::swap(this->total_meshes, original_scene.total_meshes);
+		std::swap(this->total_instances, original_scene.total_instances);
+		std::swap(this->total_triangles, original_scene.total_triangles);
+		std::swap(this->total_vertices, original_scene.total_vertices);
+
+		std::swap(this->rendered_meshes, original_scene.rendered_meshes);
+		std::swap(this->rendered_instances, original_scene.rendered_instances);
+		std::swap(this->rendered_triangles, original_scene.rendered_triangles);
+		std::swap(this->rendered_vertices, original_scene.rendered_vertices);
+
+		std::swap(this->scene_meshes, original_scene.scene_meshes);
+		std::swap(this->scene_instances, original_scene.scene_instances);
+
+		std::swap(this->scene_filepath, original_scene.scene_filepath);
+		std::swap(this->scene_data, original_scene.scene_data);
+
+		std::swap(this->default_world_up, original_scene.default_world_up);
+		std::swap(this->default_world_right, original_scene.default_world_right);
+		std::swap(this->default_world_forward, original_scene.default_world_forward);
+
+		std::swap(this->camera, original_scene.camera);
+
+		std::swap(this->light_source, original_scene.light_source);
+
+		std::swap(this->axes_instance, original_scene.axes_instance);
+		std::swap(this->axes_mesh, original_scene.axes_mesh);
+
+		std::swap(this->load_error, original_scene.load_error);
+	}
+
+	return *this;
+}
 
 void Scene::save(const char* scene_folder, const char* scene_filename) const {
 	char scene_filepath[255];

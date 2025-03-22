@@ -29,9 +29,9 @@ public:
 	// Rasterization color
 	uint32_t FILL_COLOR = 0x66285CFF;
 
-	float display_BG_COLOR[4] = { 0, 0, 0, 0 };
-	float display_LINE_COLOR[4] = { 0, 0, 0, 0 };
-	float display_FILL_COLOR[4] = { 0, 0, 0, 0 };
+	float display_BG_COLOR[4] = {static_cast<float>(((BG_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((BG_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((BG_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((BG_COLOR & 0x000000FF) / 255.0) };
+	float display_LINE_COLOR[4] = { static_cast<float>(((LINE_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((LINE_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((LINE_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((LINE_COLOR & 0x000000FF) / 255.0) };
+	float display_FILL_COLOR[4] = { static_cast<float>(((FILL_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((FILL_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((FILL_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((FILL_COLOR & 0x000000FF) / 255.0) };
 
 	double z_fighting_tolerance = 0.994;
 
@@ -79,7 +79,7 @@ public:
 
 		ImGui::Text("Background color:");
 		ImGui::SameLine();
-		if (ImGui::ColorEdit4("##Color", this->display_BG_COLOR)) {
+		if (ImGui::ColorEdit4("##BGColor", this->display_BG_COLOR, ImGuiColorEditFlags_NoInputs)) {
 			uint8_t red = display_BG_COLOR[0] * 255.0;
 			uint8_t green = display_BG_COLOR[1] * 255.0;
 			uint8_t blue = display_BG_COLOR[2] * 255.0;
@@ -92,7 +92,7 @@ public:
 
 		ImGui::Text("Line/wireframe color:");
 		ImGui::SameLine();
-		if (ImGui::ColorEdit4("##Color", this->display_LINE_COLOR)) {
+		if (ImGui::ColorEdit4("##LColor", this->display_LINE_COLOR, ImGuiColorEditFlags_NoInputs)) {
 			uint8_t red = display_LINE_COLOR[0] * 255.0;
 			uint8_t green = display_LINE_COLOR[1] * 255.0;
 			uint8_t blue = display_LINE_COLOR[2] * 255.0;
@@ -105,7 +105,7 @@ public:
 
 		ImGui::Text("Fill/ambient color:");
 		ImGui::SameLine();
-		if (ImGui::ColorEdit4("##Color", this->display_FILL_COLOR)) {
+		if (ImGui::ColorEdit4("##FColor", this->display_FILL_COLOR, ImGuiColorEditFlags_NoInputs)) {
 			uint8_t red = display_FILL_COLOR[0] * 255.0;
 			uint8_t green = display_FILL_COLOR[1] * 255.0;
 			uint8_t blue = display_FILL_COLOR[2] * 255.0;

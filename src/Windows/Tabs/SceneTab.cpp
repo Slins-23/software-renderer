@@ -77,9 +77,9 @@ void SceneTab::load_scene() {
 	Mat old_PROJECTION_MATRIX = this->current_scene.camera.PROJECTION_MATRIX;
 	Mat old_SCALE_MATRIX = this->current_scene.camera.SCALE_MATRIX;
 
-	delete camera_tab;
-	delete instances_tab;
 	delete light_tab;
+	delete instances_tab;
+	delete camera_tab;
 
 	this->current_scene = Scene(this->scene_folder, this->scene_load_name, this->models_folder, this->rotation_orientation, this->update_camera_settings, this->verbose);
 
@@ -98,16 +98,54 @@ void SceneTab::load_scene() {
 
 
 void SceneTab::draw() {
-	ImGui::Text("Scenes folder:");
+	ImGui::Text("Load scene camera settings");
+	ImGui::SameLine();
+	ImGui::Checkbox("##load_camera", &this->update_camera_settings);
+	ImGui::SetItemTooltip("Enabled: Camera starts at the camera position and orientation within the file.\nDisabled: Camera starts at the default position and orientation.");
+
+	ImGui::Text("Scene file:");
+	ImGui::SameLine();
+	ImGui::PushItemWidth(90);
+	ImGui::InputText("##Scene filename:", this->scene_load_name, 255, ImGuiInputTextFlags_None);
+	ImGui::SetItemTooltip("Filename of the scene configuration file. (Including the extension)\nIt must be within the given scene folder");
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Load")) {
+		//load_scene(this->scene_folder, this->scene_load_name, this->models_folder, this->update_camera_settings, true);
+		load_scene();
+	}
+
+	if (this->current_scene.load_error) {
+		ImGui::TextColored(ImVec4(1.0, 0, 0, 1.0), "Error: Scene file could not be loaded.\nCheck if the given scene folder and filename are set correctly.");
+	}
+
+	ImGui::Separator();
+
+	ImGui::Spacing();
+
+	ImGui::Text("Scene file:");
+	ImGui::SameLine();
+	ImGui::InputText("##LScene filename (including extension):", this->scene_save_name, 255, ImGuiInputTextFlags_None);
+	ImGui::SetItemTooltip("Filename of the scene configuration file. (Including the extension)\nIt will be saved in the given scene folder");
+	ImGui::SameLine();
+
+	if (ImGui::Button("Save")) {
+		current_scene.save(this->scene_folder, this->scene_save_name);
+	}
+
+	ImGui::Separator();
+
+	ImGui::Text("Scene folder:");
 	ImGui::SameLine();
 	ImGui::Text(this->scene_folder);
-	ImGui::SetItemTooltip("Choose the folder in which your scenes are saved. The default scene (cube.json) must be in the same folder in case your scene cannot be loaded.");
-	if (ImGui::Button("Browse")) {
+	ImGui::SameLine();
+	if (ImGui::Button("Browse##scene_folder")) {
 		nfdchar_t* scenes_path = nullptr;
 		nfdresult_t result = NFD_PickFolder(this->scene_folder, &scenes_path);
 
 		if (result == NFD_OKAY) {
-			strcpy_s(this->scene_folder, sizeof(this->scene_folder), scenes_path);
+			sprintf_s(this->scene_folder, sizeof(this->scene_folder), "%s\\", scenes_path);
 		}
 		else if (result == NFD_CANCEL) {
 
@@ -119,17 +157,18 @@ void SceneTab::draw() {
 
 		free(scenes_path);
 	}
+	ImGui::SetItemTooltip("Choose the folder in which your scenes are saved.\nThe program will crash if it cannot find the mesh!\nMake sure the given model file is within the given model folder!");
 
 	ImGui::Text("Models folder:");
 	ImGui::SameLine();
 	ImGui::Text(this->models_folder);
-	ImGui::SetItemTooltip("Choose the folder in which your models are saved. All of them must be in this folder.");
-	if (ImGui::Button("Browse")) {
+	ImGui::SameLine();
+	if (ImGui::Button("Browse##models_folder")) {
 		nfdchar_t* models_path = nullptr;
 		nfdresult_t result = NFD_PickFolder(this->models_folder, &models_path);
 
 		if (result == NFD_OKAY) {
-			strcpy_s(this->models_folder, sizeof(this->models_folder), models_path);
+			sprintf_s(this->models_folder, sizeof(this->models_folder), "%s\\", models_path);
 		}
 		else if (result == NFD_CANCEL) {
 
@@ -141,33 +180,7 @@ void SceneTab::draw() {
 
 		free(models_path);
 	}
-
-	ImGui::Text("Scene filename (including extension):");
-	ImGui::SetItemTooltip("The filename of the scene configuration file to be loaded. (not path, and including the extension. i.e. 'scene_to_load.json' without the quotes) *It MUST be within the scenes folder given above*");
-	ImGui::SameLine();
-	ImGui::InputText("##Scene filename (including extension):", this->scene_load_name, 255, ImGuiInputTextFlags_None);
-
-	ImGui::Checkbox("Load scene camera settings:", &this->update_camera_settings);
-
-	ImGui::Separator();
-
-	if (ImGui::Button("Load scene")) {
-		//load_scene(this->scene_folder, this->scene_load_name, this->models_folder, this->update_camera_settings, true);
-		load_scene();
-	}
-
-	ImGui::Separator();
-
-	ImGui::Spacing();
-
-	ImGui::Text("Scene saving filename (including extension):");
-	ImGui::SetItemTooltip("The filename of the scene configuration file to be saved (not path, and including the extension. i.e. 'scene_to_save.json' without the quotes). *It will be saved in the scenes folder given above*");
-	ImGui::SameLine();
-	ImGui::InputText("##LScene filename (including extension):", this->scene_save_name, 255, ImGuiInputTextFlags_None);
-
-	if (ImGui::Button("Save scene")) {
-		current_scene.save(this->scene_folder, this->scene_save_name);
-	}
+	ImGui::SetItemTooltip("Choose the folder in which your models are saved.\nAll models within the scene must be in this folder.");
 
 	ImGui::Separator();
 

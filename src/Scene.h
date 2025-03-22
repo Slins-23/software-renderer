@@ -43,6 +43,8 @@ public:
 	Mesh axes_mesh = Mesh(this->total_ever_meshes);
 	Instance axes_instance = Instance(this->total_ever_instances);
 
+	bool load_error = false;
+
 	Scene() {};
 
 	~Scene() {};
@@ -54,6 +56,12 @@ public:
 	///	(`scene_filename` is just the name of the scene, do not include the extension.)
 	/// </summary>
 	Scene(const char* scene_folder, const char* scene_filename, const char* models_folder, Orientation rotation_orientation, bool update_camera_settings, bool verbose);
+
+	// Explicitly using the default copy constructor for initializing the scene object. This needs to be done since overloading the move operator triggers the compiler to require a custom implementation for the copy constructor.
+	Scene(const Scene& original_scene) = default;
+
+	// Move operator overload for updating the scene once a new one is loaded since pointers would otherwise get freed
+	Scene& operator=(Scene&& original_scene) noexcept;
 
 	/// <summary>
 	///  Save scene to a JSON file in the defined scene folder, with the given name.

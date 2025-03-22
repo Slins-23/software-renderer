@@ -444,7 +444,7 @@ public:
 
 			ImGui::Text("Color:");
 			ImGui::SameLine();
-			if (ImGui::ColorEdit4("##LColor:", this->display_LIGHT_COLOR)) {
+			if (ImGui::ColorEdit4("##LColor:", this->display_LIGHT_COLOR, ImGuiColorEditFlags_NoInputs)) {
 				uint8_t red = this->display_LIGHT_COLOR[0] * 255.0;
 				uint8_t green = this->display_LIGHT_COLOR[1] * 255.0;
 				uint8_t blue = this->display_LIGHT_COLOR[2] * 255.0;

@@ -9,8 +9,8 @@ class LightTab;
 
 class SceneTab : public Window {
 public:
-	char models_folder[255] = "D:/Programming/Graphics/Prototyping/models/";
-	char scene_folder[255] = "D:/Programming/Graphics/Prototyping/scenes/";
+	char models_folder[255] = "D:\\Programming\\Graphics\\Prototyping\\models\\";
+	char scene_folder[255] = "D:\\Programming\\Graphics\\Prototyping\\scenes\\";
 	char scene_load_name[255] = "hallway.json";
 	char scene_save_name[255] = "tst.json";
 
