@@ -9,7 +9,7 @@ class Window {
 protected:
 	double window_alpha = 0.3;
 	double zero = 0;
-	double one = 0;
+	double one = 1;
 public:
 	Window() {};
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <stdexcept>
 
 namespace Utils {
 	static double normalize(double prev_value, double prev_min, double prev_max, double new_min, double new_max) {

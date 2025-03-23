@@ -1,8 +1,3 @@
-<h1>This README is unfinished and may contain outdated information, and the code (albeit functional for the most part) is also a work in progress that was rushed, with currently many redundancies and suboptimal solutions.</h1>
-<br>
-<br>
-
-
 # Introduction
 
 Everything is implemented from scratch, including the matrix math, except the following external libraries:

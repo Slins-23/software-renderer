@@ -56,7 +56,7 @@ bool Engine::setup() {
 
 
 void Engine::draw_instance(const Instance& instance, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade) {
-	draw_mesh(*instance.mesh, instance.MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, instance.is_light_source, instance.is_axes);
+	if (instance.mesh != nullptr) draw_mesh(*instance.mesh, instance.MODEL_TO_WORLD, draw_outline, outline_color, fill, fill_color, shade, instance.is_light_source, instance.is_axes);
 }
 
 void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_outline, uint32_t outline_color, bool fill, uint32_t fill_color, bool shade, bool is_light_source, bool is_axes) {
@@ -1492,7 +1492,7 @@ void Engine::draw() {
 		if (instance.show) {
 			draw_instance(instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.settings_tab.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.settings_tab.FILL_COLOR, window_manager.general_window.settings_tab.shade);
 
-			if (instance.is_axes && window_manager.general_window.scene_tab.show_transform_axes && (window_manager.general_window.scene_tab.is_instances_open || window_manager.general_window.scene_tab.is_light_open)) {
+			if (instance.has_axes && window_manager.general_window.scene_tab.show_transform_axes && (window_manager.general_window.scene_tab.is_instances_open || window_manager.general_window.scene_tab.is_light_open)) {
 				draw_instance(window_manager.general_window.scene_tab.current_scene.axes_instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.settings_tab.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.settings_tab.FILL_COLOR, false);
 			}
 		}

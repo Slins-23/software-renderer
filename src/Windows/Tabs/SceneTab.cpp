@@ -94,6 +94,13 @@ void SceneTab::load_scene() {
 	camera_tab = new CameraTab(this);
 	instances_tab = new InstancesTab(this);
 	light_tab = new LightTab(this);
+
+	if (this->is_instances_open) {
+		this->instances_tab->update_transform_axes();
+	}
+	else if (this->is_light_open) {
+		this->light_tab->update_transform_axes();
+	}
 }
 
 
@@ -206,7 +213,7 @@ void SceneTab::draw() {
 	}
 	else if (is_instances_open) {
 		is_instances_open = false;
-		instances_tab->target_instance->has_axes = false;
+		//instances_tab->target_instance->has_axes = false;
 	}
 
 	if (ImGui::TreeNode("Light")) {
@@ -222,7 +229,7 @@ void SceneTab::draw() {
 	}
 	else if (is_light_open) {
 		is_light_open = false;
-		this->current_scene.light_source.instance->has_axes = false;
+		//this->current_scene.light_source.instance->has_axes = false;
 	}
 }
 

@@ -124,17 +124,9 @@ bool Engine::handle_events() {
 					if ((window_manager.general_window.scene_tab.is_instances_open || window_manager.general_window.scene_tab.is_light_open) && window_manager.general_window.scene_tab.show_transform_axes) {
 						if (window_manager.general_window.scene_tab.current_scene.axes_instance.instance_name == "light_source_axes") {
 							window_manager.general_window.scene_tab.light_tab->update_transform_axes();
-
-							if (window_manager.general_window.scene_tab.instances_tab->target_instance != nullptr) {
-								window_manager.general_window.scene_tab.instances_tab->target_instance->has_axes = false;
-							}
 						}
 						else {
 							window_manager.general_window.scene_tab.instances_tab->update_transform_axes();
-
-							if (window_manager.general_window.scene_tab.current_scene.light_source.instance != nullptr) {
-								window_manager.general_window.scene_tab.current_scene.light_source.instance->has_axes = false;
-							}
 						}
 
 						window_manager.general_window.scene_tab.current_scene.axes_instance.show = true;
@@ -148,9 +140,7 @@ bool Engine::handle_events() {
 					SDL_SetRelativeMouseMode(SDL_FALSE);
 				}
 				else {
-					if (window_manager.general_window.scene_tab.current_scene.axes_instance.show) {
-						window_manager.general_window.scene_tab.current_scene.axes_instance.show = false;
-					}
+					window_manager.general_window.scene_tab.current_scene.axes_instance.show = false;
 
 					//window_manager.general_window.scene_tab.instances_tab->target_instance->has_axes = false;
 					// Enables relative mouse tracking
