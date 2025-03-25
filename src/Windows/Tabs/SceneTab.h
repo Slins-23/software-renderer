@@ -15,19 +15,19 @@ public:
 	char scene_save_name[255] = "tst.json";
 
 	// Affects WASD translation
-	float real_translation_speed = 0.01;
+	double real_translation_speed = 0.01;
 
 	// Affects mouse rotation
-	float real_rotation_speed = 0.25;
+	double real_rotation_speed = 0.25;
 
 	// Affects menu translation
-	float menu_translation_speed = 0.001;
+	double menu_translation_speed = 0.001;
 
 	// Affects menu rotation
-	float menu_rotation_speed = 0.01;
+	double menu_rotation_speed = 0.004;
 
 	// Affects menu scaling
-	float menu_scaling_speed = 0.01;
+	double menu_scaling_speed = 0.003;
 
 	Scene current_scene = Scene(scene_folder, scene_load_name, models_folder, rotation_orientation, update_camera_settings, true);
 
@@ -39,12 +39,20 @@ public:
 	bool is_instances_open = false;
 	bool is_light_open = false;
 
+	char display_rotation_orientation[255] = "Local";
+
 
 	bool show_transform_axes = true;
 
 	CameraTab* camera_tab = nullptr;
 	InstancesTab* instances_tab = nullptr;
 	LightTab* light_tab = nullptr;
+
+	float display_BG_COLOR[4] = { static_cast<float>(((this->current_scene.BG_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.BG_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.BG_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((this->current_scene.BG_COLOR & 0x000000FF) / 255.0) };
+
+	float display_LINE_COLOR[4] = { static_cast<float>(((this->current_scene.LINE_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.LINE_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.LINE_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((this->current_scene.LINE_COLOR & 0x000000FF) / 255.0) };
+
+	float display_FILL_COLOR[4] = { static_cast<float>(((this->current_scene.FILL_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.FILL_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.FILL_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((this->current_scene.FILL_COLOR & 0x000000FF) / 255.0) };
 
 	bool verbose = true;
 

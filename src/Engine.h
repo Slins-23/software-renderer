@@ -19,6 +19,9 @@ private:
 	SDL_Window* window = nullptr;
 	SDL_Renderer* renderer = nullptr;
 	SDL_Texture* texture = nullptr;
+
+	// SDL window clear/default color
+	const uint32_t CLEAR_COLOR = 0xFFFFFFFF;
 public:
 	const char* TITLE = "Renderer";
 	uint16_t WIDTH = 800;

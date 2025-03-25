@@ -9,14 +9,7 @@ int main() {
 		return -1;
 	}
 
-	char models_folder[255] = "D:\\Programming\\Graphics\\Prototyping\\models\\";
-	char scene_folder[255] = "D:\\Programming\\Graphics\\Prototyping\\scenes\\";
-	char scene_load_name[255] = "hallway.json";
-	char scene_save_name[255] = "tst.json";
 
-	//engine.window_manager.general_window.scene_tab.load_scene(scene_folder, scene_load_name, models_folder, true, true);
-	//engine.window_manager.general_window.scene_tab.load_scene();
-		
 	bool quit = false;
 	std::vector<double> frametimes;
 	double last_tick = SDL_GetTicks();
@@ -42,8 +35,6 @@ int main() {
 
 		if (engine.window_manager.show_window) {
 			engine.window_manager.handle_windows();
-			ImGui::ShowDemoWindow();
-
 		}
 
 		ImGui::Render();

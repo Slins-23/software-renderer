@@ -17,24 +17,6 @@ public:
 	// How often, in milliseconds, should the average FPS over the given time interval be printed to the console
 	double fps_update_interval = 500;
 
-	// SDL window clear/default color
-	const uint32_t CLEAR_COLOR = 0xFFFFFFFF;
-
-	// Background color
-	uint32_t BG_COLOR = 0x000000FF;
-
-	// Line/wireframe color
-	uint32_t LINE_COLOR = 0x00FF00FF;
-
-	// Rasterization color
-	uint32_t FILL_COLOR = 0x66285CFF;
-
-	float display_BG_COLOR[4] = {static_cast<float>(((BG_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((BG_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((BG_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((BG_COLOR & 0x000000FF) / 255.0) };
-
-	float display_LINE_COLOR[4] = { static_cast<float>(((LINE_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((LINE_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((LINE_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((LINE_COLOR & 0x000000FF) / 255.0) };
-
-	float display_FILL_COLOR[4] = { static_cast<float>(((FILL_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((FILL_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((FILL_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((FILL_COLOR & 0x000000FF) / 255.0) };
-
 	double z_fighting_tolerance = 0.994;
 
 	double* general_window_opacity = nullptr;

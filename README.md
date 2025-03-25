@@ -1,9 +1,14 @@
 # Introduction
 
-Everything is implemented from scratch, including the matrix math, except the following external libraries:
+A 3D software renderer implemented from scratch, on Windows. More specifically everything that is directly related to rendering other than SDL.
+
+Libraries used:
 `SDL2 v2.28.1` (https://github.com/libsdl-org/SDL/tree/release-2.28.1)  - Rendering
 `Catch2 v3.4.0` (https://github.com/catchorg/Catch2/releases/tag/v3.4.0) - Testing
-`nlohmann v3.11.2` (https://github.com/nlohmann/json/releases/tag/v3.11.2) - JSON parsing
+`Nlohmann json v3.11.2` (https://github.com/nlohmann/json/releases/tag/v3.11.2) - JSON parsing
+`Imgui v1.91.9` (https://github.com/ocornut/imgui/releases/tag/v1.91.9) - Menus/user interface
+`nativefiledialog v116` (https://github.com/mlabbe/nativefiledialog/releases/tag/release_116) - Interface to and from file dialogs for selecting files/folders
+
 
 # Summary on how to use
 
@@ -13,16 +18,15 @@ Everything is implemented from scratch, including the matrix math, except the fo
 
 The `Matrix.h` and `Matrix.cpp` files are the header and implementation files for the `Mat` class which represents a matrix.
 
-Internally, the represantation of the matrix is that of a 2-dimensional array (double**).
+Internally, the representation of a matrix is that of a 2-dimensional array (double**).
 
-The matrix multiplication order is left-to-right.
-This means that the number of columns in the left `Mat` must match the number of rows in the right `Mat`.
+The matrix multiplication order is left-to-right, and this means that the number of columns in the left `Mat` must match the number of rows in the right `Mat`.
 (i.e. if multiplying two vectors, the left vector must be a row vector (1xN), while the right one must be a column vector (Nx1))
 
-The order of operations is: scaling -> rotation -> translation
+The order of operations is (it's the opposite for the view matrix): scaling -> rotation -> translation
 i.e. `TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX * vector`
 
-You can create a `Mat` instance by calling the initializer function with a 2-dimensional `std::initializer_list`, which is basically a 2-dimensional array, and will hold the rows and columns for the matrix, followed by the row dimension and column dimension.
+You can create a `Mat` instance by calling the initializer function with a 2-dimensional `std::initializer_list`, which is essentially a 2-dimensional array, and will hold the rows and columns for the matrix, followed by the row dimension and column dimension.
 Example for a `2x3` matrix: `Mat({{1, 2, 3}, {3, 4, 5}}, 2, 3)`
 
 You can get a value from the matrix by calling the `get` `Mat` member function.
@@ -34,17 +38,17 @@ Example to set the value in the 2nd row and 3rd column to 5: `matrix.set(5, 2, 3
 You can transpose a matrix by calling the `transposed` `Mat` member function.
 Example: `matrix.transposed()`
 
-You can, assuming that your matrices have valid dimensions, add (`+`), add and assign (`+=`), subtract (`-`), subtract and assing (`-=`), multiply by  (`*`), and multiply and assign (`*=`).
+You can (assuming that the dimensions are valid) add (`+`), add and assign (`+=`), subtract (`-`), subtract and assign (`-=`), multiply by  (`*`), and multiply and assign (`*=`).
 
-You can also perform element-wise operations using `scalar` values on any `Mat`, by multiplying (`*`), multiplying and assigning (`*=`), dividing (`/`), and dividing and assign (`/=`).
+You can also perform element-wise operations by combining `scalar` with one of the following operators and a `Mat`, by multiplying (`*`), multiplying and assigning (`*=`), dividing (`/`), and dividing and assign (`/=`).
 
-You can calculate the dot product between vectors by calling the `static` `Mat` function `dot`. This operation is commutative (i.e. order does not matter, neither does whether the vectors are row or column). The only requirements are that both must be vectors with the same number of elements (i.e. either the row dimension or column dimension must be `1`).
+You can calculate the dot product between vectors by calling the `static` `Mat` function `dot`. This operation is commutative (i.e. order does not matter, neither does whether the vectors are row or column). The only requirements are that both `Mat` must be vectors with the same number of elements (i.e. either the row dimension or column dimension must be `1`).
 Example: `Mat::dot(vector_a, vector_b)`
 
-You can calculate the vector norm (length) by calling the member `Mat` function `norm`.
+You can calculate the vector norm (magnitude/length) by calling the `Mat` member function `norm`.
 Example: `vec_a.norm()`
 
-You can normalize a vector by calling the `normalize` `Mat` member function. This divides the matrix, element-wise, by its norm/length. This also turns it into a unit vector (norm/length of 1).
+You can normalize a vector by calling the `normalize` `Mat` member function. This divides the matrix, element-wise, by its norm/magnitude/length. This turns it into a unit vector (norm/magnitude/length of 1).
 Example: `matrix.normalize()`
 
 You can test for equality and inequality, reassign a `Mat` instance to another `Mat` instance through copy & reassignment, or you can also directly reassign it to a new `Mat` instance.
@@ -52,14 +56,15 @@ You can test for equality and inequality, reassign a `Mat` instance to another `
 You can print the matrix to the console by calling the `print` `Mat` member function.
 Example: `matrix.print()`
 
-You can also print it to the console by running `std::cout << matrix`.
+You can also print it to the console using streams, i.e. by calling `std::cout << matrix`.
 
-## Engine.h and Engine.cpp
+## Engine
+The `Engine` class is a singleton which is responsible for handling the setup, dealing with SDL for direct rendering (pixel wise through buffers), the drawing routines as well as some math related functions, event handling, and cleaning everything.
 
 ### Triangle
-The smallest logical geometric figure is a triangle, which is implemented as the struct `Triangle` in `Engine.h`. A `Triangle` is simply an object that holds 3 vertices, which in the context of this program are 3 `4x1` vector (`Mat`) instances.
+The smallest logical geometric figure is a triangle. A `Triangle` is simply an object that holds 3 vertices, which in this context are 3 `4x1` vector (`Mat`) instances.
 
-The `4x1` dimension is, for, respectively, the `x`, `y`, and `z` 2D/3D space coordinates of the vertex, as well as a 4th `w` dimension for aid in certain matrix operations, such as translation.
+The `4x1` dimension is for, respectively, the `x`, `y`, and `z` 2D/3D space coordinates of the vertex. The `w` 4th dimension is used for storing values before transforms as well as allowing for a 1-step translation through matrix vector multiplication. These are formally called homogeneous coordinates.
 
 There are 2 ways in which you can instantiate a `Triangle`:
 1. Calling the constructor `Triangle(vertex_a, vertex_b, vertex_c)`, where `vertex_a` is the `Mat` instantiated vector, and so on for the other vertices.<br>
@@ -67,7 +72,7 @@ There are 2 ways in which you can instantiate a `Triangle`:
 
 ### Quad
 
-The second smallest logic geometric figure is a quad, which is implemented as the struct `Quad` in `Engine.h`. A `Quad` is a superset of `Triangle` instances, it holds 2 triangles in order to form a quad. Physically it represents a geometric face, or 4 vertices.
+The second smallest logic geometric figure is a quad, which is implemented as the struct `Quad`. A `Quad` is a rectangle and consists of 2 triangles and/or 4 vertices.
 
 There are 4 ways in which you can instantiate a `Quad`:
 1. Calling the constructor `Quad(triangle_a, triangle_b)` with both being `Triangle` instances.<br>
@@ -76,54 +81,63 @@ There are 4 ways in which you can instantiate a `Quad`:
 4. Calling the constructor `Quad(vertices)`, where `vertices` is a `Mat` array of size `4`.
 
 ### Mesh
-> The `obj` formatted meshes must be within the given `models_folder` folder, and the `mesh_filename` filename must be a valid file within the folder.<br>
-> The `mesh_filename` must include the file extension.<br>
-> The `models_folder` must have a `/` at the end, preferably an `absolute` path, otherwise you need to figure out the correct file tree. i.e. `models_folder = "D:/my_3d_models/"
 
-The largest logic geometric figure is a `Mesh`, which is implemented in the `Engine.h` file.<br>
+The largest logic geometric figure is a `Mesh`, and it holds information about an arbitrary 3D mesh which can be loaded from an `.obj` file or hardcoded (by, for example, manually defining the vertex array and the face indices).
+A face can either be made up of `3` or `4` vertices, so both triangles and quads are considered faces.
 
-It contains information about an arbitrary 3D mesh, which can be loaded from an `.obj` file or hardcoded (by, for example, manually defining the vertex array and the face indices).
-
-**The face indices start at `1`.**
-
-A face can be either made up of `3` or `4` vertices, so a triangle is also considered a face.
+> **The face indices start at `1`.**
+> The z coordinate for the vertices and normals are flipped just for the sake of intuition as otherwise the world z coordinate would be negative when in front of the camera
+> The `obj` formatted meshes must be within the given `models_folder`, and `mesh_filename` must be a valid file within that folder.<br>
+> The `models_folder` must end with a `\`
 
 Its member variables are the following:
 `vertices`: An `std::vector` of type `Mat`, which stores all of the figure's vertices.<br>
-`faces_indices`: An `std::vector` of type `std::vector<uint32_t>>`, which stores all the face indices.  The reason why there is a nested `std::vector` here is because each individual face is an individual `std::vector<uint32_t>` (an array of unsigned integers), which identify the respective vertex by indexing from the `vertices` array.<br>
-`tex_coords`: (**Yet to be implemented**) The same behavior described above for `vertices`, except that this is meant for textures.<br>
-`tex_indices`: (**Yet to be implemented**) The same behavior described above for `faces_indices`, except that this is meant for textures.<br>
-`normals`: (**Yet to be implemented**) The same behavior described above for `vertices`, except that this is meant for normals.<br>
-`normal_indices`: (**Yet to be implemented**)  The same behavior described above for `faces_indices`, except that this is meant for textures.<br>
-`mesh_filename`: Stores the name of the file used for loading the mesh.<br>
-`mesh_id`: Uniquely identifies the mesh. This value is defined as the number of total meshes (`total_meshes`), which is passed as an argument to the constructor, and should be the `Scene` member variable `total_meshes`, as it gets incremented by `1` before the function returns, and as it is passed by reference. This is so that we can keep track of how many meshes have been loaded and so that each one has an unique `mesh_id`.<br>
+`faces_indices`: An `std::vector` of type `std::vector<uint32_t>>`, which stores all the face indices.  The reason why there is a nested `std::vector` here is because each individual face is its own `std::vector<uint32_t>` (an array of unsigned integers), which identify the respective vertex by indexing from the `vertices` array.<br>
+`normals`: The same behavior described above for `vertices`, except that this is meant for normals.<br>
+`normal_indices`: The same behavior described above for `faces_indices`, except that this is meant for normals.<br>
+`mesh_filename`: Stores the filename of mesh.<br>
+`mesh_id`: Uniquely identifies the mesh. This value is the number of total meshes loaded for the current scene, which resets once a scene is loaded (`total_ever_meshes`). It is passed as an argument to the constructor, and should be the `Scene` member variable `total_ever_meshes`, which gets incremented by `1`. Each mesh has an unique `mesh_id`.<br>
 
 You are able to get the number of vertices from a `Mesh` by calling the member function `total_vertices`, or `total_faces` in the case of faces.
 
-There are 2 ways you can instantiate a `Mesh`, and every time it happens, the `total_meshes` variable gets incremented by `1`:
+There are 2 ways in which you should instantiate a `Mesh`:
 
-1. Calling the constructor `Mesh(current_scene.total_meshes)`, which instantiates a hardcoded cube. (you can find specific coordinates and other numbers, such as the `width`, `height`, and `depth` within the function)
-	> The cube is instantiated by storing each vertex in the `vertices` array and for every 4 vertices/1 face, the face index is also stored in `faces_indices`.<br>
-	> You can find specific coordinates and other numbers such as the `width`, `height`, and `depth` of the cube within the function definition.<br>
+1. Calling the constructor `Mesh(current_scene.total_ever_meshes)`, which instantiates a hardcoded cube
+	> You can find specific values, coordinates, and other values such as the `width`, `height`, and `depth` of the cube within the function definition.<br>
 	> The `mesh_filename` will be set to `cube.obj`.
-2. Calling the constructor `Mesh(model_path, mesh_filename, current_scene.total_mesh)`, where `model_path` is the relative or absolute path to the `.obj` formatted mesh folder, and `mesh_filename` is the actual mesh's filename, including the extension, and `current_scene.total_mesh` keeps track of how many meshes have been loaded so far and also increments it by `1`.
-
+2. Calling the constructor `Mesh(model_path, mesh_filename, current_scene.total_ever_meshes)`
+	> `model_path` is the relative or absolute path to the `.obj` file<br>
+	> `mesh_filename` is the actual mesh's filename, including the extension<br>
+	
 ### Instance
 
-An instance is self-explanatory, it is simply an instance of some loaded `Mesh`. This is so that the same `Mesh` doesn't need to be loaded multiple times, and so that you can place it in the [Scene](#Scene) many times over, where each `Instance` has unique properties, such as their orientation and `world coordinates`.
-
-Whenever you want to place an object in a scene, you first need a [Mesh](#Mesh), then you can have however many `Instance`s of that `Mesh` as you want, and each of them will have their own transformations applied to them, through the `MODEL_TO_WORLD` matrix.
+An instance is pretty self-explanatory. It is simply an `Instance` of some loaded `Mesh`. This is done so that each rendered object in the scene gets their own value independent of any other while also discarding the need to duplicate the same mesh over and over if placing the same mesh at distinct settings within in the scene.
 
 Its member variables are the following:
-`instance_name`: You can give a name to an instance. This means that, for example, you could load an arm `Mesh`, and have two `Instance`s, one where the arm is rotated to look like the left arm, and one that looks like the right arm, and use this to help you identify which is which. A `scene graph` would make perfect use of this and is something I would like to implement eventually. (It's basically a visual gui "list" where you can create models, section them in layers, groups, name them, combine them to make them it one model, etc.)<br>
-`instance_id`: Uniquely identifies the `Instance`. Behaves the same as the `mesh_id`, except it is used for instances.<br>
-`mesh`: A pointer to the `Mesh` which will be rendered. It holds the actual vertex (and soon to be implemented texture & normal) information.<br>
-`MODEL_TO_WORLD`: A `4x4` matrix (`Mat`) instance, which is initialized as the identity matrix. It will hold the transformations for the given instance, and is used for the transition from `model space` into `world space`. (i.e. rotation, translation, scaling)<br>
+`instance_name`: You can give a name to an instance in order to help you identify it, both visually (through the instances menu) and programmatically (by calling getters while supplying the instance name).<br>
+`instance_id`: Uniquely identifies the `Instance`. Behaves the same way as `mesh_id`, except that it is used for instances.<br>
+`mesh`: A pointer to the `Mesh` which will be rendered.<br>
+`tx`: Translation along the `x` axis (positive values move to the left since it is a z-flipped right-handed coordinate system)<br>
+`ty`: Translation along the `y` axis<br>
+`tz`: Translation along the `z` axis<br>
+`yaw`: Rotation around the `y` axis<br>
+`pitch`: Rotation around the `x` axis<br>
+`roll`: Rotation around the `z` axis<br>
+`orientation`: A [Quaternion](#Quaternion) which represents the instance's orientation<br>
+`sx`: Scaling along the `x` axis<br>
+`sy`: Scaling along the `y` axis<br>
+`sz`: Scaling along the `z` axis<br>
+`TRANSLATION_MATRIX`: A `4x4` translation matrix which holds an arbitrary translation<br>
+`ROTATION_MATRIX`: A `4x4` rotation matrix which holds arbitrary rotation(s)<br>
+`SCALING_MATRIX`: A `4x4` scaling matrix which holds an arbitrary scale<br>
+`MODEL_TO_WORLD`: A `4x4` matrix which will hold the final transformation matrix for the given instance<br>
 `show`: A `bool` toggle for whether the `Instance` will be rendered or not.
+`is_light_source`: Positive when the target instance belongs to a light source, negative otherwise<br>
+`is_axes`: Whether the given instance is the transform axes<br>
+`has_axes`: Whether the given instance has the transformed axes attached to it<br>
 
-There are 2 ways you can instantiate an `Instance`:
-1. Calling `Instance(mesh, MODEL_TO_WORLD, show, total_instances)`, where `mesh` is a pointer to the `Mesh` (`Mesh* mesh`), `MODEL_TO_WORLD` is the model-to-world `Mat` instance, `show` is a boolean of whether or not the `Instance` should be rendered, and `total_instances` is the `Scene` member variable `current_scene.total_instances`, which keeps track of how many instances have been instantiated.<br>
-2. Calling `Instance(instance_name, mesh, MODEL_TO_WORLD, show, total_instances)`, which is the same as above, except that you can also give the `Instance` a name directly, through the variable `instance_name`.
+There are so many ways in which you can instantiate an `Instance` (and they are not that much different) that it would be better if you look at the header yourself. In summary, they revolve around different combinations of the instance's name, `Mesh`, the translation, rotation, ascaling parameters, and/or their respective transformation matrices.
+One thing that should almost always should be present in the constructor is the `current_scene.total_ever_instances` in order to create a unique ID for that instance.
 
 ### Scene
 > The `Scene` configuration file must be in `json` format and within the given `scene_folder`, the `scene_filename` must be a valid file within the folder as well.<br>
@@ -308,6 +322,10 @@ The `translation` can also be understood as the `world coordinate`.
 
 You can manually create a scene pretty easily by following this layout, as long as you have the model files and you properly set the `models_folder` variable to be its `absolute` path.
 
+### Camera
+
+### Quaternion
+
 #### Rotation
 
 The rotation is described in `degrees` and converted into `pi radians` internally, but still displayed/exposed as `degrees` to the user. The reason for this is because `degrees` are more intuitive for the user to interpret.
@@ -385,38 +403,11 @@ Or by calling `Quaternion(x, y, z, w)` with the respective coordinate values.
 
 `AngleAxis`
 
-### Engine
+### Light
 
-The `Engine` instance holds everything together and controls the flow of the program, by calling the relevant functions through the `main.cpp` file, which is explained in further detail in the [main.cpp](#main-cpp) section.
+....
 
-Its member variables are:
-`window`: A pointer to an `SDL_Window` instance.
-`renderer`: A pointer to an `SDL_Renderer` instance.
-`texture`: A pointer to an `SDL_Texture` instance.
-`buffer`: A pointer to the 32-bit `RGB` pixel buffer array.
-`title`: Title of the window to be rendered.
-`WIDTH`: Width of the window to be rendered.
-`HEIGHT`: Height of the window to be rendered.
-
-
-> The window is resizeable.
-
-## main.cpp
-
-This is where the `main` function is, and where you use the `Engine` instance in order to control the flow of the program.
-
-Here's how it goes in a few steps:
-1. Instantiate the `Engine` class, in this case that is the `engine` variable.
-2. Run the `Engine` member function `setup`, in order to setup the `Engine`, which initializes `SDL` and allocates a pixel buffer. i.e. `engine.setup()`
-3. Set a starting `Scene` to be rendered. You can do so by assigning the `engine.current_scene` variable to a `Scene` instance. The `Scene` constructor variables are explained in [Scene](#scene). i.e. `engine.current_scene = Scene(...)`
-4. Run the main execution loop.
-	> The framerate is calculated here, but I will ommit these variables for clarity.
-	1. The `SDL` events are processed, by calling the `Engine` member function `handle_events`. This is where key presses trigger actions within the program. i.e. engine.handle_events()
-	2. Draws the `Scene` instances, if the engine hasn't been paused by pressing the key `P`.
-	3. Renders the new frame by calling the `Engine` member function `render`. Through `SDL` routines, it clears the `renderer`, updates the `texture` with the new pixel `buffer`, then updates the screen. i.e. `engine.render()`
-	4. If the rendering was too fast, meaning that it took less milliseconds per frame than the given framerate in the should, then the rendering of the next frame is delayed by the difference between the two. You can set the `FPS` in the `Engine` member variable `FPS`. The default value is `60`. The milliseconds per frame is stored in the `Engine` member variable `MSPERFRAME`, and it is calculated using the given `FPS`. i.e. `engine.FPS` and `engine.MSPERFRAME`
-	5. The averaged `FPS` over the given `engine.fps_update_interval` (in milliseconds) is printed to the console.
-	6. Goes back to the beginning of the loop..
+### Windows/tabs
 
 ## Events
 
@@ -453,6 +444,43 @@ These are the available key shortcuts and actions:
 * You can quit by clicking on the `X` button in the GUI.
 * You can resize the window by clicking and dragging the edges.
 
+### Engine
+
+The `Engine` instance holds everything together and controls the flow of the program, by calling the relevant functions through the `main.cpp` file, which is explained in further detail in the [main.cpp](#main-cpp) section.
+
+Its member variables are:
+`window`: A pointer to an `SDL_Window` instance.
+`renderer`: A pointer to an `SDL_Renderer` instance.
+`texture`: A pointer to an `SDL_Texture` instance.
+`buffer`: A pointer to the 32-bit `RGB` pixel buffer array.
+`title`: Title of the window to be rendered.
+`WIDTH`: Width of the window to be rendered.
+`HEIGHT`: Height of the window to be rendered.
+
+
+> The window is resizeable.
+>
+> 
+
+## main.cpp
+
+This is where the `main` function is, and where you use the `Engine` instance in order to control the flow of the program.
+
+Here's how it goes in a few steps:
+1. Instantiate the `Engine` class, in this case that is the `engine` variable.
+2. Run the `Engine` member function `setup`, in order to setup the `Engine`, which initializes `SDL` and allocates a pixel buffer. i.e. `engine.setup()`
+3. Set a starting `Scene` to be rendered. You can do so by assigning the `engine.current_scene` variable to a `Scene` instance. The `Scene` constructor variables are explained in [Scene](#scene). i.e. `engine.current_scene = Scene(...)`
+4. Run the main execution loop.
+	> The framerate is calculated here, but I will ommit these variables for clarity.
+	1. The `SDL` events are processed, by calling the `Engine` member function `handle_events`. This is where key presses trigger actions within the program. i.e. engine.handle_events()
+	2. Draws the `Scene` instances, if the engine hasn't been paused by pressing the key `P`.
+	3. Renders the new frame by calling the `Engine` member function `render`. Through `SDL` routines, it clears the `renderer`, updates the `texture` with the new pixel `buffer`, then updates the screen. i.e. `engine.render()`
+	4. If the rendering was too fast, meaning that it took less milliseconds per frame than the given framerate in the should, then the rendering of the next frame is delayed by the difference between the two. You can set the `FPS` in the `Engine` member variable `FPS`. The default value is `60`. The milliseconds per frame is stored in the `Engine` member variable `MSPERFRAME`, and it is calculated using the given `FPS`. i.e. `engine.FPS` and `engine.MSPERFRAME`
+	5. The averaged `FPS` over the given `engine.fps_update_interval` (in milliseconds) is printed to the console.
+	6. Goes back to the beginning of the loop..
+
+
+
 ## Utils
 
 The file `Utils.h` contains the implementation of utility functions.
@@ -469,39 +497,41 @@ Example: `Utils::normalize(previous_value, previous_minimum, previous_maximum, n
 
 # Implementation details
 
-Follows `Vulkan` conventions.
-Uses a right-handed coordinate system.
-In `world space` (default):
-Positive `x`: right
-Positive `y`: up
-Positive `z`: backward (for a mesh to be visible it would need to have a negative `z` coordinate in the mesh local space, but during mesh loading it gets flipped to positive. The coordinate system remains the same however, as the rotations, translations, and rasterization are defined relative to it)
+The renderer uses 4 coordinate systems, of which only the last one is different.
 
-In `view space` (default as camera points at (0, 0, 1)):
-Positive `x`: left
-Positive `y`: up
-Positive `z`: forward (nothing logically changes in practice, only semantically)
+The first 3 coordinate systems represent 3 dimensional space, are all right-handed. Here, the positive x-axis points to the right, the positive y-axis points up, and the positive z-axis points outward ("out of the screen/toward the viewer").
 
-The clipping plane limits are:
-(-1, 1) for the `x` dimension
-(-1, 1) for the `y` dimension
-(near, far) for the `z` dimension (default is (0.6, 1000))
+Firstly there is `local space`, which is essentially a 3D model's local coordinate system before they are added to the scene. If you have worked with modelling software like Blender for example, you can think of everything within the Blender scene if you were to export it as being in `local space`.
 
-You can think of the transformation from view space into clip space as rotating the coordinate system 180 degrees counter-clockwise. This makes the Positive `z` axis point forward, and the Positive `y` axis point downward.
+Secondly there is `world space`, which, as the name implies, is the space which holds all the 3D models present in the scene, in absolute values. Each model present in the scene has a transformation matrix which transforms all the vertices for that `Instance`'s 3D mesh from `local space` to `world space`, essentially moving it to the scene including the relevant transformations.<br>
+The matrix responsible for this conversion is called `MODEL_TO_WORLD`, and every `Instance` has it. This matrix is a combination of 3 other matrices, first the `SCALING_MATRIX`, secondly the `ROTATION_MATRIX`, then finally the `TRANSLATION_MATRIX`. These matrices are built by the individual values for each `Instance` and finally combined to make the `MODEL_TO_WORLD` matrix.
 
-The rotations are defined to be from the horizontal axis into the vertical axis?
+> In a right-handed coordinate system the `z` axis points "out of the screen/toward the viewer", this means that for a mesh to be visible it would need to have a negative `z` coordinate in world space. However, during mesh loading I purposefully flip it so that a positive `z` value means "farther", which is more intuitive but less semantically ideal. The coordinate system remains the same however.
+
+Thirdly there is `view space` or `camera space`, as it represents a "view" into the world from the camera's point of view. It essentially contains all transformations relative to the camera. This transformation is stored in the `VIEW_MATRIX`. It can also be seen as a transformation that is the inverse of the camera transform, because, relative to the camera, whenever the it moves to the right for example, the object in front of it appears to move to the left, and this means that whatever happens to a logical camera can be simulated by performing the opposite operations to each vertex. The `VIEW_MATRIX` is constructed from a position and a direction through the `LookAt` function, and it encapsulates the translation and rotation akin to what happens above for instances in `world space`.
+
+After this, geometric clipping is performed for each triangle against each of the camera's 6 planes in `view space` (Near, far, left, right, top, bottom planes).
+
+Now perspective projection is applied to the vertices. At this stage the coordinate space is considered to be in `clip space`.
+> Note that the `z` transformation here is non-linear.
+
+Finally, for the 3-dimensional space, perspective division is performed over all vertices by their `w` (which is simply their `z` coordinate prior to the projection).
+We are now at what is called `NDC (Normalized Device Coordinates) space`, where, theoretically, every point/vertex that made it to this stage is viewable through the camera. This space's boundaries are in the ranges [-1, 1] for the x-axis, [-1, 1] for the y-axis, and [0, 1] for the z-axis.
+
+Here, a vertex whose `z` coordinate is the same as the `near` plane value would have a `z` of 0, and if I were to be the same as the `far` plane, it would have a `z` of 1.
+
+
+We can then start processing the vertices. Here `backface culling` is performed, as well as some `light` shading, if `Flat` shading it is all performed here. If `Gouraud` shading the vertex colors are calculated here for each vertex (they get interpolated at the pixel level later). If `Phong` shading, the vertex normals are calculated for each vertex (these also get interpolated later).
+
+The last coordinate system is `screen space` or `framebuffer space`. Here the vertices' `x` and `y` coordinates are flipped and scaled by the camera's `SCALE_MATRIX`. The `y` axis is flipped because the `y` coordinate increases as you go down when it comes to pixels, but in 3D space it increased as it went up. As for the `x` axis, since I flipped the `z` coordinates when loading the meshes, the resulting logically and semantically correct right-handed coordinate system with this configuration has the positive `x` axis to the left (not to the right), which means that going to the right would instead decrease the `x` coordinate for the pixel. Now we are finally in the 2-dimensional space which represents the window coordinates.
 
 The drawing order is counter-clockwise.
 
-Near plane defaults to `0.6` but can be any value.
+Near plane defaults to `0.01` but can be any value.
 Far plane defaults to `1000` but can be any value.
 
-1. Models are transformed and put into `world space` through the `MODEL_TO_WORLD` matrix.
-2. The scene moves relative to the camera and put into `view space` through the `VIEW_MATRIX` matrix.
-3. The triangles are geometrically clipped, prior to projection, against all view frustum planes except for the `far` plane: `near`, `top`, `bottom`, `left`, `right`. At first I also clipped against the `far` plane, but since Vulkan and most people just cull any triangle instead of clipping, that's what I chose to do.
-4. The triangles get projected and we get into `clip space`, through the `PROJECTION_MATRIX` matrix. Perspective divide. At this point the `z` dimension is in the range (0, 1), and the `w` dimension is the same as the vertex's **old** `z` coordinate, prior to the projection.
-5. The `x` and `y` coordinates then get properly converted into `screen space` coordinates (i.e. window coordinates).
-6. If drawing the line connections of the vertices (`draw_outline`), the relevant vertex lines are drawn, with the given `outline_color`.
-7. If filling (`fill`)/rasterizing the triangles, the relevant triangles are filled/rasterized with the given `fill_color`. This is where the vertices and triangle coordinates are interpolated, and where the fragment shader/texturing/coloring should be implemented.
+If drawing the line connections of the vertices (`draw_outline`), the relevant lines are drawn, with the given `outline_color`.
+If filling (`fill`)/rasterizing the triangles, the relevant triangles are filled/rasterized with the given `fill_color`. This is where the vertices and triangle coordinates are interpolated, and where the fragment shader/texturing/coloring should be implemented.
 
 # Testing
 
@@ -516,7 +546,7 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 # Features
 
-- Resizing the Window properly resizes the rendered scene.
+- Window is resizeable and the renderer is updated accordingly
 
 # Todo
 
@@ -524,27 +554,17 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Implement element-wise addition and subtraction by scalar values, as can already be done with multiplication and division
 
-- Let user arbitrary un-load or all meshes in order to free memory
+- Let user load meshes with the same name
 
-- Move matrix related functions such as the identity matrix, rotation, translation, etc... to the matrix files? Or keep it within the engine?
+- Let user delete meshes
 
 - Improve logging and debugging capabilities
 
-- Implement IMGUI for FPS tracking, loading models/scenes from a file selector, camera settings such as coordinates, speed, fov, near & far plane, edit other settings, modifying instance's coordinates, rotation, include relevant debugging information, etc...
-
-- Account for more edge cases? Such as disallowing user to input negative dimensions when instantiating a matrix? I don't really feel the need to since a "regular" person wouldn't be seeing this.
-
 - Improve exception handling
 
-- Include sub-meshes found in meshes? (i.e. `.obj` files can have multiple different parts that make the mesh, for example if modeling a house, you might have separate meshes for the walls called `Wall_0` or `Floor_2` and so on. Should I create sub-meshes for them? Or just ignore them and only load the rendering information?)
+- Include sub-meshes found in meshes (`.obj` files can have multiple different parts that make the mesh, for example if modeling a house, you might have separate meshes for the walls called `Wall_0` or `Floor_2` and so on. Should I create sub-meshes for them? Or just ignore them and only load the rendering information?)
 
-- Optimize and clamp rotation to prevent precision and performance issues
-
-- Change absolute path of the scene folder/files to be relative or either?
-
-- Implement movement of the mouse to rotate the camera instead of the keyboard
-
-- Implement lighting/normals
+- Fix spotlight light type behavior
 
 - Implement textures
 
@@ -554,23 +574,21 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Implement collision/physics
 
-- Test on cross-platform (really just test on Linux) and create a proper cross-platform environment for easy setup
-
-- Isolate components and headers better
+- Make sure it works cross-platform and create a proper environment for easy setup
 
 - Remove or decrease redundancies
 
-- Broaden the testing
+- Broader testing coverage
 
 - Optimize and refactor the code in general
 
-- Press 'n' to see normals
+- Allow user to see the normals (similar to how it's done with the transform axes)
 
 - Implement SIMD instructions
 
 - Run a performance profile to find and improve the pipeline bottlenecks
 
-- Add option to attach camera to an instance (i.e. to a character or a scene object), and the camera relative to that object.
+- Add option to attach camera to an instance (i.e. to a character or a scene object)
 
 - Implement particles and particle simulation (i.e. water and/or waves simulation, sparks, fire, etc...)
 
@@ -580,27 +598,15 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Swap division for multiplication where applicable and intuitive, as it is a less expensive operation
 
-- Combine view and perspective projection matrices for less overhead?
-
-- Improve the currently inefficient z-sorting algorithm (and possibly do it per pixel)
-
-- Lines edges are frequently not rendered/invisible in certain scenarios
+- Combine view and perspective projection matrices for less overhead and wherever else possible
 
 - Include and allow user to load/save quaternion into/from scene configuration file
 
-- Write a helper function to decompose the rotation matrix into translation, scale, and rotation matrices
+- Write a helper function to decompose matrices (i.e. rotation matrix -> yaw, pitch, roll or translation matrix -> tx, ty, tz or view matrix -> everything, etc...)
 
-- Currently, when instancing meshes from model to world matrices, it doesn't get decomposed into translation, rotation, and scaling parameters. Since the position information is used in my implementation of z-ordering, loading a scene like this will result in objects overlapping each other in the incorrect order. A fix to this would be decomposing the matrix into the 3 transformation matrices and extracting the parameters from each of them, or using another z-ordering approach. Hence, when a scene is loaded and these parameters are present, the model-to-world matrix always gets derived from them. This means that, if loading only from model-to-world matrices, as of currently, the instance's transformation parameters are lost, and z-ordering is not properly done.
+- Account for non-default default values (i.e. what would be considered the absolute 0) for vectors and other values, and describe their utility.
 
-- Explain in more detail the scene configuration file's camera parameters
-
-- Properly explain how the "default_camera_position", "default_camera_direction", "default_camera_up" vectors work and how they influence the scene and semantics, as well as how they are different from the vectors without the "default" prefix. Also properly account for them in code, as the behavior is not properly defined currently. Regardless, almost always this can, should, and will be largerly ignored
-
-- Reminder to, whenever calculating the `norm` of a 4D vector, set the last dimension to 0. Otherwise the result will be 1 unit greater than the actual norm. (In the context of graphics programming/software rendering in which that extra dimension is used to make translation and other operations easier) 
-
-- Ignore backface culling when drawing triangles (wireframe)
-
-- Unflip the z when loading the meshes an instead set the default camera direction to (0, 0, -1) instead of flipping the z during mesh loading and the default camera direction to (0, 0, 1). This would be more semantically accurate to the coordinate system and possibly avoid confusion if manipulating vertices.
+- Unflip the z when loading the meshes an instead set the default camera direction to (0, 0, -1) instead of flipping the z during mesh loading and the default camera direction to (0, 0, 1). This would be more semantically accurate to the coordinate system and possibly avoid confusion if manipulating vertices, but also less intuitive for the users.
 
 - Describe, in this README, the keys for rotating some given mesh instance at runtime
 
@@ -608,4 +614,4 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Check that deriving the yaw, pitch, and roll properly work by calling the function `Engine::Euler_GetAnglesFromDirection`
 
-- Properly handle the edge case for when vectors are antiparallel within the 3D cross product function (point in opposite directions)
+- Properly handle the edge case for when vectors are antiparallel (point in opposite directions) within the 3D cross product function 

@@ -100,7 +100,7 @@ bool Engine::handle_events() {
 				this->pixel_buffer = (uint32_t*)malloc(sizeof(uint32_t) * this->WIDTH * this->HEIGHT);
 				this->depth_buffer = (double*)malloc(sizeof(double) * this->WIDTH * this->HEIGHT);
 				for (size_t i = 0; i < this->WIDTH * this->HEIGHT; i++) {
-					this->pixel_buffer[i] = window_manager.general_window.settings_tab.BG_COLOR;
+					this->pixel_buffer[i] = window_manager.general_window.scene_tab.current_scene.BG_COLOR;
 					this->depth_buffer[i] = std::numeric_limits<double>::max();
 				}
 

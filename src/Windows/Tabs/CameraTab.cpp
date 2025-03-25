@@ -188,179 +188,190 @@ void CameraTab::UpdateCameraRotation(uint8_t rotation_type, bool display_only) {
 }
 
 void CameraTab::draw() {
+
 	ImGui::PushItemWidth(60);
 
-	ImGui::Text("FOV (degrees):");
+	ImGui::DragScalar("##CTranslation speed (keyboard)", ImGuiDataType_Double, &this->scene_tab->real_translation_speed, 0.005, &zero, nullptr, "%.4f",
+		ImGuiSliderFlags_None);
+	ImGui::SetItemTooltip("How much translation occurs from moving the camera through the WASD keys (higher = faster)");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##FOV (degrees):", ImGuiDataType_Double, &this->scene_tab->current_scene.camera.FOV, 0.1, &zero, nullptr, "%.4f", ImGuiSliderFlags_None)) {
+	ImGui::Text("Translation speed (keyboard)");
+
+	ImGui::Spacing();
+
+	ImGui::DragScalar("##CTranslation speed (menu)", ImGuiDataType_Double, &this->scene_tab->menu_translation_speed, 0.005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
+	ImGui::SetItemTooltip("How sensitive the menu translation slider is to clicking and dragging (higher = more change)");
+	ImGui::SameLine();
+	ImGui::Text("Translation speed (menu)");
+
+	ImGui::Separator();
+
+	ImGui::DragScalar("##CRotation speed (mouse)", ImGuiDataType_Double, &this->scene_tab->real_rotation_speed, 0.005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
+	ImGui::SetItemTooltip("How sensitive the camera is to mouse movement (higher = faster)");
+	ImGui::SameLine();
+	ImGui::Text("Rotation speed (mouse)");
+
+	ImGui::Spacing();
+
+	ImGui::DragScalar("##CRotation speed (menu)", ImGuiDataType_Double, &this->scene_tab->menu_rotation_speed, 0.005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
+	ImGui::SetItemTooltip("(Menu) How sensitive the menu rotation slider is to clicking and dragging (higher = more change): ");
+	ImGui::SameLine();
+	ImGui::Text("Rotation speed (menu)");
+
+	ImGui::Separator();
+
+	
+
+	if (ImGui::DragScalar("##FOV (degrees)", ImGuiDataType_Double, &this->scene_tab->current_scene.camera.FOV, 0.1, &zero, nullptr, "%.2f", ImGuiSliderFlags_None)) {
 		this->scene_tab->current_scene.camera.FOVr = this->scene_tab->current_scene.camera.FOV * (M_PI / 180.0);
 
 		this->scene_tab->current_scene.camera.update_projection_matrix();
 	}
-
-	ImGui::Separator();
-
-	ImGui::Text("Near plane:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##Near plane:", ImGuiDataType_Double, &this->scene_tab->current_scene.camera.near, 0.001, &zero, &this->scene_tab->current_scene.camera.far, "%.4f", ImGuiSliderFlags_None)) {
+	ImGui::Text("FOV (degrees)");	
+	
+	if (ImGui::DragScalar("##Near plane", ImGuiDataType_Double, &this->scene_tab->current_scene.camera.near, 0.001, &zero, &this->scene_tab->current_scene.camera.far, "%.4f", ImGuiSliderFlags_None)) {
 		this->scene_tab->current_scene.camera.update_projection_matrix();
 	}
-
-	ImGui::Separator();
-
-	ImGui::Text("Far plane:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##Far plane:", ImGuiDataType_Double, &this->scene_tab->current_scene.camera.far, 0.001, &this->scene_tab->current_scene.camera.near, nullptr, "%.4f", ImGuiSliderFlags_None)) {
+	ImGui::Text("Near plane");
+	
+	if (ImGui::DragScalar("##Far plane", ImGuiDataType_Double, &this->scene_tab->current_scene.camera.far, 0.001, &this->scene_tab->current_scene.camera.near, nullptr, "%.4f", ImGuiSliderFlags_None)) {
 		this->scene_tab->current_scene.camera.update_projection_matrix();
 	}
-
-	ImGui::Separator();
-
-	ImGui::Text("Translation speed (keyboard):");
-	ImGui::SetItemTooltip("How much translation occurs from moving the camera through the WASD keys (higher = faster)");
 	ImGui::SameLine();
-	ImGui::DragScalar("##CTranslation speed (keyboard): ", ImGuiDataType_Double, &this->scene_tab->real_translation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-	ImGui::Spacing();
-
-	ImGui::Text("Translation speed (menu):");
-	ImGui::SetItemTooltip("How sensitive the menu translation slider is to clicking and dragging (higher = more change)");
-	ImGui::SameLine();
-	ImGui::DragScalar("##CTranslation speed (menu):", ImGuiDataType_Double, &this->scene_tab->menu_translation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-	ImGui::Separator();
-
-	ImGui::Text("Rotation speed (mouse):");
-	ImGui::SetItemTooltip("How sensitive the camera is to mouse movement (higher = faster)");
-	ImGui::SameLine();
-	ImGui::DragScalar("##CRotation speed (mouse):", ImGuiDataType_Double, &this->scene_tab->real_rotation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-	ImGui::Spacing();
-
-	ImGui::Separator();
-	ImGui::Text("Rotation speed (menu):");
-	ImGui::SetItemTooltip("(Menu) How sensitive the menu rotation slider is to clicking and dragging (higher = more change): ");
-	ImGui::SameLine();
-	ImGui::DragScalar("##CRotation speed (menu):", ImGuiDataType_Double, &this->scene_tab->menu_rotation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
+	ImGui::Text("Far plane");
 
 	ImGui::Separator();
 
 	ImGui::Text("Direction");
 	ImGui::Spacing();
-	ImGui::Text("X:");
-	ImGui::SameLine();
 
-	if (ImGui::DragScalar("##CDX:", ImGuiDataType_Double, (void*)&(this->camera_display_dir_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	if (ImGui::DragScalar("##CDX", ImGuiDataType_Double, (void*)&(this->camera_display_dir_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Direction, false);
 	}
-
-	ImGui::Text("Y:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##CDY:", ImGuiDataType_Double, (void*)&(this->camera_display_dir_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	ImGui::Text("X");
+	
+	if (ImGui::DragScalar("##CDY", ImGuiDataType_Double, (void*)&(this->camera_display_dir_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Direction, false);
 	}
-
-	ImGui::Text("Z:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##CDZ:", ImGuiDataType_Double, (void*)&(this->camera_display_dir_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	ImGui::Text("Y");
+
+	if (ImGui::DragScalar("##CDZ", ImGuiDataType_Double, (void*)&(this->camera_display_dir_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Direction, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Z");
 
 	ImGui::Separator();
 
 	ImGui::Text("Up");
 	ImGui::Spacing();
-	ImGui::Text("X:");
-	ImGui::SameLine();
-
-	if (ImGui::DragScalar("##CUX:", ImGuiDataType_Double, (void*)&(this->camera_display_up_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	
+	if (ImGui::DragScalar("##CUX", ImGuiDataType_Double, (void*)&(this->camera_display_up_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Direction, false);
 	}
-
-	ImGui::Text("Y:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##CUY:", ImGuiDataType_Double, (void*)&(this->camera_display_up_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	ImGui::Text("X");
+
+	if (ImGui::DragScalar("##CUY", ImGuiDataType_Double, (void*)&(this->camera_display_up_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Direction, false);
 	}
-
-	ImGui::Text("Z:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##CUZ:", ImGuiDataType_Double, (void*)&(this->camera_display_up_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	ImGui::Text("Y");
+
+	
+	
+	if (ImGui::DragScalar("##CUZ", ImGuiDataType_Double, (void*)&(this->camera_display_up_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Direction, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Z");
 
 	ImGui::Separator();
 
 	ImGui::Text("Translation");
 	ImGui::Spacing();
-	ImGui::Text("X:");
-	ImGui::SameLine();
+	
+	
 
-	if (ImGui::DragScalar("##CX:", ImGuiDataType_Double, (void*)&(this->camera_display_tx), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	if (ImGui::DragScalar("##CX", ImGuiDataType_Double, (void*)&(this->camera_display_tx), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraTranslation(false);
 	}
-
-	ImGui::Text("Y:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##CY:", ImGuiDataType_Double, (void*)&(this->camera_display_ty), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	ImGui::Text("X");
+
+	if (ImGui::DragScalar("##CY", ImGuiDataType_Double, (void*)&(this->camera_display_ty), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraTranslation(false);
 	}
-
-	ImGui::Text("Z:");
 	ImGui::SameLine();
-	if (ImGui::DragScalar("##CZ:", ImGuiDataType_Double, (void*)&(this->camera_display_tz), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	ImGui::Text("Y");
+
+	if (ImGui::DragScalar("##CZ", ImGuiDataType_Double, (void*)&(this->camera_display_tz), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraTranslation(false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Z");
 
 	ImGui::Separator();
 
 	ImGui::Text("Rotation (YXZ)");
 	ImGui::Spacing();
-	ImGui::Text("Yaw:  ");
-	ImGui::SameLine();
-	if (ImGui::DragScalar("##CYaw:  ", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.camera.yaw), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	
+	if (ImGui::DragScalar("##CYaw", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.camera.yaw), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Euler, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Yaw");
 
-	ImGui::Text("Pitch:");
-	ImGui::SameLine();
-	if (ImGui::DragScalar("##CPitch:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.camera.pitch), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	
+	
+	if (ImGui::DragScalar("##CPitch", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.camera.pitch), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Euler, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Pitch");
 
-	ImGui::Text("Roll: ");
-	ImGui::SameLine();
-	if (ImGui::DragScalar("##CRoll: ", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.camera.roll), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	
+	
+	if (ImGui::DragScalar("##CRoll", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.camera.roll), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Euler, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Roll");
 
 	ImGui::Spacing();
 	ImGui::Spacing();
 
 	ImGui::Text("Quaternion");
-	ImGui::Text("X:");
-	ImGui::SameLine();
-	if (ImGui::DragScalar("##CQX:", ImGuiDataType_Double, &camera_display_qx, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	
+	if (ImGui::DragScalar("##CQX", ImGuiDataType_Double, &camera_display_qx, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Quaternion, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("X");
 
-	ImGui::Text("Y:");
-	ImGui::SameLine();
-	if (ImGui::DragScalar("##CQY:", ImGuiDataType_Double, &camera_display_qy, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	if (ImGui::DragScalar("##CQY", ImGuiDataType_Double, &camera_display_qy, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Quaternion, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Y");
 
-	ImGui::Text("Z:");
-	ImGui::SameLine();
-	if (ImGui::DragScalar("##CQZ:", ImGuiDataType_Double, &camera_display_qz, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	
+	
+	if (ImGui::DragScalar("##CQZ", ImGuiDataType_Double, &camera_display_qz, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Quaternion, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("Z");
 
-	ImGui::Text("W:");
-	ImGui::SameLine();
-	if (ImGui::DragScalar("##CQW:", ImGuiDataType_Double, &camera_display_qw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+	if (ImGui::DragScalar("##CQW", ImGuiDataType_Double, &camera_display_qw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 		UpdateCameraRotation(RotationType_Quaternion, false);
 	}
+	ImGui::SameLine();
+	ImGui::Text("W");
 
 	ImGui::Separator();
 
@@ -398,7 +409,4 @@ void CameraTab::draw() {
 	}
 
 	ImGui::EndTable();
-
-
-	ImGui::PushItemWidth(100);
 }

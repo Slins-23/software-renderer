@@ -148,7 +148,14 @@ void InstancesTab::update_transform_axes() {
 		this->scene_tab->current_scene.axes_instance.sy = 1;
 		this->scene_tab->current_scene.axes_instance.sz = 1;
 		this->scene_tab->current_scene.axes_instance.SCALING_MATRIX = Mat::scale_matrix(1, 1, 1);
-		this->scene_tab->current_scene.axes_instance.MODEL_TO_WORLD = this->scene_tab->current_scene.axes_instance.TRANSLATION_MATRIX * this->scene_tab->current_scene.axes_instance.ROTATION_MATRIX * this->scene_tab->current_scene.axes_instance.SCALING_MATRIX;
+
+		if (this->scene_tab->rotation_orientation == Orientation::local) {
+			this->scene_tab->current_scene.axes_instance.MODEL_TO_WORLD = this->scene_tab->current_scene.axes_instance.TRANSLATION_MATRIX * this->scene_tab->current_scene.axes_instance.ROTATION_MATRIX * this->scene_tab->current_scene.axes_instance.SCALING_MATRIX;
+		}
+		else if (this->scene_tab->rotation_orientation == Orientation::world) {
+			this->scene_tab->current_scene.axes_instance.MODEL_TO_WORLD = this->scene_tab->current_scene.axes_instance.TRANSLATION_MATRIX;
+		}
+
 		this->scene_tab->current_scene.axes_instance.show = true;
 
 		this->target_instance->has_axes = true;
@@ -219,14 +226,61 @@ void InstancesTab::update_instances_queue_reconstruction(bool selected_deleted) 
 
 void InstancesTab::draw() {
 	// Toggle rendering of transform axes
-	ImGui::Text("Show transform axes: ");
+	
+	if (ImGui::BeginCombo("##Rotation orientation", this->scene_tab->display_rotation_orientation, ImGuiComboFlags_None)) {
+		for (uint8_t rotation_orientation = 0; rotation_orientation < 2; rotation_orientation++) {
+			Orientation orientation = (Orientation) rotation_orientation;
+
+			const bool is_selected = orientation == this->scene_tab->rotation_orientation;
+
+			char label[255] = "";
+
+			if (orientation == Orientation::local) {
+				sprintf_s(label, sizeof(label), "%s##orientation_%d", "Local", rotation_orientation);
+			}
+			else if (orientation == Orientation::world) {
+				sprintf_s(label, sizeof(label), "%s##orientation_%d", "World", rotation_orientation);
+			}
+			
+
+			if (ImGui::Selectable(label, is_selected)) {
+				switch (orientation) {
+				case Orientation::local:
+					this->scene_tab->rotation_orientation = Orientation::local;
+					strcpy_s(this->scene_tab->display_rotation_orientation, sizeof(this->scene_tab->display_rotation_orientation), "Local");
+					break;
+				case Orientation::world:
+					this->scene_tab->rotation_orientation = Orientation::world;
+					strcpy_s(this->scene_tab->display_rotation_orientation, sizeof(this->scene_tab->display_rotation_orientation), "World");
+					break;
+				default:
+					break;
+				}
+			}
+
+			if (is_selected) {
+				ImGui::SetItemDefaultFocus();
+			}
+
+			
+		}
+
+		ImGui::EndCombo();
+	}
+
+	
 	ImGui::SameLine();
-	if (ImGui::Checkbox("##Show transform axes: ", &this->scene_tab->show_transform_axes)) {
+	ImGui::Text("Rotation orientation");
+
+	if (ImGui::Checkbox("##Show transform axes", &this->scene_tab->show_transform_axes)) {
 		if (this->scene_tab->show_transform_axes) {
 			update_transform_axes();
 		}
 	}
-	ImGui::Separator();
+	ImGui::SameLine();
+	ImGui::Text("Show transform axes");
+
+	ImGui::Spacing();
 
 	if (ImGui::Button("Add instance/load mesh")) {
 		ImGui::OpenPopup("popup");
@@ -234,6 +288,7 @@ void InstancesTab::draw() {
 	}
 
 	if (ImGui::BeginPopupModal("popup")) {
+
 		//Instance instance = Instance(this->scene_tab->current_scene.total_ever_instances);
 		static Mesh* chosen_mesh = &this->scene_tab->current_scene.scene_meshes[0];
 
@@ -243,7 +298,8 @@ void InstancesTab::draw() {
 		double display_qw = created_instance->orientation.w;
 
 		// Load mesh from file and send it to scene meshes if not already there
-		ImGui::SetItemTooltip("The .obj mesh file MUST be within the MODELS folder! (This is because scenes are saved with only the filename, not path, as it is assumed to be relative to the models folder)");
+		
+
 		static bool errored = 0;
 		if (ImGui::Button("Load mesh")) {
 			static const nfdchar_t* obj_filter = "obj";
@@ -282,21 +338,22 @@ void InstancesTab::draw() {
 
 			}
 			else {
-				std::cout << "NFD Error: " << NFD_GetError() << std::endl;
+				std::cout << "NFD Error" << NFD_GetError() << std::endl;
 				exit(-1);
 			}
 
 			free(mesh_path);
 		}
+		ImGui::SetItemTooltip("The .obj mesh file MUST be within the MODELS folder! (This is because scenes are saved with only the filename, not path, as it is assumed to be relative to the models folder)");
 
 		if (errored) {
 			ImGui::TextColored(ImVec4(1.0, 0, 0, 1.0), "Mesh could not be loaded: The folder from which the mesh is chosen must be the same models folder that contains all other meshes. (It is seen and can be updated above)");
 		}
 
-		ImGui::Text("Choose mesh:");
-		ImGui::SameLine();
+		
+		ImGui::PushItemWidth(100);
 		// Make sure that mesh is not a nullptr here in the case that no mesh is attached for a scene without a light source in principle
-		if (ImGui::BeginCombo("##Choose mesh:", this->chosen_mesh_name.c_str(), ImGuiComboFlags_None)) {
+		if (ImGui::BeginCombo("##Choose mesh", this->chosen_mesh_name.c_str(), ImGuiComboFlags_None)) {
 			for (uint8_t mesh = 0; mesh < this->scene_tab->current_scene.scene_meshes.size(); mesh++) {
 				Mesh* current_mesh = &this->scene_tab->current_scene.scene_meshes[mesh];
 
@@ -318,83 +375,102 @@ void InstancesTab::draw() {
 
 			ImGui::EndCombo();
 		}
+		ImGui::SameLine();
+		ImGui::Text("Choose mesh");
 
 		ImGui::Separator();
 
 		
-
-		ImGui::Text("Instance name:");
+		
+		
+		ImGui::InputText("##LInstance name", this->create_instance_name, sizeof(this->create_instance_name), ImGuiInputTextFlags_None, nullptr, nullptr);
 		ImGui::SameLine();
-		ImGui::InputText("##LInstance name:", this->create_instance_name, sizeof(this->create_instance_name), ImGuiInputTextFlags_None, nullptr, nullptr);
+		ImGui::Text("Instance name");
 
 		ImGui::Spacing();
 		ImGui::Separator();
 		ImGui::Spacing();
 
+		ImGui::PushItemWidth(100);
+
 		ImGui::Text("Translation");
 		ImGui::Spacing();
-		ImGui::Text("X:");
-		ImGui::SameLine();
 
-		ImGui::InputScalar("##X:", ImGuiDataType_Double, (void*)&(this->created_instance->tx), nullptr, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-		ImGui::Text("Y:");
+		ImGui::DragScalar("##X", ImGuiDataType_Double, &this->created_instance->tx, this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None);
 		ImGui::SameLine();
-		ImGui::InputScalar("##Y:", ImGuiDataType_Double, (void*)&(this->created_instance->ty), nullptr, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-		ImGui::Text("Z:");
+		ImGui::Text("X");
+		
+		
+		ImGui::DragScalar("##Y", ImGuiDataType_Double, &this->created_instance->ty, this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None);
 		ImGui::SameLine();
-		ImGui::InputScalar("##Z:", ImGuiDataType_Double, (void*)&(this->created_instance->tz), nullptr, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::Text("Y");
+
+		
+		
+		ImGui::DragScalar("##Z", ImGuiDataType_Double, &this->created_instance->tz, this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::SameLine();
+		ImGui::Text("Z");
+
 
 		ImGui::Separator();
 
 		ImGui::Text("Scaling");
 		ImGui::Spacing();
-		ImGui::Text("X:");
-		ImGui::SameLine();
+		
+		
 
-		ImGui::InputScalar("##SX:", ImGuiDataType_Double, (void*)&(this->created_instance->sx), &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-		ImGui::Text("Y:");
+		ImGui::DragScalar("##SX", ImGuiDataType_Double, &this->created_instance->sx, this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
 		ImGui::SameLine();
-		ImGui::InputScalar("##SY:", ImGuiDataType_Double, (void*)&(this->created_instance->sy), &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::Text("X");
 
-		ImGui::Text("Z:");
+		
+		
+		ImGui::DragScalar("##SY", ImGuiDataType_Double, &this->created_instance->sy, this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
 		ImGui::SameLine();
-		ImGui::InputScalar("##SZ:", ImGuiDataType_Double, (void*)&(this->created_instance->sz), &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::Text("Y");
+
+		
+		
+		ImGui::DragScalar("##SZ", ImGuiDataType_Double, &this->created_instance->sz, this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::SameLine();
+		ImGui::Text("Z");
 
 		ImGui::Separator();
 
 		ImGui::Text("Rotation (YXZ)");
 		ImGui::Spacing();
-		ImGui::Text("Yaw:  ");
-		ImGui::SameLine();
-		if (ImGui::InputScalar("##Yaw:  ", ImGuiDataType_Double, (void*)&(this->created_instance->yaw), nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##Yaw:  ", ImGuiDataType_Double, &this->created_instance->yaw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			Quaternion orientation = Quaternion::FromYawPitchRoll(this->scene_tab->rotation_orientation, created_instance->yaw, created_instance->pitch, created_instance->roll, this->scene_tab->current_scene.default_world_right, this->scene_tab->current_scene.default_world_up, this->scene_tab->current_scene.default_world_forward);
 
 			created_instance->orientation = orientation;
 		}
-
-		ImGui::Text("Pitch:");
 		ImGui::SameLine();
-		if (ImGui::InputScalar("##Pitch:", ImGuiDataType_Double, (void*)&(this->created_instance->pitch), nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Yaw");
+
+		
+		
+		if (ImGui::DragScalar("##Pitch", ImGuiDataType_Double, &this->created_instance->pitch, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			Quaternion orientation = Quaternion::FromYawPitchRoll(this->scene_tab->rotation_orientation, created_instance->yaw, created_instance->pitch, created_instance->roll, this->scene_tab->current_scene.default_world_right, this->scene_tab->current_scene.default_world_up, this->scene_tab->current_scene.default_world_forward);
 
 			created_instance->orientation = orientation;
 		}
-
-		ImGui::Text("Roll: ");
 		ImGui::SameLine();
-		if (ImGui::InputScalar("##Roll: ", ImGuiDataType_Double, (void*)&(this->created_instance->roll), nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Pitch");
+		
+		
+		if (ImGui::DragScalar("##Roll", ImGuiDataType_Double, &this->created_instance->roll, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			Quaternion orientation = Quaternion::FromYawPitchRoll(this->scene_tab->rotation_orientation, created_instance->yaw, created_instance->pitch, created_instance->roll, this->scene_tab->current_scene.default_world_right, this->scene_tab->current_scene.default_world_up, this->scene_tab->current_scene.default_world_forward);
 
 			created_instance->orientation = orientation;
 		}
+		ImGui::SameLine();
+		ImGui::Text("Roll");
 
 		ImGui::Text("Quaternion");
-		ImGui::Text("X:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##QX:", ImGuiDataType_Double, &created_instance->orientation.x, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		if (ImGui::DragScalar("##QX", ImGuiDataType_Double, &created_instance->orientation.x, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			double qw = created_instance->orientation.w;
 			double qx = created_instance->orientation.x;
 			double qy = created_instance->orientation.y;
@@ -437,10 +513,11 @@ void InstancesTab::draw() {
 			created_instance->pitch += pitch_difference;
 			created_instance->roll += roll_difference;
 		}
-
-		ImGui::Text("Y:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##QY:", ImGuiDataType_Double, &created_instance->orientation.y, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("X");
+		
+		
+		if (ImGui::DragScalar("##QY", ImGuiDataType_Double, &created_instance->orientation.y, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			double qw = created_instance->orientation.w;
 			double qx = created_instance->orientation.x;
 			double qy = created_instance->orientation.y;
@@ -483,10 +560,10 @@ void InstancesTab::draw() {
 			created_instance->pitch += pitch_difference;
 			created_instance->roll += roll_difference;
 		}
-
-		ImGui::Text("Z:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##QZ:", ImGuiDataType_Double, &created_instance->orientation.z, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Y");
+		
+		if (ImGui::DragScalar("##QZ", ImGuiDataType_Double, &created_instance->orientation.z, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			double qw = created_instance->orientation.w;
 			double qx = created_instance->orientation.x;
 			double qy = created_instance->orientation.y;
@@ -529,10 +606,11 @@ void InstancesTab::draw() {
 			created_instance->pitch += pitch_difference;
 			created_instance->roll += roll_difference;
 		}
-
-		ImGui::Text("W:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##QW:", ImGuiDataType_Double, &created_instance->orientation.w, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Z");
+
+
+		if (ImGui::DragScalar("##QW", ImGuiDataType_Double, &created_instance->orientation.w, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			double qw = created_instance->orientation.w;
 			double qx = created_instance->orientation.x;
 			double qy = created_instance->orientation.y;
@@ -575,6 +653,8 @@ void InstancesTab::draw() {
 			created_instance->pitch += pitch_difference;
 			created_instance->roll += roll_difference;
 		}
+		ImGui::SameLine();
+		ImGui::Text("W");
 
 		// Position at center somehow?
 		if (ImGui::Button("Add")) {
@@ -750,10 +830,10 @@ void InstancesTab::draw() {
 	ImGui::Separator();
 
 	if (this->target_instance != nullptr) {
-		ImGui::Text("Choose mesh:");
-		ImGui::SameLine();
+		
+		
 		// Make sure that mesh is not a nullptr here in the case that no mesh is attached for a scene without a light source in principle
-		if (ImGui::BeginCombo("##Choose mesh:", this->chosen_mesh_name.c_str(), ImGuiComboFlags_None)) {
+		if (ImGui::BeginCombo("##Choose mesh", this->chosen_mesh_name.c_str(), ImGuiComboFlags_None)) {
 			for (uint8_t mesh = 0; mesh < this->scene_tab->current_scene.scene_meshes.size(); mesh++) {
 				Mesh* current_mesh = &this->scene_tab->current_scene.scene_meshes[mesh];
 
@@ -772,139 +852,145 @@ void InstancesTab::draw() {
 
 			ImGui::EndCombo();
 		}
-
-		ImGui::Text("Translation speed:");
-		ImGui::SetItemTooltip("How sensitive the menu translation slider is to clicking and dragging (higher = more change)");
 		ImGui::SameLine();
-		ImGui::DragScalar("##ITranslation speed (menu):", ImGuiDataType_Double, &this->scene_tab->menu_translation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-		ImGui::Separator();
-
-
-
-		ImGui::Separator();
-		ImGui::Text("Rotation speed:");
-		ImGui::SetItemTooltip("(Menu) How sensitive the menu rotation slider is to clicking and dragging (higher = more change): ");
-		ImGui::SameLine();
-		ImGui::DragScalar("##IRotation speed (menu):", ImGuiDataType_Double, &this->scene_tab->menu_rotation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-		ImGui::Separator();
-
-		ImGui::Text("Scaling speed:");
-		ImGui::SetItemTooltip("(Menu) How sensitive the menu scaling slider is to clicking and dragging (higher = more change): ");
-		ImGui::SameLine();
-		ImGui::DragScalar("##IScaling speed:", ImGuiDataType_Double, &this->scene_tab->menu_scaling_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
-
-		ImGui::Separator();
-
-
-
-		ImGui::Separator();
-		ImGui::Spacing();
-		ImGui::Spacing();
-
-
-
-
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::Spacing();
+		ImGui::Text("Choose mesh");
 
 		ImGui::PushItemWidth(60);
+		
+		ImGui::DragScalar("##ITranslation speed (menu)", ImGuiDataType_Double, &this->scene_tab->menu_translation_speed, 0.005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
+		ImGui::SetItemTooltip("How sensitive the menu translation slider is to clicking and dragging (higher = more change)");
+		ImGui::SameLine();
+		ImGui::Text("Translation speed");
+		
+		ImGui::DragScalar("##IRotation speed (menu)", ImGuiDataType_Double, &this->scene_tab->menu_rotation_speed, 0.0005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
+		ImGui::SetItemTooltip("(Menu) How sensitive the menu rotation slider is to clicking and dragging (higher = more change)");
+		ImGui::SameLine();
+		ImGui::Text("Rotation speed");
+		
+		ImGui::DragScalar("##IScaling speed", ImGuiDataType_Double, &this->scene_tab->menu_scaling_speed, 0.0005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
+		ImGui::SetItemTooltip("(Menu) How sensitive the menu scaling slider is to clicking and dragging (higher = more change)");
+		ImGui::SameLine();
+		ImGui::Text("Scaling speed");
+
+
+		ImGui::Separator();
 
 		ImGui::Text("Translation");
 		ImGui::Spacing();
-		ImGui::Text("X:");
-		ImGui::SameLine();
+		
+		
 
-		if (ImGui::DragScalar("##X:", ImGuiDataType_Double, (void*)&(this->target_instance->tx), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		if (ImGui::DragScalar("##X", ImGuiDataType_Double, &this->target_instance->tx, this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceTranslation();
 		}
-
-		ImGui::Text("Y:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##Y:", ImGuiDataType_Double, (void*)&(this->target_instance->ty), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("X");
+
+		
+		
+		if (ImGui::DragScalar("##Y", ImGuiDataType_Double, &this->target_instance->ty, this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceTranslation();
 		}
-
-		ImGui::Text("Z:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##Z:", ImGuiDataType_Double, (void*)&(this->target_instance->tz), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Y");
+
+		
+		
+		if (ImGui::DragScalar("##Z", ImGuiDataType_Double, &this->target_instance->tz, this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceTranslation();
 		}
+		ImGui::SameLine();
+		ImGui::Text("Z");
 
 		ImGui::Separator();
 
 		ImGui::Text("Scaling");
 		ImGui::Spacing();
-		ImGui::Text("X:");
-		ImGui::SameLine();
+		
+		
 
-		if (ImGui::DragScalar("##SX:", ImGuiDataType_Double, (void*)&(this->target_instance->sx), this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		if (ImGui::DragScalar("##SX", ImGuiDataType_Double, &this->target_instance->sx, this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceScaling();
 		}
-
-		ImGui::Text("Y:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##SY:", ImGuiDataType_Double, (void*)&(this->target_instance->sy), this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("X");
+
+		
+		
+		if (ImGui::DragScalar("##SY", ImGuiDataType_Double, &this->target_instance->sy, this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceScaling();
 		}
-
-		ImGui::Text("Z:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##SZ:", ImGuiDataType_Double, (void*)&(this->target_instance->sz), this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Y");
+
+		
+		
+		if (ImGui::DragScalar("##SZ", ImGuiDataType_Double, &this->target_instance->sz, this->scene_tab->menu_scaling_speed, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceScaling();
 		}
+		ImGui::SameLine();
+		ImGui::Text("Z");
 
 		ImGui::Separator();
 
 		ImGui::Text("Rotation (YXZ)");
 		ImGui::Spacing();
+		
+		
+		if (ImGui::DragScalar("##Yaw:  ", ImGuiDataType_Double, &this->target_instance->yaw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateInstanceRotation(RotationType_Euler);
+		}
+		ImGui::SameLine();
 		ImGui::Text("Yaw:  ");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##Yaw:  ", ImGuiDataType_Double, (void*)&(this->target_instance->yaw), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			UpdateInstanceRotation(RotationType_Euler);
-		}
 
-		ImGui::Text("Pitch:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##Pitch:", ImGuiDataType_Double, (void*)&(this->target_instance->pitch), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##Pitch", ImGuiDataType_Double, &this->target_instance->pitch, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceRotation(RotationType_Euler);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Pitch");
 
-		ImGui::Text("Roll: ");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##Roll: ", ImGuiDataType_Double, (void*)&(this->target_instance->roll), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##Roll", ImGuiDataType_Double, &this->target_instance->roll, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceRotation(RotationType_Euler);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Roll");
 
 		ImGui::Spacing();
 		ImGui::Spacing();
 
 		ImGui::Text("Quaternion");
-		ImGui::Text("X:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##QX:", ImGuiDataType_Double, &this->display_qx, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		if (ImGui::DragScalar("##QX", ImGuiDataType_Double, &this->display_qx, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceRotation(RotationType_Quaternion);
 		}
+		ImGui::SameLine();
+		ImGui::Text("X");
+		
+		if (ImGui::DragScalar("##QY", ImGuiDataType_Double, &this->display_qy, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			UpdateInstanceRotation(RotationType_Quaternion);
+		}
+		ImGui::SameLine();
+		ImGui::Text("Y");
 
-		ImGui::Text("Y:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##QY:", ImGuiDataType_Double, &this->display_qy, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##QZ", ImGuiDataType_Double, &this->display_qz, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceRotation(RotationType_Quaternion);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Z");
 
-		ImGui::Text("Z:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##QZ:", ImGuiDataType_Double, &this->display_qz, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##QW", ImGuiDataType_Double, &this->display_qw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateInstanceRotation(RotationType_Quaternion);
 		}
-
-		ImGui::Text("W:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##QW:", ImGuiDataType_Double, &this->display_qw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
-			UpdateInstanceRotation(RotationType_Quaternion);
-		}
+		ImGui::Text("W");
 
 		ImGui::Separator();
 

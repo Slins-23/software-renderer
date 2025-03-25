@@ -41,7 +41,7 @@ bool Engine::setup() {
 	this->depth_buffer = (double*)malloc(sizeof(double) * this->WIDTH * this->HEIGHT);
 
 	for (int i = 0; i < WIDTH * HEIGHT; i++) {
-		this->pixel_buffer[i] = window_manager.general_window.settings_tab.BG_COLOR;
+		this->pixel_buffer[i] = window_manager.general_window.scene_tab.current_scene.BG_COLOR;
 		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
 
@@ -429,6 +429,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				v1 /= v1_originalz;
 				v2 /= v2_originalz;
 
+				// In NDC space
+
 
 				bool cull_triangle = false;
 
@@ -540,13 +542,13 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 						double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 						light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-						uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+						uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
 						uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 						
-						uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+						uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
 						uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 						
-						uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+						uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 						uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
 						uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
@@ -566,9 +568,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 					// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 					else {
-						uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
-						uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
-						uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+						uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
+						uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
+						uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 
 						uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
 						uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
@@ -750,13 +752,13 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 								double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 								light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
 								uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 
-								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
 								uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 
-								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 								uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
 								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
@@ -774,9 +776,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 							// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 							else {
-								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
-								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
-								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 
 								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
 								uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
@@ -801,9 +803,9 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				}
 				// If shading but light source is disabled, use default fill color
 				else if (!is_light_source && shade && !window_manager.general_window.scene_tab.current_scene.light_source.enabled) {
-					uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
-					uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
-					uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+					uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
+					uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
+					uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 
 					fill_color = 0x000000FF | (fill_color_red << 24) | (fill_color_green << 16) | (fill_color_blue << 8);
 				}
@@ -825,10 +827,6 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 
 				v2.set(-v2.get(1, 1), 1, 1);
 				v2.set(-v2.get(2, 1), 2, 1);
-
-				// NOW IN NDC SPACE
-				
-				
 				
 				
 				// Transformation into screen space coordinates (i.e. 2D window x-y)
@@ -1336,13 +1334,13 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 									double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 									light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-									uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+									uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
 									uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 
-									uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+									uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
 									uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 
-									uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+									uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 									uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
 									uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
@@ -1358,9 +1356,9 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 								// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 								else {
-									uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
-									uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
-									uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+									uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
+									uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
+									uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 
 									uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
 									uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
@@ -1431,13 +1429,13 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 								double light_intensity = similarity * window_manager.general_window.scene_tab.current_scene.light_source.intensity * attenuation;
 								light_intensity = Utils::clamp(light_intensity, 0, 1);
 
-								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
 								uint8_t light_color_red = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 24) & 0x000000FF;
 
-								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
 								uint8_t light_color_green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 
-								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 								uint8_t light_color_blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
 
 								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
@@ -1453,9 +1451,9 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 							// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
 							else {
-								uint8_t fill_color_red = (window_manager.general_window.settings_tab.FILL_COLOR >> 24) & 0x000000FF;
-								uint8_t fill_color_green = (window_manager.general_window.settings_tab.FILL_COLOR >> 16) & 0x000000FF;
-								uint8_t fill_color_blue = (window_manager.general_window.settings_tab.FILL_COLOR >> 8) & 0x000000FF;
+								uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
+								uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
+								uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
 
 								uint8_t minimum_red = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_red);
 								uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
@@ -1484,16 +1482,16 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 void Engine::draw() {
 	// Clears pixel buffer to the background/clear color
 	for (int i = 0; i < this->WIDTH * this->HEIGHT; i++) {
-		this->pixel_buffer[i] = window_manager.general_window.settings_tab.BG_COLOR;
+		this->pixel_buffer[i] = window_manager.general_window.scene_tab.current_scene.BG_COLOR;
 		this->depth_buffer[i] = std::numeric_limits<double>::max();
 	}
 
 	for (const Instance& instance : window_manager.general_window.scene_tab.current_scene.scene_instances) {
 		if (instance.show) {
-			draw_instance(instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.settings_tab.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.settings_tab.FILL_COLOR, window_manager.general_window.settings_tab.shade);
+			draw_instance(instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.scene_tab.current_scene.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.scene_tab.current_scene.FILL_COLOR, window_manager.general_window.settings_tab.shade);
 
 			if (instance.has_axes && window_manager.general_window.scene_tab.show_transform_axes && (window_manager.general_window.scene_tab.is_instances_open || window_manager.general_window.scene_tab.is_light_open)) {
-				draw_instance(window_manager.general_window.scene_tab.current_scene.axes_instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.settings_tab.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.settings_tab.FILL_COLOR, false);
+				draw_instance(window_manager.general_window.scene_tab.current_scene.axes_instance, window_manager.general_window.settings_tab.wireframe_render, window_manager.general_window.scene_tab.current_scene.LINE_COLOR, window_manager.general_window.settings_tab.rasterize, window_manager.general_window.scene_tab.current_scene.FILL_COLOR, false);
 			}
 		}
 	}
@@ -1501,7 +1499,7 @@ void Engine::draw() {
 
 void Engine::render() {
 	SDL_RenderSetScale(this->renderer, window_manager.io.DisplayFramebufferScale.x, window_manager.io.DisplayFramebufferScale.y);
-	SDL_SetRenderDrawColor(this->renderer, window_manager.general_window.settings_tab.CLEAR_COLOR >> 24, window_manager.general_window.settings_tab.CLEAR_COLOR >> 16, window_manager.general_window.settings_tab.CLEAR_COLOR >> 8, window_manager.general_window.settings_tab.CLEAR_COLOR);
+	SDL_SetRenderDrawColor(this->renderer, this->CLEAR_COLOR >> 24, this->CLEAR_COLOR >> 16, this->CLEAR_COLOR >> 8, this->CLEAR_COLOR);
 	SDL_RenderClear(this->renderer);
 	SDL_UpdateTexture(this->texture, nullptr, this->pixel_buffer, this->WIDTH * sizeof(uint32_t));
 	SDL_RenderCopy(this->renderer, this->texture, nullptr, nullptr);

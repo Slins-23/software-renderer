@@ -288,7 +288,15 @@ void LightTab::update_transform_axes() {
 		this->scene_tab->current_scene.axes_instance.TRANSLATION_MATRIX = Mat::translation_matrix(this->scene_tab->current_scene.light_source.tx, this->scene_tab->current_scene.light_source.ty, this->scene_tab->current_scene.light_source.tz);
 		this->scene_tab->current_scene.axes_instance.ROTATION_MATRIX = this->scene_tab->current_scene.light_source.orientation.get_rotationmatrix();
 		this->scene_tab->current_scene.axes_instance.SCALING_MATRIX = Mat::scale_matrix(1, 1, 1);
-		this->scene_tab->current_scene.axes_instance.MODEL_TO_WORLD = this->scene_tab->current_scene.axes_instance.TRANSLATION_MATRIX * this->scene_tab->current_scene.axes_instance.ROTATION_MATRIX * this->scene_tab->current_scene.axes_instance.SCALING_MATRIX;
+
+		if (this->scene_tab->rotation_orientation == Orientation::local) {
+			this->scene_tab->current_scene.axes_instance.MODEL_TO_WORLD = this->scene_tab->current_scene.axes_instance.TRANSLATION_MATRIX * this->scene_tab->current_scene.axes_instance.ROTATION_MATRIX * this->scene_tab->current_scene.axes_instance.SCALING_MATRIX;
+		}
+		else if (this->scene_tab->rotation_orientation == Orientation::world) {
+			this->scene_tab->current_scene.axes_instance.MODEL_TO_WORLD = this->scene_tab->current_scene.axes_instance.TRANSLATION_MATRIX;
+		}
+
+		
 		this->scene_tab->current_scene.axes_instance.show = true;
 	}
 
@@ -296,25 +304,84 @@ void LightTab::update_transform_axes() {
 
 void LightTab::draw() {
 	// Toggle rendering of transform axes
-	ImGui::Text("Show transform axes: ");
+	
+	ImGui::Checkbox("##Enabled", &this->scene_tab->current_scene.light_source.enabled);
 	ImGui::SameLine();
-	if (ImGui::Checkbox("##Show transform axes: ", &this->scene_tab->show_transform_axes)) {
-		if (this->scene_tab->show_transform_axes) {
-			update_transform_axes();
-		}
-	}
-	ImGui::Separator();
-
-	ImGui::PushItemWidth(100);
-
-	ImGui::Text("Enabled:");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Enabled:", &this->scene_tab->current_scene.light_source.enabled);
+	ImGui::Text("Enabled");
 
 	if (this->scene_tab->current_scene.light_source.enabled) {
-		ImGui::Text("Lighting type:");
+		if (ImGui::BeginCombo("##Rotation orientation", this->scene_tab->display_rotation_orientation, ImGuiComboFlags_None)) {
+			for (uint8_t rotation_orientation = 0; rotation_orientation < 2; rotation_orientation++) {
+				Orientation orientation = (Orientation)rotation_orientation;
+
+				const bool is_selected = orientation == rotation_orientation;
+
+				char label[255] = "";
+				sprintf_s(label, sizeof(label), "##orientation_%d", rotation_orientation);
+
+				if (ImGui::Selectable(label, is_selected)) {
+					switch (orientation) {
+					case Orientation::local:
+						this->scene_tab->rotation_orientation = Orientation::local;
+						strcpy_s(this->scene_tab->display_rotation_orientation, sizeof(this->scene_tab->display_rotation_orientation), "Local");
+						break;
+					case Orientation::world:
+						this->scene_tab->rotation_orientation = Orientation::world;
+						strcpy_s(this->scene_tab->display_rotation_orientation, sizeof(this->scene_tab->display_rotation_orientation), "World");
+						break;
+					default:
+						break;
+					}
+				}
+
+				if (is_selected) {
+					ImGui::SetItemDefaultFocus();
+				}
+
+				
+			}
+
+			ImGui::EndCombo();
+		}
 		ImGui::SameLine();
-		if (ImGui::BeginCombo("##Lighting type:", this->current_lighting_type, ImGuiComboFlags_None)) {
+		ImGui::Text("Rotation orientation");
+		
+
+		if (ImGui::Checkbox("##Show transform axes", &this->scene_tab->show_transform_axes)) {
+			if (this->scene_tab->show_transform_axes) {
+				update_transform_axes();
+			}
+		}
+		ImGui::SameLine();
+		ImGui::Text("Show transform axes");
+
+		if (ImGui::Checkbox("##Attach model", &this->scene_tab->current_scene.light_source.has_model)) {
+			if (!this->scene_tab->current_scene.light_source.has_model) {
+				this->scene_tab->current_scene.light_source.instance->show = false;
+			}
+			else {
+				this->scene_tab->current_scene.light_source.instance->show = true;
+			}
+		}
+		ImGui::SameLine();
+		ImGui::Text("Attach model");
+
+		if (ImGui::ColorEdit4("##LColor", this->display_LIGHT_COLOR, ImGuiColorEditFlags_NoInputs)) {
+			uint8_t red = this->display_LIGHT_COLOR[0] * 255.0;
+			uint8_t green = this->display_LIGHT_COLOR[1] * 255.0;
+			uint8_t blue = this->display_LIGHT_COLOR[2] * 255.0;
+			uint8_t alpha = this->display_LIGHT_COLOR[3] * 255.0;
+
+			uint32_t color = (red << 24) | (green << 16) | (blue << 8) | alpha;
+
+			this->scene_tab->current_scene.light_source.color = color;
+		};
+		ImGui::SameLine();
+		ImGui::Text("Color");
+
+
+
+		if (ImGui::BeginCombo("##Lighting type", this->current_lighting_type, ImGuiComboFlags_None)) {
 			for (uint8_t lighting_type = 0; lighting_type < sizeof(this->lighting_types) / sizeof(const char*); lighting_type++) {
 
 				const bool is_selected = (lighting_selected_idx == lighting_type);
@@ -344,12 +411,12 @@ void LightTab::draw() {
 
 			ImGui::EndCombo();
 		}
+		ImGui::SameLine();
+		ImGui::Text("Lighting type");
 
 		ImGui::Spacing();
-
-		ImGui::Text("Shading type:");
-		ImGui::SameLine();
-		if (ImGui::BeginCombo("##Shading type:", this->current_shading_type, ImGuiComboFlags_None)) {
+		
+		if (ImGui::BeginCombo("##Shading type", this->current_shading_type, ImGuiComboFlags_None)) {
 			for (uint8_t shading_type = 0; shading_type < sizeof(this->shading_types) / sizeof(const char*); shading_type++) {
 
 				const bool is_selected = (this->shading_selected_idx == shading_type);
@@ -379,48 +446,27 @@ void LightTab::draw() {
 
 			ImGui::EndCombo();
 		}
-
-		ImGui::PushItemWidth(60);
-
-		ImGui::Text("Intensity:");
 		ImGui::SameLine();
-		ImGui::DragScalar("##Intensity:", ImGuiDataType_Double, &this->scene_tab->current_scene.light_source.intensity, 0.005, &zero, nullptr, "%.4lf", ImGuiSliderFlags_None);
+		ImGui::Text("Shading type");
 
-		ImGui::Text("Minimum exposure:");
+
+		ImGui::PushItemWidth(50);
+
+		ImGui::DragScalar("##Intensity", ImGuiDataType_Double, &this->scene_tab->current_scene.light_source.intensity, 0.005, &zero, nullptr, "%.3lf", ImGuiSliderFlags_None);
 		ImGui::SameLine();
-		ImGui::DragScalar("##Minimum exposure:", ImGuiDataType_Double, &this->scene_tab->current_scene.light_source.minimum_exposure, 0.005, &zero, nullptr, "%.4lf", ImGuiSliderFlags_None);
+		ImGui::Text("Intensity");
+
+		ImGui::DragScalar("##Minimum exposure", ImGuiDataType_Double, &this->scene_tab->current_scene.light_source.minimum_exposure, 0.005, &zero, &one, "%.3lf", ImGuiSliderFlags_None);
+		ImGui::SameLine();
+		ImGui::Text("Minimum exposure");
 
 		ImGui::Spacing();
 
-		ImGui::Text("Color:");
-		ImGui::SameLine();
-		if (ImGui::ColorEdit4("##LColor:", this->display_LIGHT_COLOR, ImGuiColorEditFlags_NoInputs)) {
-			uint8_t red = this->display_LIGHT_COLOR[0] * 255.0;
-			uint8_t green = this->display_LIGHT_COLOR[1] * 255.0;
-			uint8_t blue = this->display_LIGHT_COLOR[2] * 255.0;
-			uint8_t alpha = this->display_LIGHT_COLOR[3] * 255.0;
-
-			uint32_t color = (red << 24) | (green << 16) | (blue << 8) | alpha;
-
-			this->scene_tab->current_scene.light_source.color = color;
-		};
-
 		ImGui::Separator();
-
-		ImGui::Text("Attach model:");
-		ImGui::SameLine();
-		if (ImGui::Checkbox("##Attach model? ", &this->scene_tab->current_scene.light_source.has_model)) {
-			if (!this->scene_tab->current_scene.light_source.has_model) {
-				this->scene_tab->current_scene.light_source.instance->show = false;
-			}
-			else {
-				this->scene_tab->current_scene.light_source.instance->show = true;
-			}
-		}
 
 		if (this->scene_tab->current_scene.light_source.has_model) {
 			// Load mesh from file and send it to scene meshes if not already there
-			ImGui::SetItemTooltip("The .obj mesh file MUST be within the MODELS folder! (This is because scenes are saved with only the filename, not path, as it is assumed to be relative to the models folder)");
+			
 			static bool errored = 0;
 			if (ImGui::Button("Load mesh")) {
 				static const nfdchar_t* obj_filter = "obj";
@@ -462,15 +508,15 @@ void LightTab::draw() {
 
 				free(mesh_path);
 			}
+			ImGui::SetItemTooltip("The .obj mesh file MUST be within the MODELS folder! (This is because scenes are saved with only the filename, not path, as it is assumed to be relative to the models folder)");
 
 			if (errored) {
 				ImGui::TextColored(ImVec4(1.0, 0, 0, 1.0), "Mesh could not be loaded!\Make sure the mesh is within the set models folder.");
 			}
-
-			ImGui::Text("Choose mesh:");
-			ImGui::SameLine();
+			
+			ImGui::PushItemWidth(100);
 			// Make sure that mesh is not a nullptr here in the case that no mesh is attached for a scene without a light source in principle
-			if (ImGui::BeginCombo("##Choose mesh:", this->chosen_light_mesh_name.c_str(), ImGuiComboFlags_None)) {
+			if (ImGui::BeginCombo("##Choose mesh", this->chosen_light_mesh_name.c_str(), ImGuiComboFlags_None)) {
 				for (uint8_t mesh = 0; mesh < this->scene_tab->current_scene.scene_meshes.size(); mesh++) {
 					Mesh* current_mesh = &this->scene_tab->current_scene.scene_meshes[mesh];
 
@@ -514,173 +560,219 @@ void LightTab::draw() {
 
 				ImGui::EndCombo();
 			}
+			ImGui::SameLine();
+			ImGui::Text("Choose mesh");
+
+			ImGui::PushItemWidth(50);
 		}
 
 		ImGui::Separator();
-
-		ImGui::Text("Translation speed:");
+		
+		ImGui::DragScalar("##LTranslation speed (menu)", ImGuiDataType_Double, &this->scene_tab->menu_translation_speed, 0.005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
 		ImGui::SetItemTooltip("How sensitive the menu translation slider is to clicking and dragging (higher = more change)");
 		ImGui::SameLine();
-		ImGui::DragScalar("##LTranslation speed (menu):", ImGuiDataType_Double, &this->scene_tab->menu_translation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::Text("Translation speed");
 
 		ImGui::Separator();
 
 		ImGui::Separator();
-		ImGui::Text("Rotation speed:");
+		
+		
+		
+		ImGui::DragScalar("##LRotation speed (menu)", ImGuiDataType_Double, &this->scene_tab->menu_rotation_speed, 0.0005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
 		ImGui::SetItemTooltip("(Menu) How sensitive the menu rotation slider is to clicking and dragging (higher = more change): ");
 		ImGui::SameLine();
-		ImGui::DragScalar("##LRotation speed (menu):", ImGuiDataType_Double, &this->scene_tab->menu_rotation_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::Text("Rotation speed");
+
 
 		ImGui::Separator();
-
-		ImGui::Text("Scaling speed:");
+		
+		ImGui::DragScalar("##LScaling speed", ImGuiDataType_Double, &this->scene_tab->menu_scaling_speed, 0.0005, &zero, nullptr, "%.4f", ImGuiSliderFlags_None);
 		ImGui::SetItemTooltip("(Menu) How sensitive the menu scaling slider is to clicking and dragging (higher = more change): ");
 		ImGui::SameLine();
-		ImGui::DragScalar("##LScaling speed:", ImGuiDataType_Double, &this->scene_tab->menu_scaling_speed, 0.01, &zero, nullptr, "%.3f", ImGuiSliderFlags_None);
+		ImGui::Text("Scaling speed");
 
 		ImGui::Separator();
 
 		ImGui::Text("Direction");
 		ImGui::Spacing();
-		ImGui::Text("X:");
-		ImGui::SameLine();
 
-		if (ImGui::DragScalar("##LDX:", ImGuiDataType_Double, (void*)&(this->light_display_dir_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+
+		if (ImGui::DragScalar("##LDX", ImGuiDataType_Double, (void*)&(this->light_display_dir_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Direction);
 		}
-
-		ImGui::Text("Y:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##LDY:", ImGuiDataType_Double, (void*)&(this->light_display_dir_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("X");
+		
+		
+		if (ImGui::DragScalar("##LDY", ImGuiDataType_Double, (void*)&(this->light_display_dir_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Direction);
 		}
-
-		ImGui::Text("Z:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##LDZ:", ImGuiDataType_Double, (void*)&(this->light_display_dir_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Y");
+
+		
+		
+		if (ImGui::DragScalar("##LDZ", ImGuiDataType_Double, (void*)&(this->light_display_dir_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Direction);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Z");
 
 		ImGui::Spacing();
 
 		ImGui::Text("Up");
 		ImGui::Spacing();
-		ImGui::Text("X:");
-		ImGui::SameLine();
 
-		if (ImGui::DragScalar("##LUX:", ImGuiDataType_Double, (void*)&(this->light_display_up_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+
+		if (ImGui::DragScalar("##LUX", ImGuiDataType_Double, (void*)&(this->light_display_up_x), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Direction);
 		}
-
-		ImGui::Text("Y:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##LUY:", ImGuiDataType_Double, (void*)&(this->light_display_up_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("X");
+
+		
+		
+		if (ImGui::DragScalar("##LUY", ImGuiDataType_Double, (void*)&(this->light_display_up_y), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Direction);
 		}
-
-		ImGui::Text("Z:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##LUZ:", ImGuiDataType_Double, (void*)&(this->light_display_up_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Y");
+
+		
+		
+		if (ImGui::DragScalar("##LUZ", ImGuiDataType_Double, (void*)&(this->light_display_up_z), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Direction);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Z");
 
 		ImGui::Separator();
 
 		ImGui::Text("Translation");
 		ImGui::Spacing();
-		ImGui::Text("X:");
-		ImGui::SameLine();
 
-		if (ImGui::DragScalar("##LX:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.tx), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+
+		if (ImGui::DragScalar("##LX", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.tx), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightTranslation();
 		}
-
-		ImGui::Text("Y:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##LY:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.ty), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("X");
+
+		
+		
+		if (ImGui::DragScalar("##LY", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.ty), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightTranslation();
 		}
-
-		ImGui::Text("Z:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##LZ:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.tz), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Y");
+
+		
+		
+		if (ImGui::DragScalar("##LZ", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.tz), this->scene_tab->menu_translation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightTranslation();
 		}
+		ImGui::SameLine();
+		ImGui::Text("Z");
 
 		ImGui::Separator();
 
 		if (this->scene_tab->current_scene.light_source.has_model && this->scene_tab->current_scene.light_source.instance != nullptr) {
 			ImGui::Text("Scaling");
 			ImGui::Spacing();
-			ImGui::Text("X:");
-			ImGui::SameLine();
+			
+			
 
-			if (ImGui::DragScalar("##LSX:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.instance->sx), 0.05, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			if (ImGui::DragScalar("##LSX", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.instance->sx), 0.05, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 				UpdateLightScaling();
 			}
-
-			ImGui::Text("Y:");
 			ImGui::SameLine();
-			if (ImGui::DragScalar("##LSY:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.instance->sy), 0.05, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			ImGui::Text("X");
+
+			
+			
+			if (ImGui::DragScalar("##LSY", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.instance->sy), 0.05, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 				UpdateLightScaling();
 			}
-
-			ImGui::Text("Z:");
 			ImGui::SameLine();
-			if (ImGui::DragScalar("##LSZ:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.instance->sz), 0.05, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+			ImGui::Text("Y");
+
+			
+			
+			if (ImGui::DragScalar("##LSZ", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.instance->sz), 0.05, &zero, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 				UpdateLightScaling();
 			}
+			ImGui::SameLine();
+			ImGui::Text("Z");
 
 			ImGui::Separator();
 		}
 
 		ImGui::Text("Rotation (YXZ)");
 		ImGui::Spacing();
-		ImGui::Text("Yaw:  ");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##LYaw:  ", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.yaw), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##LYaw", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.yaw), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Euler);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Yaw");
 
-		ImGui::Text("Pitch:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##LPitch:", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.pitch), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##LPitch", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.pitch), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Euler);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Pitch");
 
-		ImGui::Text("Roll: ");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##LRoll: ", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.roll), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##LRoll", ImGuiDataType_Double, (void*)&(this->scene_tab->current_scene.light_source.roll), this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Euler);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Roll");
 
 		ImGui::Spacing();
 		ImGui::Spacing();
 
 		ImGui::Text("Quaternion");
-		ImGui::Text("X:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##LQX:", ImGuiDataType_Double, &this->light_display_qx, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##LQX", ImGuiDataType_Double, &this->light_display_qx, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Quaternion);
 		}
+		ImGui::SameLine();
+		ImGui::Text("X");
 
-		ImGui::Text("Y:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##LQY:", ImGuiDataType_Double, &this->light_display_qy, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##LQY", ImGuiDataType_Double, &this->light_display_qy, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Quaternion);
 		}
+		ImGui::SameLine();
+		ImGui::Text("Y");
 
-		ImGui::Text("Z:");
-		ImGui::SameLine();
-		if (ImGui::DragScalar("##LQZ:", ImGuiDataType_Double, &this->light_display_qz, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		
+		
+		if (ImGui::DragScalar("##LQZ", ImGuiDataType_Double, &this->light_display_qz, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Quaternion);
 		}
-
-		ImGui::Text("W:");
 		ImGui::SameLine();
-		if (ImGui::DragScalar("##LQW:", ImGuiDataType_Double, &this->light_display_qw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
+		ImGui::Text("Z");
+		
+		if (ImGui::DragScalar("##LQW", ImGuiDataType_Double, &this->light_display_qw, this->scene_tab->menu_rotation_speed, nullptr, nullptr, "%.3f", ImGuiSliderFlags_None)) {
 			UpdateLightRotation(RotationType_Quaternion);
 		}
+		ImGui::SameLine();
+		ImGui::Text("W");
 
 		ImGui::Separator();
 

@@ -83,6 +83,21 @@ void SceneTab::load_scene() {
 
 	this->current_scene = Scene(this->scene_folder, this->scene_load_name, this->models_folder, this->rotation_orientation, this->update_camera_settings, this->verbose);
 
+	this->display_BG_COLOR[0] = static_cast<float>(((this->current_scene.BG_COLOR >> 24) & 0x000000FF) / 255.0);
+	this->display_BG_COLOR[1] = static_cast<float>(((this->current_scene.BG_COLOR >> 16) & 0x000000FF) / 255.0);
+	this->display_BG_COLOR[2] = static_cast<float>(((this->current_scene.BG_COLOR >> 8) & 0x000000FF) / 255.0);
+	this->display_BG_COLOR[3] = static_cast<float>((this->current_scene.BG_COLOR & 0x000000FF) / 255.0);
+
+	this->display_LINE_COLOR[0] = static_cast<float>(((this->current_scene.LINE_COLOR >> 24) & 0x000000FF) / 255.0);
+	this->display_LINE_COLOR[1] = static_cast<float>(((this->current_scene.LINE_COLOR >> 16) & 0x000000FF) / 255.0);
+	this->display_LINE_COLOR[2] = static_cast<float>(((this->current_scene.LINE_COLOR >> 8) & 0x000000FF) / 255.0);
+	this->display_LINE_COLOR[3] = static_cast<float>((this->current_scene.LINE_COLOR & 0x000000FF) / 255.0);
+
+	this->display_FILL_COLOR[0] = static_cast<float>(((this->current_scene.FILL_COLOR >> 24) & 0x000000FF) / 255.0);
+	this->display_FILL_COLOR[1] = static_cast<float>(((this->current_scene.FILL_COLOR >> 16) & 0x000000FF) / 255.0);
+	this->display_FILL_COLOR[2] = static_cast<float>(((this->current_scene.FILL_COLOR >> 8) & 0x000000FF) / 255.0);
+	this->display_FILL_COLOR[3] = static_cast<float>((this->current_scene.FILL_COLOR & 0x000000FF) / 255.0);
+
 	this->current_scene.camera.AR = old_AR;
 	this->current_scene.camera.near = old_near;
 	this->current_scene.camera.far = old_far;
@@ -143,10 +158,6 @@ void SceneTab::draw() {
 
 	ImGui::Separator();
 
-	ImGui::Text("Scene folder:");
-	ImGui::SameLine();
-	ImGui::Text(this->scene_folder);
-	ImGui::SameLine();
 	if (ImGui::Button("Browse##scene_folder")) {
 		nfdchar_t* scenes_path = nullptr;
 		nfdresult_t result = NFD_PickFolder(this->scene_folder, &scenes_path);
@@ -164,12 +175,13 @@ void SceneTab::draw() {
 
 		free(scenes_path);
 	}
-	ImGui::SetItemTooltip("Choose the folder in which your scenes are saved.\nThe program will crash if it cannot find the mesh!\nMake sure the given model file is within the given model folder!");
+	ImGui::SetItemTooltip("Choose the folder in which your scenes are saved.\nThe program will crash if it cannot find the mesh!\nMake sure the given model file is within the given model folder.");
+	ImGui::SameLine();
 
-	ImGui::Text("Models folder:");
+	ImGui::Text("Scene folder:");
 	ImGui::SameLine();
-	ImGui::Text(this->models_folder);
-	ImGui::SameLine();
+	ImGui::Text(this->scene_folder);
+
 	if (ImGui::Button("Browse##models_folder")) {
 		nfdchar_t* models_path = nullptr;
 		nfdresult_t result = NFD_PickFolder(this->models_folder, &models_path);
@@ -187,9 +199,59 @@ void SceneTab::draw() {
 
 		free(models_path);
 	}
-	ImGui::SetItemTooltip("Choose the folder in which your models are saved.\nAll models within the scene must be in this folder.");
 
+	ImGui::SetItemTooltip("Choose the folder in which your models are saved.\nAll models within the scene must be in this folder.");
+	ImGui::SameLine();
+	ImGui::Text("Models folder:");
+	ImGui::SameLine();
+	ImGui::Text(this->models_folder);
+	
 	ImGui::Separator();
+
+	if (ImGui::ColorEdit4("##BGColor", this->display_BG_COLOR, ImGuiColorEditFlags_NoInputs)) {
+		uint8_t red = display_BG_COLOR[0] * 255.0;
+		uint8_t green = display_BG_COLOR[1] * 255.0;
+		uint8_t blue = display_BG_COLOR[2] * 255.0;
+		uint8_t alpha = display_BG_COLOR[3] * 255.0;
+
+		uint32_t color = (red << 24) | (green << 16) | (blue << 8) | alpha;
+
+		this->current_scene.BG_COLOR = color;
+	};
+	ImGui::SameLine();
+	ImGui::Text("Background color");
+	
+
+	if (ImGui::ColorEdit4("##LColor", this->display_LINE_COLOR, ImGuiColorEditFlags_NoInputs)) {
+		uint8_t red = display_LINE_COLOR[0] * 255.0;
+		uint8_t green = display_LINE_COLOR[1] * 255.0;
+		uint8_t blue = display_LINE_COLOR[2] * 255.0;
+		uint8_t alpha = display_LINE_COLOR[3] * 255.0;
+
+		uint32_t color = (red << 24) | (green << 16) | (blue << 8) | alpha;
+
+		this->current_scene.LINE_COLOR = color;
+	};
+	ImGui::SameLine();
+	ImGui::Text("Line/wireframe color");
+	
+
+	if (ImGui::ColorEdit4("##FColor", this->display_FILL_COLOR, ImGuiColorEditFlags_NoInputs)) {
+		uint8_t red = display_FILL_COLOR[0] * 255.0;
+		uint8_t green = display_FILL_COLOR[1] * 255.0;
+		uint8_t blue = display_FILL_COLOR[2] * 255.0;
+		uint8_t alpha = display_FILL_COLOR[3] * 255.0;
+
+		uint32_t color = (red << 24) | (green << 16) | (blue << 8) | alpha;
+
+		this->current_scene.FILL_COLOR = color;
+	};
+	ImGui::SameLine();
+	ImGui::Text("Fill/ambient color");
+	ImGui::Separator();
+
+	ImGui::Spacing();
+	ImGui::Spacing();
 
 	if (ImGui::TreeNode("Camera")) {
 

@@ -43,6 +43,15 @@ public:
 	Mesh axes_mesh = Mesh(this->total_ever_meshes);
 	Instance axes_instance = Instance(this->total_ever_instances);
 
+	// Background color
+	uint32_t BG_COLOR = 0x000000FF;
+
+	// Line/wireframe color
+	uint32_t LINE_COLOR = 0x00FF00FF;
+
+	// Rasterization color
+	uint32_t FILL_COLOR = 0x66285CFF;
+
 	bool load_error = false;
 
 	Scene() {};
@@ -69,13 +78,13 @@ public:
 	/// </summary>
 	void save(const char* scenes_folder, const char* scene_filename) const;
 
-	Mesh get_mesh(uint32_t mesh_id);
-	Mesh get_mesh(std::string mesh_filename);
+	bool get_mesh(uint32_t mesh_id, Mesh& mesh);
+	bool get_mesh(std::string mesh_filename, Mesh& mesh);
 	Mesh* get_mesh_ptr(uint32_t mesh_id);
 	Mesh* get_mesh_ptr(std::string mesh_filename);
 
-	Instance get_instance(uint32_t instance_id);
-	Instance get_instance(std::string instance_name);
+	bool get_instance(uint32_t instance_id, Instance& instance);
+	bool get_instance(std::string instance_name, Instance& instance);
 	Instance* get_instance_ptr(uint32_t instance_id);
 	Instance* get_instance_ptr(std::string instance_name);
 };

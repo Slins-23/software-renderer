@@ -264,6 +264,33 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		}
 	}
 
+	if (this->scene_data.contains("Background color")) {
+		uint8_t red = this->scene_data["Background color"]["r"].get<uint8_t>();
+		uint8_t green = this->scene_data["Background color"]["g"].get<uint8_t>();
+		uint8_t blue = this->scene_data["Background color"]["b"].get<uint8_t>();
+
+		uint32_t BG_COLOR = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+		this->BG_COLOR = BG_COLOR;
+	}
+
+	if (this->scene_data.contains("Line color")) {
+		uint8_t red = this->scene_data["Line color"]["r"].get<uint8_t>();
+		uint8_t green = this->scene_data["Line color"]["g"].get<uint8_t>();
+		uint8_t blue = this->scene_data["Line color"]["b"].get<uint8_t>();
+
+		uint32_t LINE_COLOR = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+		this->LINE_COLOR = LINE_COLOR;
+	}
+
+	if (this->scene_data.contains("Fill/ambient color")) {
+		uint8_t red = this->scene_data["Fill/ambient color"]["r"].get<uint8_t>();
+		uint8_t green = this->scene_data["Fill/ambient color"]["g"].get<uint8_t>();
+		uint8_t blue = this->scene_data["Fill/ambient color"]["b"].get<uint8_t>();
+
+		uint32_t FILL_COLOR = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+		this->FILL_COLOR = FILL_COLOR;
+	}
+
 	bool light_given = false;
 	bool light_rotation_given = false;
 	bool light_direction_given = false;
@@ -406,6 +433,19 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 			this->light_source.up.set(y, 2, 1);
 			this->light_source.up.set(z, 3, 1);
 			this->light_source.up.set(0, 4, 1);
+		}
+
+		if (this->light_source.has_model && this->scene_data["light"].contains("scale")) {
+			double sx = this->scene_data["light"]["scale"]["x"].get<double>();
+			double sy = this->scene_data["light"]["scale"]["y"].get<double>();
+			double sz = this->scene_data["light"]["scale"]["z"].get<double>();
+
+			this->light_source.instance->sx = sx;
+			this->light_source.instance->sy = sy;
+			this->light_source.instance->sz = sz;
+
+			this->light_source.instance->SCALING_MATRIX = Mat::scale_matrix(this->light_source.instance->sx, this->light_source.instance->sy, this->light_source.instance->sz);
+			this->light_source.instance->MODEL_TO_WORLD = this->light_source.instance->TRANSLATION_MATRIX * this->light_source.instance->ROTATION_MATRIX * this->light_source.instance->SCALING_MATRIX;
 		}
 	}
 
@@ -720,6 +760,10 @@ Scene& Scene::operator=(Scene&& original_scene) noexcept {
 		std::swap(this->axes_mesh, original_scene.axes_mesh);
 
 		std::swap(this->load_error, original_scene.load_error);
+
+		std::swap(this->BG_COLOR, original_scene.BG_COLOR);
+		std::swap(this->LINE_COLOR, original_scene.LINE_COLOR);
+		std::swap(this->FILL_COLOR, original_scene.FILL_COLOR);
 	}
 
 	return *this;
@@ -762,6 +806,18 @@ void Scene::save(const char* scene_folder, const char* scene_filename) const {
 	json_object["camera"]["rotation"]["y"] = this->camera.yaw * (180 / M_PI);
 	json_object["camera"]["rotation"]["z"] = this->camera.roll * (180 / M_PI);
 
+	json_object["Background color"]["r"] = (uint8_t)(this->BG_COLOR >> 24);
+	json_object["Background color"]["g"] = (uint8_t)(this->BG_COLOR >> 16);
+	json_object["Background color"]["b"] = (uint8_t)(this->BG_COLOR >> 8);
+
+	json_object["Line color"]["r"] = (uint8_t)(this->LINE_COLOR >> 24);
+	json_object["Line color"]["g"] = (uint8_t)(this->LINE_COLOR >> 16);
+	json_object["Line color"]["b"] = (uint8_t)(this->LINE_COLOR >> 8);
+
+	json_object["Fill/ambient color"]["r"] = (uint8_t)(this->FILL_COLOR >> 24);
+	json_object["Fill/ambient color"]["g"] = (uint8_t)(this->FILL_COLOR >> 16);
+	json_object["Fill/ambient color"]["b"] = (uint8_t)(this->FILL_COLOR >> 8);
+
 	if (this->light_source.lighting_type == LightType::point) {
 		json_object["light"]["type"] = "point";
 	}
@@ -799,6 +855,12 @@ void Scene::save(const char* scene_folder, const char* scene_filename) const {
 	json_object["light"]["up"]["x"] = this->light_source.up.get(1, 1);
 	json_object["light"]["up"]["y"] = this->light_source.up.get(2, 1);
 	json_object["light"]["up"]["z"] = this->light_source.up.get(3, 1);
+
+	if (this->light_source.has_model) {
+		json_object["light"]["scale"]["x"] = this->light_source.instance->sx;
+		json_object["light"]["scale"]["y"] = this->light_source.instance->sy;
+		json_object["light"]["scale"]["z"] = this->light_source.instance->sz;
+	}
 
 	std::vector<std::string> models;
 	for (auto instance = this->scene_instances.begin(); instance != this->scene_instances.end(); instance++) {
@@ -866,29 +928,31 @@ void Scene::save(const char* scene_folder, const char* scene_filename) const {
 	file.close();
 }
 
-Mesh Scene::get_mesh(uint32_t mesh_id) {
+bool Scene::get_mesh(uint32_t mesh_id, Mesh& mesh) {
 	for (int i = 0; i < this->scene_meshes.size(); i++) {
 		const Mesh* current_mesh = &this->scene_meshes[i];
 
 		if (current_mesh->mesh_id == mesh_id) {
-			return *current_mesh;
+			mesh = *current_mesh;
+			return true;
 		}
 	}
 
-	return Mesh(this->total_ever_meshes);
+	return false;
 	//throw std::runtime_error("Error: Could not find mesh by id for the given mesh id of: " + std::to_string(mesh_id) + ".");
 }
 
-Mesh Scene::get_mesh(std::string mesh_filename) {
+bool Scene::get_mesh(std::string mesh_filename, Mesh& mesh) {
 	for (int i = 0; i < this->scene_meshes.size(); i++) {
 		const Mesh* current_mesh = &this->scene_meshes[i];
 
 		if (current_mesh->mesh_filename == mesh_filename) {
-			return *current_mesh;
+			mesh = *current_mesh;
+			return true;
 		}
 	}
 
-	return Mesh(this->total_ever_meshes);
+	return false;
 	//throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
 }
 
@@ -918,29 +982,31 @@ Mesh* Scene::get_mesh_ptr(std::string mesh_filename) {
 	//throw std::runtime_error("Error: Could not find mesh by filename for the given mesh filename of: " + mesh_filename + ".");
 }
 
-Instance Scene::get_instance(uint32_t instance_id) {
+bool Scene::get_instance(uint32_t instance_id, Instance& instance) {
 	for (int i = 0; i < this->scene_instances.size(); i++) {
 		const Instance* current_instance = &this->scene_instances[i];
 
 		if (current_instance->instance_id == instance_id) {
-			return *current_instance;
+			instance = *current_instance;
+			return true;
 		}
 	}
 
-	return Instance(this->total_ever_instances);
+	return false;
 	//throw std::runtime_error("Error: Could not find instance by id for the given instance id of: " + std::to_string(instance_id) + ".");
 }
 
-Instance Scene::get_instance(std::string instance_name) {
+bool Scene::get_instance(std::string instance_name, Instance& instance) {
 	for (int i = 0; i < this->scene_instances.size(); i++) {
 		const Instance* current_instance = &this->scene_instances[i];
 
 		if (current_instance->instance_name == instance_name) {
-			return *current_instance;
+			instance = *current_instance;
+			return true;
 		}
 	}
 
-	return Instance(this->total_ever_instances);
+	return false;
 	//throw std::runtime_error("Error: Could not find instance by name for the given instance name of: " + instance_name + ".");
 }
 

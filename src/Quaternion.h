@@ -9,8 +9,8 @@ enum RotationType {
 };
 
 enum Orientation {
-	world,
-	local
+	local,
+	world
 };
 
 struct Quaternion {

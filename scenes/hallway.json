@@ -6,6 +6,11 @@
 		"model": "arrow.obj",
 		"type": "directional",
 		"intensity": 1,
+		"color": {
+			"r": 102,
+			"g": 40,
+			"b": 92
+		},
 		"minimum_exposure": 0.3,
 		"enabled": true,
 		"position": {
@@ -27,6 +32,11 @@
 			"x": 0,
 			"y": 0,
 			"z": 0
+		},
+		"scale": {
+			"x": 1,
+			"y": 1,
+			"z": 1
 		}
 	},
 	"models": {
