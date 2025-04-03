@@ -58,6 +58,8 @@ public:
 
 	~Scene() {};
 
+	Scene(const char* models_folder);
+
 	Scene(const char* models_folder, Orientation rotation_orientation, bool verbose);
 
 	/// <summary>

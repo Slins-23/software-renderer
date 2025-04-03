@@ -1,16 +1,19 @@
 # Introduction
 
-A 3D software renderer implemented from scratch, on Windows. More specifically everything that is directly related to rendering other than SDL.
+A 3D software renderer implemented from "scratch", on Windows. More specifically everything that is directly related to rendering other than SDL.
 
-Libraries used:
-`SDL2 v2.28.1` (https://github.com/libsdl-org/SDL/tree/release-2.28.1)  - Rendering
-`Catch2 v3.4.0` (https://github.com/catchorg/Catch2/releases/tag/v3.4.0) - Testing
-`Nlohmann json v3.11.2` (https://github.com/nlohmann/json/releases/tag/v3.11.2) - JSON parsing
-`Imgui v1.91.9` (https://github.com/ocornut/imgui/releases/tag/v1.91.9) - Menus/user interface
-`nativefiledialog v116` (https://github.com/mlabbe/nativefiledialog/releases/tag/release_116) - Interface to and from file dialogs for selecting files/folders
+<h3>Libraries used</h3>
 
+| Library      | Version | Usage | URL     |
+| :---       |  :----:       |   :----:   |          ---: |
+| SDL2        | 2.28.1 | Rendering | https://github.com/libsdl-org/SDL/tree/release-2.28.1 |
+| Catch2      |  3.4.0  |  Testing       | https://github.com/catchorg/Catch2/releases/tag/v3.4.0   |
+| Nlohmann JSON   |   3.11.2   |   JSON parsing        | https://github.com/nlohmann/json/releases/tag/v3.11.2      |
+| ImGUI      |  1.91.9  |  Menus/user interface       | https://github.com/ocornut/imgui/releases/tag/v1.91.9   |
+| Nativefiledialog   |   116   |   Windows file dialogs        | https://github.com/mlabbe/nativefiledialog/releases/tag/release_116      |
 
-# Summary on how to use
+# Examples
+
 
 # Details on implementation and how to use
 
@@ -18,51 +21,52 @@ Libraries used:
 
 The `Matrix.h` and `Matrix.cpp` files are the header and implementation files for the `Mat` class which represents a matrix.
 
-Internally, the representation of a matrix is that of a 2-dimensional array (double**).
+Internally, the representation of a matrix is that of a 2-dimensional array (`double**`).
 
-The matrix multiplication order is left-to-right, and this means that the number of columns in the left `Mat` must match the number of rows in the right `Mat`.
+The matrix multiplication order is left-to-right. This means that the matrix/vector to be transformed must be to the right of the transformation matrices, and the number of columns in the left `Mat` must match the number of rows in the right `Mat`.
 (i.e. if multiplying two vectors, the left vector must be a row vector (1xN), while the right one must be a column vector (Nx1))
 
-The order of operations is (it's the opposite for the view matrix): scaling -> rotation -> translation
-i.e. `TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX * vector`
+The order of operations is: Scaling -> rotation -> translation.
+i.e. `world_space_vector = TRANSLATION_MATRIX * ROTATION_MATRIX * SCALING_MATRIX * local_space_vector`
+> This order is reversed for the view matrix since it represents the opposite transformation of the vertices
 
-You can create a `Mat` instance by calling the initializer function with a 2-dimensional `std::initializer_list`, which is essentially a 2-dimensional array, and will hold the rows and columns for the matrix, followed by the row dimension and column dimension.
-Example for a `2x3` matrix: `Mat({{1, 2, 3}, {3, 4, 5}}, 2, 3)`
+You can create a `Mat` instance by calling the initializer function with a 2-dimensional `std::initializer_list`, which is essentially a 2-dimensional array which will hold the rows and columns for the matrix, followed by the row dimension and column dimension.
+>Example for a `2x3` matrix: `Mat({{1, 2, 3}, {3, 4, 5}}, 2, 3)`
 
 You can get a value from the matrix by calling the `get` `Mat` member function.
-Example to get the value in the 2nd row and 3rd column: `matrix.get(2, 3)`
+> Example to get the value in the 2nd row and 3rd column: `matrix.get(2, 3)`
 
 You can set a value in the matrix by calling the `set` `Mat` member function.
-Example to set the value in the 2nd row and 3rd column to 5: `matrix.set(5, 2, 3)`
+> Example to set the value in the 2nd row and 3rd column to 5: `matrix.set(5, 2, 3)`
 
 You can transpose a matrix by calling the `transposed` `Mat` member function.
-Example: `matrix.transposed()`
+> Example: `matrix.transposed()`
 
-You can (assuming that the dimensions are valid) add (`+`), add and assign (`+=`), subtract (`-`), subtract and assign (`-=`), multiply by  (`*`), and multiply and assign (`*=`).
+You can (assuming that the dimensions are valid) add `+`, add and assign `+=`, subtract `-`, subtract and assign `-=`, multiply by  `*`, and multiply and assign `*=`.
 
-You can also perform element-wise operations by combining `scalar` with one of the following operators and a `Mat`, by multiplying (`*`), multiplying and assigning (`*=`), dividing (`/`), and dividing and assign (`/=`).
+You can also perform element-wise operations by combining a `scalar` with one of the following operators and a `Mat`, by multiplying `*`, multiplying and assigning `*=`, dividing `/`, and dividing and assigning `/=`.
 
-You can calculate the dot product between vectors by calling the `static` `Mat` function `dot`. This operation is commutative (i.e. order does not matter, neither does whether the vectors are row or column). The only requirements are that both `Mat` must be vectors with the same number of elements (i.e. either the row dimension or column dimension must be `1`).
-Example: `Mat::dot(vector_a, vector_b)`
+You can calculate the dot product between vectors by calling the `static` `Mat` function `dot`. This operation is commutative (i.e. order does not matter, neither does whether the vectors are row or column). The only requirements are that both `Mat` must be vectors with the same number of elements (i.e. either the row dimension or column dimension must be `1` while the other dimensions match).
+> Example: `Mat::dot(vector_a, vector_b)`
 
 You can calculate the vector norm (magnitude/length) by calling the `Mat` member function `norm`.
-Example: `vec_a.norm()`
+> Example: `vec_a.norm()`
 
-You can normalize a vector by calling the `normalize` `Mat` member function. This divides the matrix, element-wise, by its norm/magnitude/length. This turns it into a unit vector (norm/magnitude/length of 1).
-Example: `matrix.normalize()`
+You can normalize a vector by calling the `normalize` `Mat` member function. This operation divides the matrix, element-wise, by its norm/magnitude/length. This turns it into a unit vector (norm/magnitude/length of 1).
+> Example: `matrix.normalize()`
 
 You can test for equality and inequality, reassign a `Mat` instance to another `Mat` instance through copy & reassignment, or you can also directly reassign it to a new `Mat` instance.
 
 You can print the matrix to the console by calling the `print` `Mat` member function.
-Example: `matrix.print()`
+> Example: `matrix.print()`
 
-You can also print it to the console using streams, i.e. by calling `std::cout << matrix`.
+You can also print it to the console using streams. i.e. by calling `std::cout << matrix`.
 
 ## Engine
-The `Engine` class is a singleton which is responsible for handling the setup, dealing with SDL for direct rendering (pixel wise through buffers), the drawing routines as well as some math related functions, event handling, and cleaning everything.
+The `Engine` class is a singleton which is responsible for handling the setup, dealing with SDL for direct rendering (pixel wise through buffers), the drawing routines, as well as some math related functions, event handling, storing and managing the window manager, and cleaning everything.
 
 ### Triangle
-The smallest logical geometric figure is a triangle. A `Triangle` is simply an object that holds 3 vertices, which in this context are 3 `4x1` vector (`Mat`) instances.
+The smallest logical geometric figure is a triangle. A `Triangle` is simply an object that holds 3 vertices, which in this context are 3 `4x1` vectors. (`Mat` instances)
 
 The `4x1` dimension is for, respectively, the `x`, `y`, and `z` 2D/3D space coordinates of the vertex. The `w` 4th dimension is used for storing values before transforms as well as allowing for a 1-step translation through matrix vector multiplication. These are formally called homogeneous coordinates.
 
@@ -72,7 +76,7 @@ There are 2 ways in which you can instantiate a `Triangle`:
 
 ### Quad
 
-The second smallest logic geometric figure is a quad, which is implemented as the struct `Quad`. A `Quad` is a rectangle and consists of 2 triangles and/or 4 vertices.
+The second smallest logical geometric figure is a quad, which is implemented as the struct `Quad`. A `Quad` is a figure which consists of 4 vertices, which can be broken down as 2 triangles (or vice-versa).
 
 There are 4 ways in which you can instantiate a `Quad`:
 1. Calling the constructor `Quad(triangle_a, triangle_b)` with both being `Triangle` instances.<br>
@@ -82,39 +86,42 @@ There are 4 ways in which you can instantiate a `Quad`:
 
 ### Mesh
 
-The largest logic geometric figure is a `Mesh`, and it holds information about an arbitrary 3D mesh which can be loaded from an `.obj` file or hardcoded (by, for example, manually defining the vertex array and the face indices).
-A face can either be made up of `3` or `4` vertices, so both triangles and quads are considered faces.
+The largest geometric figure is a `Mesh`. It holds information about an arbitrary 3D mesh which can be loaded from an `.obj` file or hardcoded (by, for example, manually defining the vertex array and the face indices).
+A face can be made up of either `3` or `4` vertices, so both triangles and quads are considered faces.
 
-> **The face indices start at `1`.**
-> The z coordinate for the vertices and normals are flipped just for the sake of intuition as otherwise the world z coordinate would be negative when in front of the camera
+Its member variables are the following:<br><br>
+`vertices`: An `std::vector` of type `Mat`, which stores all of the figure's vertices.<br><br>
+`faces_indices`: An `std::vector` of type `std::vector<uint32_t>>`, which stores all the face indices.  The reason why there is a nested `std::vector` here is because each individual face is its own `std::vector<uint32_t>` (an array of unsigned integers), which identify the respective vertex by indexing from the `vertices` array.<br><br>
+`normals`: The same behavior described above for `vertices`, except that this is meant for normals.<br><br>
+`normal_indices`: The same behavior described above for `faces_indices`, except that this is meant for normals.<br><br>
+`mesh_filename`: Stores the filename of mesh.<br><br>
+`mesh_id`: Uniquely identifies the mesh. Throughout the program, this value is set as the number of total meshes loaded for the current scene `total_ever_meshes`, which then gets incremented by `1`.<br><br>
+
+> **The face indices start at `1`.**<br>
+> **The z coordinate for the vertices and normals are flipped for the sake of intuition, as otherwise the world z coordinate would be negative for vertices in front of the camera.**<br>
+
+
 > The `obj` formatted meshes must be within the given `models_folder`, and `mesh_filename` must be a valid file within that folder.<br>
 > The `models_folder` must end with a `\`
-
-Its member variables are the following:
-`vertices`: An `std::vector` of type `Mat`, which stores all of the figure's vertices.<br>
-`faces_indices`: An `std::vector` of type `std::vector<uint32_t>>`, which stores all the face indices.  The reason why there is a nested `std::vector` here is because each individual face is its own `std::vector<uint32_t>` (an array of unsigned integers), which identify the respective vertex by indexing from the `vertices` array.<br>
-`normals`: The same behavior described above for `vertices`, except that this is meant for normals.<br>
-`normal_indices`: The same behavior described above for `faces_indices`, except that this is meant for normals.<br>
-`mesh_filename`: Stores the filename of mesh.<br>
-`mesh_id`: Uniquely identifies the mesh. This value is the number of total meshes loaded for the current scene, which resets once a scene is loaded (`total_ever_meshes`). It is passed as an argument to the constructor, and should be the `Scene` member variable `total_ever_meshes`, which gets incremented by `1`. Each mesh has an unique `mesh_id`.<br>
 
 You are able to get the number of vertices from a `Mesh` by calling the member function `total_vertices`, or `total_faces` in the case of faces.
 
 There are 2 ways in which you should instantiate a `Mesh`:
 
-1. Calling the constructor `Mesh(current_scene.total_ever_meshes)`, which instantiates a hardcoded cube
-	> You can find specific values, coordinates, and other values such as the `width`, `height`, and `depth` of the cube within the function definition.<br>
+1. Calling the constructor `Mesh()`, which instantiates a hardcoded cube
+	> You can find specific values, coordinates, and other values such as the `width`, `height`, and `depth` of the cube within the function definition.<br><br>
 	> The `mesh_filename` will be set to `cube.obj`.
-2. Calling the constructor `Mesh(model_path, mesh_filename, current_scene.total_ever_meshes)`
-	> `model_path` is the relative or absolute path to the `.obj` file<br>
+2. Calling the constructor `Mesh(current_scene.total_ever_meshes)`, which simply creates and empty `Mesh` with the given ID and subsequently increments it
+3. Calling the constructor `Mesh(model_path, mesh_filename, current_scene.total_ever_meshes)`, which loads the `obj` file `mesh_filename` in the folder `model_path`
+	> `model_path` is the relative or absolute path to the `obj` formatted file<br>
 	> `mesh_filename` is the actual mesh's filename, including the extension<br>
 	
 ### Instance
 
-An instance is pretty self-explanatory. It is simply an `Instance` of some loaded `Mesh`. This is done so that each rendered object in the scene gets their own value independent of any other while also discarding the need to duplicate the same mesh over and over if placing the same mesh at distinct settings within in the scene.
+An instance is pretty self-explanatory. It is simply an `Instance` of some loaded `Mesh`. This is done so that each rendered object in the scene gets its own parameters independent of any other while also discarding the need to duplicate the same mesh's data over and over when placing the same mesh in distinct settings within the scene.
 
-Its member variables are the following:
-`instance_name`: You can give a name to an instance in order to help you identify it, both visually (through the instances menu) and programmatically (by calling getters while supplying the instance name).<br>
+Its member variables are the following:<br><br>
+`instance_name`: You can give a name to an instance in order to help you identify it. If no instance name is given, the `Instance` member function `create_instance_nameid` is used in order to create a name for it, which is preceded by its mesh's filename. The instance name can be set through the instances menu or programmatically by calling `instance.create_instance_nameid(total_ever_instances)` or initializing through a constructor with the given instance name.<br><br>
 `instance_id`: Uniquely identifies the `Instance`. Behaves the same way as `mesh_id`, except that it is used for instances.<br>
 `mesh`: A pointer to the `Mesh` which will be rendered.<br>
 `tx`: Translation along the `x` axis (positive values move to the left since it is a z-flipped right-handed coordinate system)<br>
@@ -132,43 +139,52 @@ Its member variables are the following:
 `SCALING_MATRIX`: A `4x4` scaling matrix which holds an arbitrary scale<br>
 `MODEL_TO_WORLD`: A `4x4` matrix which will hold the final transformation matrix for the given instance<br>
 `show`: A `bool` toggle for whether the `Instance` will be rendered or not.
-`is_light_source`: Positive when the target instance belongs to a light source, negative otherwise<br>
+`is_light_source`: Positive when the given instance belongs to a light source, negative otherwise<br>
 `is_axes`: Whether the given instance is the transform axes<br>
 `has_axes`: Whether the given instance has the transformed axes attached to it<br>
 
-There are so many ways in which you can instantiate an `Instance` (and they are not that much different) that it would be better if you look at the header yourself. In summary, they revolve around different combinations of the instance's name, `Mesh`, the translation, rotation, ascaling parameters, and/or their respective transformation matrices.
-One thing that should almost always should be present in the constructor is the `current_scene.total_ever_instances` in order to create a unique ID for that instance.
+There are so many ways in which you can instantiate an `Instance` (and they are not that much different) that it would be better if you look at the `Instance.h` header yourself. In summary, they revolve around different combinations of the instance's name, `Mesh`, translation, rotation, scaling parameters, and/or their respective transformation matrices.
+> One thing that should almost always should be present in the constructor is the `current_scene.total_ever_instances` in order to create a unique ID for that instance.
 
 ### Scene
-> The `Scene` configuration file must be in `json` format and within the given `scene_folder`, the `scene_filename` must be a valid file within the folder as well.<br>
-> The `scene_filename` must include the file extension.<br>
-> The `scenes_folder` must have a `/` at the end, preferably an `absolute` path, otherwise you need to figure out the correct file tree. i.e. `models_folder = "D:/my_scenes/"
+> The `Scene` configuration file must be in a valid `json` format and within the given `scene_folder`. The `scene_filename` must be a valid file within the folder as well.<br><br>
+> The `scene_filename` must include the file extension.<br><br>
+> The `scenes_folder` must have a `/` at the end if preferably an `absolute` path. Otherwise you need to figure out the correct file tree for relative indexing.
+> The `scenes_folder` can be seen and updated in the `Scene` menu, as well as the scene name for loading and saving.
 
-A `Scene` instance holds information about the scene to be rendered. This includes the meshes present in the scene, as well as the instances and other relevant information.
+A `Scene` instance holds information about the scene to be rendered. This includes the meshes loaded for the scene, as well as the instances and other relevant information.
 
-You can get a `copy` of a `Mesh` by calling `scene.get_mesh(mesh_id)`, where `scene` is the variable that instantiates your `Scene`, and `mesh_id` is the id of the `Mesh` you want.
-You can use the mesh filename (including extension) instead of the mesh id.
+You can get a copy of a `Mesh` by calling `scene.get_mesh(mesh_id, mesh)`, where `scene` is the variable that instantiates your `Scene`, `mesh_id` is the id of the `Mesh` you want the copy of and `mesh` is the variable which will store the resulting copy if the retrieval is successful.
+The same goes for an `Instance`, except that the function and parameters are related to the instance - `scene.get_instance(instance_id, instance)`.
 
-You can get a `pointer` to a `Mesh` by calling `scene.get_mesh_ptr(mesh_id)`.
-Similarly, you can do the same with the `mesh_filename` instead of the `mesh_id`.
+> These functions returns `true` if successful, `false` otherwise.
 
-Its member variables are:
-`total_meshes`: Keeps track of the number of loaded meshes.<br>
-`total_instances`: Keeps track of the number of instances.<br>
+You can get a `pointer` to a `Mesh` by calling `scene.get_mesh_ptr(mesh_id)`. It works similarly to the above functions, so you can use the respective getter function to the type you need. In this case no reference needs to be passed as an argument, since no copies are made.
+
+> The requested pointer is returned in case of success, or a `nullptr` is returned in the case of failure.
+
+You can also use the names instead of the ids, though there may be a conflict if there are somehow other meshes/instances with the same name.
+
+Its member variables are:<br><br>
+`total_ever_meshes`: Keeps track of the number of loaded meshes. (This is an ever increasing integer which is used for the mesh ids)<br>
+`total_meshes`: Same as `total_ever_meshes`. Currently obsolete.<br>
+`total_ever_instances`: Keeps track of the number of instances loaded since the scene has been loaded. (This is an ever increasing integer which is used for the instance ids)
+`total_instances`: Keeps track of the number of instances currently in the scene.<br>
 `total_triangles`: Keeps track of the number of triangles.<br>
 `total_vertices`: Keeps track of the number of vertices.<br>
 `rendered_meshes`: Keeps track of the number of rendered meshes<br>
 `rendered_instances`: Keeps track of the number of rendered instances<br>
 `rendered_triangles`: Keeps track of the number of rendered triangles<br>
 `rendered_vertices`: Keeps track of the number of rendered vertices<br>
-	> * The `rendered` here refers to those instances where the `show` member variable is `true`.
+> These variables are mostly obsolete, not properly updated, and currently unused (with the exception of `total_ever_instances` and `total_ever_meshes`)
+
 `scene_meshes`: An `std::deque` of type `Mesh` which holds the scene `Mesh` instances.<br>
 `scene_instances`: An `std::deque` of type `Instance` which holds the scene `Instace` instances.<br>
-`scene_name`: Stores the name of the `Scene`, which as of right know is unused, but can be useful eventually for identifying individual scenes.<br>
+`scene_name`: Stores the name of the `Scene`. As of right know is left unused, but could eventually be useful for identifying individual scenes.<br>
 `scene_filepath`: Stores the filepath of the `json` formatted `Scene` configuration file .<br>
-`scene_data`: The scene `JSON` data will be stored here. The `nlohmann::json` is a JSON parser from the external library `nlohmann`.
+`scene_data`: The scene `JSON` data will be stored here. This JSON parser is nlohmann's `nlohmann::json`, which is an external library.
 
-The `Scene` instances can be saved to and loaded from configuration files, in `json` format, through the `Scene` member functions `save_scene` and `load_scene`, respectively.
+The `Scene` instances can be saved to and loaded from configuration files in `json` format. This can be done through the `Scene` tab in the menus or programmatically through the `Scene` member functions `save_scene` and `load_scene`, respectively.
 
 The arguments for `save_scene` (implemented in `Engine.cpp`) are:
 `scenes_folder`: The folder in which the scene `json` formatted configuration file will be stored.<br>
@@ -189,6 +205,9 @@ The arguments for `load_scene` (implemented in `Engine.cpp`) are:
 `VIEW_MATRIX`: A `4x4` matrix `Mat` instance that represents the `view` matrix, which is responsible for dealing with the camera related transformations/movement.<br>
 
 The `Scene` can be instantiated by calling the empty constructor `Scene()`, or by indirectly calling the `load_scene` function to load a `json` formatted configuration file, by passing the exact same arguments to the constructor: i.e. `Scene(scenes_folder, scene_filename, models_folder, verbose, camera_position, camera_direction, camera_yaw, camera_pitch, camera_roll, VIEW_MATRIX)`
+
+A default scene is load_default_scene()
+Also cube scene is Scene()
 
 This is how they are formatted:
 

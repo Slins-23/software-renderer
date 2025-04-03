@@ -356,12 +356,15 @@ void LightTab::draw() {
 		ImGui::Text("Show transform axes");
 
 		if (ImGui::Checkbox("##Attach model", &this->scene_tab->current_scene.light_source.has_model)) {
-			if (!this->scene_tab->current_scene.light_source.has_model) {
-				this->scene_tab->current_scene.light_source.instance->show = false;
+			if (this->scene_tab->current_scene.light_source.instance != nullptr) {
+				if (!this->scene_tab->current_scene.light_source.has_model) {
+					this->scene_tab->current_scene.light_source.instance->show = false;
+				}
+				else {
+					this->scene_tab->current_scene.light_source.instance->show = true;
+				}
 			}
-			else {
-				this->scene_tab->current_scene.light_source.instance->show = true;
-			}
+
 		}
 		ImGui::SameLine();
 		ImGui::Text("Attach model");
@@ -488,8 +491,12 @@ void LightTab::draw() {
 						if (this->scene_tab->current_scene.get_mesh_ptr(mesh_filename) == nullptr) {
 							Mesh loaded_mesh = Mesh(mesh_path, mesh_filename.c_str(), this->scene_tab->current_scene.total_ever_meshes);
 							this->scene_tab->current_scene.total_meshes++;
-							this->scene_tab->current_scene.light_source.mesh = &loaded_mesh;
+							this->chosen_light_mesh_id = loaded_mesh.mesh_id;
+							this->chosen_light_mesh_name = loaded_mesh.mesh_filename;
 							this->scene_tab->current_scene.scene_meshes.push_back(std::move(loaded_mesh));
+
+							this->scene_tab->current_scene.light_source.mesh = &this->scene_tab->current_scene.scene_meshes.back();
+							this->scene_tab->current_scene.light_source.instance->mesh = &this->scene_tab->current_scene.scene_meshes.back();
 						}
 						errored = 0;
 					}
@@ -527,26 +534,6 @@ void LightTab::draw() {
 
 					if (ImGui::Selectable(current_mesh->mesh_filename.c_str(), is_selected)) {
 						this->scene_tab->current_scene.light_source.mesh = current_mesh;
-
-						if (this->scene_tab->current_scene.light_source.instance == nullptr) {
-							// Create instance if there is none
-							Instance light_instance = Instance(this->scene_tab->current_scene.total_ever_instances);
-							light_instance.instance_id = this->scene_tab->current_scene.total_ever_instances;
-							light_instance.instance_name = "light_source";
-
-							light_instance.orientation = Quaternion::FromYawPitchRoll(this->scene_tab->rotation_orientation, this->scene_tab->current_scene.light_source.yaw, this->scene_tab->current_scene.light_source.pitch, this->scene_tab->current_scene.light_source.roll, this->scene_tab->current_scene.default_world_right, this->scene_tab->current_scene.default_world_up, this->scene_tab->current_scene.default_world_forward);
-
-							light_instance.ROTATION_MATRIX = this->scene_tab->current_scene.light_source.orientation.get_rotationmatrix();
-							light_instance.SCALING_MATRIX = Mat::scale_matrix(1, 1, 1);
-							light_instance.TRANSLATION_MATRIX = Mat::translation_matrix(this->scene_tab->current_scene.light_source.tx, this->scene_tab->current_scene.light_source.ty, this->scene_tab->current_scene.light_source.tz);
-							light_instance.MODEL_TO_WORLD = light_instance.TRANSLATION_MATRIX * light_instance.ROTATION_MATRIX * light_instance.SCALING_MATRIX;
-
-							this->scene_tab->current_scene.light_source.instance = &light_instance;
-							this->scene_tab->current_scene.scene_instances.push_back(std::move(light_instance));
-
-							this->scene_tab->current_scene.total_instances++;
-						}
-
 						this->scene_tab->current_scene.light_source.instance->mesh = current_mesh;
 
 						this->chosen_light_mesh_name = current_mesh->mesh_filename;
@@ -776,7 +763,7 @@ void LightTab::draw() {
 
 		ImGui::Separator();
 
-		if (this->scene_tab->current_scene.light_source.has_model) {
+		if (this->scene_tab->current_scene.light_source.has_model && this->scene_tab->current_scene.light_source.instance != nullptr) {
 			ImGui::Text("Model-to-world matrix");
 			if (ImGui::BeginTable("Model-to-world matrix", 4, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders | ImGuiTableFlags_NoHostExtendX)) {
 				for (uint8_t row = 1; row < 5; row++) {

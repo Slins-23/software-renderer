@@ -136,7 +136,7 @@ void InstancesTab::UpdateInstanceRotation(uint8_t rotation_type) {
 
 void InstancesTab::update_transform_axes() {
 	// If not false, make light_source->instance->has_axes = false to disable the axes for the light source
-	if (this->scene_tab->show_transform_axes && this->target_instance != nullptr) {
+	if (this->scene_tab->show_transform_axes && this->target_instance != nullptr && this->target_instance->show) {
 		this->scene_tab->current_scene.axes_instance = *this->target_instance;
 		this->scene_tab->current_scene.axes_instance.is_axes = true;
 		this->scene_tab->current_scene.axes_instance.has_axes = false;
@@ -290,7 +290,7 @@ void InstancesTab::draw() {
 	if (ImGui::BeginPopupModal("popup")) {
 
 		//Instance instance = Instance(this->scene_tab->current_scene.total_ever_instances);
-		static Mesh* chosen_mesh = &this->scene_tab->current_scene.scene_meshes[0];
+		static Mesh* chosen_mesh = nullptr;
 
 		double display_qx = created_instance->orientation.x;
 		double display_qy = created_instance->orientation.y;
@@ -321,11 +321,13 @@ void InstancesTab::draw() {
 					// Load mesh only if a mesh with the same filename isn't loaded (to avoid duplication)
 					if (this->scene_tab->current_scene.get_mesh_ptr(mesh_filename) == nullptr) {
 						Mesh loaded_mesh = Mesh(mesh_path, mesh_filename.c_str(), this->scene_tab->current_scene.total_ever_meshes);
-						this->chosen_mesh_id = loaded_mesh.mesh_id;
-						this->chosen_mesh_name = loaded_mesh.mesh_filename;
 
 						this->scene_tab->current_scene.total_meshes++;
 						this->scene_tab->current_scene.scene_meshes.push_back(std::move(loaded_mesh));
+
+						chosen_mesh = &this->scene_tab->current_scene.scene_meshes.back();
+						this->chosen_mesh_id = chosen_mesh->mesh_id;
+						this->chosen_mesh_name = chosen_mesh->mesh_filename;
 					}
 					errored = 0;
 				}
@@ -362,7 +364,7 @@ void InstancesTab::draw() {
 				if (ImGui::Selectable(current_mesh->mesh_filename.c_str(), is_selected)) {
 					chosen_mesh = current_mesh;
 
-					created_instance->mesh = chosen_mesh;
+					this->created_instance->mesh = chosen_mesh;
 					this->chosen_mesh_id = chosen_mesh->mesh_id;
 					this->chosen_mesh_name = chosen_mesh->mesh_filename;
 
@@ -665,7 +667,6 @@ void InstancesTab::draw() {
 			this->target_instance->instance_name = std::string(this->create_instance_name);
 
 			this->chosen_instance_id = this->target_instance->instance_id;
-			this->chosen_instance_name = this->target_instance->instance_name;
 
 			if (chosen_mesh != nullptr) {
 				this->target_instance->mesh = chosen_mesh;
@@ -674,6 +675,16 @@ void InstancesTab::draw() {
 			}
 			else {
 				std::cout << "No mesh was chosen. The instance will be added but not rendered, since there is no mesh." << std::endl;
+			}
+
+			if (this->chosen_instance_name != "") {
+				this->chosen_instance_name = this->target_instance->instance_name;
+			}
+			else {
+				this->target_instance->create_instance_nameid(this->scene_tab->current_scene.total_ever_instances);
+				this->chosen_instance_name = this->target_instance->instance_name;
+				
+				strcpy_s(this->create_instance_name, sizeof(this->create_instance_name), this->target_instance->instance_name.c_str());
 			}
 
 			this->target_instance->ROTATION_MATRIX = this->target_instance->orientation.get_rotationmatrix();

@@ -6,6 +6,27 @@
 #endif
 
 // Default scene
+Scene::Scene(const char* models_folder) {
+	// Load transform axes mesh
+	char axes_model_path[255];
+	std::string axes_mesh_name = "axes.obj";
+	sprintf_s(axes_model_path, 255, "%s%s", models_folder, axes_mesh_name.c_str());
+
+	this->axes_mesh = Mesh(axes_model_path, axes_mesh_name.c_str(), this->total_ever_meshes);
+
+	// Create instance if there is none
+	Instance light_instance = Instance(this->total_ever_instances);
+	light_instance.instance_id = this->total_ever_instances;
+	light_instance.instance_name = "light_source";
+	light_instance.is_light_source = true;
+
+	
+	this->scene_instances.push_back(std::move(light_instance));
+	this->light_source.instance = &this->scene_instances.back();
+
+	this->total_instances++;
+}
+
 Scene::Scene(const char* models_folder, Orientation rotation_orientation, bool verbose) {
 	this->scene_meshes.clear();
 	this->scene_instances.clear();
@@ -864,6 +885,8 @@ void Scene::save(const char* scene_folder, const char* scene_filename) const {
 
 	std::vector<std::string> models;
 	for (auto instance = this->scene_instances.begin(); instance != this->scene_instances.end(); instance++) {
+		if (instance->is_light_source) continue;
+
 		std::string mesh_filename = instance->mesh->mesh_filename;
 
 		// Ignore if instance represents light source

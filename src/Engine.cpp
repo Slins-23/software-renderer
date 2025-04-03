@@ -195,9 +195,11 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 	// MODEL SPACE -> WORLD SPACE ->  NOW IN CAMERA SPACE
 
 	// Cull triangle if all vertices are further than the far plane
+	/*
 	if (abs(v0.get(3, 1)) > window_manager.general_window.scene_tab.current_scene.camera.far || abs(v1.get(3, 1)) > window_manager.general_window.scene_tab.current_scene.camera.far || abs(v2.get(3, 1)) > window_manager.general_window.scene_tab.current_scene.camera.far) {
 		return;
 	}
+	*/
 
 	// Should include the z flip in the view or projection matrix instead of when loading meshes?
 
@@ -230,6 +232,26 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 	uint8_t n_clipped_triangles = Engine::ClipTriangleToPlane(&near_plane_point, &near_plane_normal, &current_triangle, clipped_triangles[0], clipped_triangles[1]);
 
 	if (n_clipped_triangles == 0) return;
+
+	const Mat far_plane_point = Mat(
+		{
+			{0},
+			{0},
+			{window_manager.general_window.scene_tab.current_scene.camera.far},
+			{0}
+		}
+		, 4, 1
+	);
+
+	const Mat far_plane_normal = Mat(
+		{
+			{0},
+			{0},
+			{-1},
+			{0}
+		}
+		, 4, 1
+	);
 	
 	double new_near = window_manager.general_window.scene_tab.current_scene.camera.near;
 
@@ -335,7 +357,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 			sub_clipped_triangles.push_back(starting_clipped_triangle);
 			Triangle current_sub_clipped_triangles[2];
 
-			for (uint8_t plane = 0; plane < 4; plane++) {
+			for (uint8_t plane = 0; plane < 5; plane++) {
 				size_t n_current_plane_triangles = sub_clipped_triangles.size();
 				for (int i = 0; i < n_current_plane_triangles; i++) {
 					Triangle current_sub_clipped_triangle = sub_clipped_triangles.front();
@@ -356,6 +378,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 					case 3:
 						n_clipped_sub_triangles = Engine::ClipTriangleToPlane(&right_plane_point, &right_plane_normal, &current_sub_clipped_triangle, current_sub_clipped_triangles[0], current_sub_clipped_triangles[1]);
 						break;
+					case 4:
+						n_clipped_sub_triangles = Engine::ClipTriangleToPlane(&far_plane_point, &far_plane_normal, &current_sub_clipped_triangle, current_sub_clipped_triangles[0], current_sub_clipped_triangles[1]);
 					}
 
 					for (n_clipped_sub_triangles; n_clipped_sub_triangles > 0; n_clipped_sub_triangles--) {

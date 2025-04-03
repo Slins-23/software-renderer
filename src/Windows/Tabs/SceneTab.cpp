@@ -118,12 +118,50 @@ void SceneTab::load_scene() {
 	}
 }
 
+void SceneTab::load_empty_scene() {
+	delete light_tab;
+	delete instances_tab;
+	delete camera_tab;
+
+	this->current_scene = Scene(this->models_folder);
+
+	this->display_BG_COLOR[0] = static_cast<float>(((this->current_scene.BG_COLOR >> 24) & 0x000000FF) / 255.0);
+	this->display_BG_COLOR[1] = static_cast<float>(((this->current_scene.BG_COLOR >> 16) & 0x000000FF) / 255.0);
+	this->display_BG_COLOR[2] = static_cast<float>(((this->current_scene.BG_COLOR >> 8) & 0x000000FF) / 255.0);
+	this->display_BG_COLOR[3] = static_cast<float>((this->current_scene.BG_COLOR & 0x000000FF) / 255.0);
+
+	this->display_LINE_COLOR[0] = static_cast<float>(((this->current_scene.LINE_COLOR >> 24) & 0x000000FF) / 255.0);
+	this->display_LINE_COLOR[1] = static_cast<float>(((this->current_scene.LINE_COLOR >> 16) & 0x000000FF) / 255.0);
+	this->display_LINE_COLOR[2] = static_cast<float>(((this->current_scene.LINE_COLOR >> 8) & 0x000000FF) / 255.0);
+	this->display_LINE_COLOR[3] = static_cast<float>((this->current_scene.LINE_COLOR & 0x000000FF) / 255.0);
+
+	this->display_FILL_COLOR[0] = static_cast<float>(((this->current_scene.FILL_COLOR >> 24) & 0x000000FF) / 255.0);
+	this->display_FILL_COLOR[1] = static_cast<float>(((this->current_scene.FILL_COLOR >> 16) & 0x000000FF) / 255.0);
+	this->display_FILL_COLOR[2] = static_cast<float>(((this->current_scene.FILL_COLOR >> 8) & 0x000000FF) / 255.0);
+	this->display_FILL_COLOR[3] = static_cast<float>((this->current_scene.FILL_COLOR & 0x000000FF) / 255.0);
+
+	camera_tab = new CameraTab(this);
+	instances_tab = new InstancesTab(this);
+	light_tab = new LightTab(this);
+
+	if (this->is_instances_open) {
+		this->instances_tab->update_transform_axes();
+	}
+	else if (this->is_light_open) {
+		this->light_tab->update_transform_axes();
+	}
+}
 
 void SceneTab::draw() {
 	ImGui::Text("Load scene camera settings");
 	ImGui::SameLine();
 	ImGui::Checkbox("##load_camera", &this->update_camera_settings);
 	ImGui::SetItemTooltip("Enabled: Camera starts at the camera position and orientation within the file.\nDisabled: Camera starts at the default position and orientation.");
+
+	if (ImGui::Button("New")) {
+		load_empty_scene();
+	}
+	ImGui::SetItemTooltip("Creates and empty scene.");
 
 	ImGui::Text("Scene file:");
 	ImGui::SameLine();
@@ -264,7 +302,7 @@ void SceneTab::draw() {
 		if (!is_instances_open) {
 			is_instances_open = true;
 
-			if (show_transform_axes && instances_tab->target_instance->show) instances_tab->update_transform_axes();
+			if (show_transform_axes) instances_tab->update_transform_axes();
 		}
 
 		//if (show_transform_axes && this->target_instance->show) update_transform_axes();
@@ -282,7 +320,7 @@ void SceneTab::draw() {
 		if (!is_light_open) {
 			is_light_open = true;
 
-			if (show_transform_axes && this->current_scene.light_source.instance->show) light_tab->update_transform_axes();
+			if (show_transform_axes) light_tab->update_transform_axes();
 		}
 
 		light_tab->draw();

@@ -61,6 +61,7 @@ public:
 	void initialize();
 	void load_scene(const char* scene_folder, const char* scene_filename, const char* models_folder, bool update_camera_settings, bool verbose);
 	void load_scene();
+	void load_empty_scene();
 	virtual void draw();
 
 	~SceneTab();

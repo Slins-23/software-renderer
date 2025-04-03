@@ -5,7 +5,7 @@
 struct Instance {
 private:
 
-	void create_instance_nameid(uint32_t& total_ever_instances);
+	
 public:
 	std::string instance_name = "";
 	uint32_t instance_id = 0;
@@ -35,6 +35,8 @@ public:
 	bool is_light_source = false;
 	bool is_axes = false;
 	bool has_axes = false;
+
+	void create_instance_nameid(uint32_t& total_ever_instances);
 
 	Instance() {};
 
