@@ -33,6 +33,27 @@ int main() {
 
 		ImGui::GetForegroundDrawList()->AddText(ImVec2(10, 30), IM_COL32(255, 255, 255, 255), fps_text, 0);
 
+		if (engine.window_manager.general_window.scene_tab.current_scene.load_error != SceneError::None) {
+			char error_string[512] = "";
+
+			switch (engine.window_manager.general_window.scene_tab.current_scene.load_error) {
+			case SceneError::ModelLoad:
+				sprintf_s(error_string, sizeof(error_string), "Error loading scene: Could not load model file at %s\nMake sure to set the model folder in the menu accordingly\nAnd that the model file can be found within it, then reload the scene.", engine.window_manager.general_window.scene_tab.current_scene.errored_path.c_str());
+				break;
+			case SceneError::SceneLoad:
+				sprintf_s(error_string, sizeof(error_string), "Error loading scene: Could not load scene file at %s\nMake sure to set the scene folder in the menu accordingly\nAlso make sure that the scene filename is correct and its file is within the scene folder\nThen reload the scene.", engine.window_manager.general_window.scene_tab.current_scene.errored_path.c_str());
+				break;
+			case SceneError::JSONParsing:
+				sprintf_s(error_string, sizeof(error_string), "Error loading scene: Could not parse the JSON for the scene configuration file.\nAt %s.\nMake sure that the file is in a valid JSON format with no missing or extra commas, quotations, braces, etc...", engine.window_manager.general_window.scene_tab.current_scene.errored_path.c_str());
+				break;
+			default:
+				break;
+			}
+			
+
+			ImGui::GetForegroundDrawList()->AddText(ImVec2(10, 50), IM_COL32(255, 0, 0, 255), error_string, nullptr);
+		}
+
 		if (engine.window_manager.show_window) {
 			engine.window_manager.handle_windows();
 		}

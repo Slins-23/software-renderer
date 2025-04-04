@@ -2,6 +2,8 @@
 
 A 3D software renderer implemented from "scratch", on Windows. More specifically everything that is directly related to rendering other than SDL.
 
+**Make sure to update the scene folder and models folder in the menu to where you downloaded or intend to store scenes and models. You can also change the default values in `SceneTab.h` and recompile.**
+
 <h3>Libraries used</h3>
 
 | Library      | Version | Usage | URL     |
@@ -59,11 +61,37 @@ You can test for equality and inequality, reassign a `Mat` instance to another `
 
 You can print the matrix to the console by calling the `print` `Mat` member function.
 > Example: `matrix.print()`
+> You can also print it to the console using streams. i.e. by calling `std::cout << matrix`.
 
-You can also print it to the console using streams. i.e. by calling `std::cout << matrix`.
+You can get an identity matrix of an arbitrary dimensionn by calling the `identity_matrix` `Mat` static function, which returns a square matrix of NxN dimension, where `N` is the given dimension.
+> Example: `Matrix::identity_matrix(4)`
+
+You can get a translation matrix with `tx` translation in the x axis, `ty` in the y axis, `tz` in the z axis by calling the `translation_matrix` `Mat` static function. The result is always a 4x4 translation matrix.
+> Example: `Matrix::translation_matrix(tx, ty, tz)`
+
+Similarly, you can get a scale matrix with `sx` scaling in the x axis, `sy` in the y axis, `sz` in the z axis, by calling the `scale_matrix` `Mat` static function. The result is also always a 4x4 scaling matrix.
+> Example: `Matrix::scale_matrix(sx, sy, sz)`
+
+You can get the 2-dimensional cross product between two vectors by calling the `CrossProduct2D` static `Mat` function with both vectors as parameters. This function returns a `double`.
+> Example: `Matrix::CrossProduct2D(v1, v2)`
+
+Similarly, you can get the 3-dimensional cross product by calling the `CrossProduct3D` static `Mat` function. This function returns a 4x1 `Mat` (vector).
+> Example: `Matrix:CrossProduct3D(v1, v2)`
 
 ## Engine
-The `Engine` class is a singleton which is responsible for handling the setup, dealing with SDL for direct rendering (pixel wise through buffers), the drawing routines, as well as some math related functions, event handling, storing and managing the window manager, and cleaning everything.
+The `Engine` class is a singleton which is responsible for handling the setup, SDL for direct rendering (pixel wise through buffers), the drawing routines, as well as some math related functions, event handling, storing and managing the window manager, and cleaning everything. It holds everything together and controls the flow of the program, which is explained further in the [main.cpp](#main-cpp) section.
+
+Its member variables are:
+`window`: A pointer to an `SDL_Window` instance.
+`renderer`: A pointer to an `SDL_Renderer` instance.
+`texture`: A pointer to an `SDL_Texture` instance.
+`event`: An `SDL_Event` instance.
+`buffer`: A pointer to the 32-bit `RGB` pixel buffer array.
+`CLEAR_COLOR`: The `SDL_RenderClear` color.
+`title`: Title of the window to be rendered.
+`WIDTH`: Width of the window to be rendered.
+`HEIGHT`: Height of the window to be rendered.
+`window_manager`: The window manager.
 
 ### Triangle
 The smallest logical geometric figure is a triangle. A `Triangle` is simply an object that holds 3 vertices, which in this context are 3 `4x1` vectors. (`Mat` instances)
@@ -119,6 +147,7 @@ There are 2 ways in which you should instantiate a `Mesh`:
 ### Instance
 
 An instance is pretty self-explanatory. It is simply an `Instance` of some loaded `Mesh`. This is done so that each rendered object in the scene gets its own parameters independent of any other while also discarding the need to duplicate the same mesh's data over and over when placing the same mesh in distinct settings within the scene.
+> The instances can have any name, but preferably they should be unique.
 
 Its member variables are the following:<br><br>
 `instance_name`: You can give a name to an instance in order to help you identify it. If no instance name is given, the `Instance` member function `create_instance_nameid` is used in order to create a name for it, which is preceded by its mesh's filename. The instance name can be set through the instances menu or programmatically by calling `instance.create_instance_nameid(total_ever_instances)` or initializing through a constructor with the given instance name.<br><br>
@@ -184,197 +213,213 @@ Its member variables are:<br><br>
 `scene_filepath`: Stores the filepath of the `json` formatted `Scene` configuration file .<br>
 `scene_data`: The scene `JSON` data will be stored here. This JSON parser is nlohmann's `nlohmann::json`, which is an external library.
 
+`default_world_up`: The vector that represents the default world up axis.
+`default_world_right`: The vector that represents the default world right axis.
+`default_world_forward`: The vector that represents the default world forward axis.
+
+`camera`: An instance of the [Camera](#Camera).<br>
+`light_source`: The scene's light source, which is represented by a [Light](#Light) instance. As of right now, there can only be a single light source in the scene, which is managed through this variable, regardless of whether lighting is enabled for the scene.
+
+`axes_mesh`: The [Mesh](#Mesh) which represents the transform axes.<br>
+`axes_instance`: The [Instance](#Instance) which represents the transform axes.
+> The [Mesh](#Mesh) that is loaded for this model is the `axes.obj` file. It should be within the models folder.<br>
+> This object is a 3D axes that gets rendered at the same position and orientation as the select model in the scene, so it serves as a reference point to which scene object is selected as well as for the transformations and orientation.
+
+`BG_COLOR`: An hexadecimal value representing the scene's background color.
+`LINE_COLOR`: An hexadecimal value representing the scene's line drawing color.
+`FILL_COLOR`: An hexadecimal value representing the scene's triangle fill/rasterization color.
+
 The `Scene` instances can be saved to and loaded from configuration files in `json` format. This can be done through the `Scene` tab in the menus or programmatically through the `Scene` member functions `save_scene` and `load_scene`, respectively.
 
-The arguments for `save_scene` (implemented in `Engine.cpp`) are:
-`scenes_folder`: The folder in which the scene `json` formatted configuration file will be stored.<br>
-`scene_filename`: The name of the output `json` formatted configuration file, excluding the extension.<br>
-`models_folder`: The folder used for the models within the scene. (Where they currently are, not where you want them to be)
-`verbose`: 
+The `Scene` can be instantiated in 4 ways:
 
-The arguments for `load_scene` (implemented in `Engine.cpp`) are:
-`scenes_folder`: The folder where the `Scene` `json` formatted configuration file you will be loading is stored at. It can be relative or absolute.<br>
-`scene_filename`: The filename (including the extension) of the `Scene` configuration file, it must be within the `scenes_folder` folder.<br>
-`models_folder`: The folder where the `obj` formatted models are stored, it can be relative or absolute.<br>
-`verbose`:  Useless as of right now, but can be used for omitting informationg when not debugging through the console.<br>
-`camera_position`: A `4x1` vector `Mat` instance that has the position of the camera in `world space`. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th dimension is always `1` and solely used to simplify matrix operations.<br>
-`camera_direction`: A `4x1` vector `Mat` instance that has the direction (vector) of where the camera is pointing toward. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th dimension is always `1` and solely used to simplify matrix operations.<br>
-`camera_yaw`: A `double` representing the camera `yaw` in `world space` from the default orientation.<br>
-`camera_pitch`: A `double` representing the camera `pitch` in `world space` from the default orientation.<br>
-`camera_roll`: A `double` representing the camera `roll` in `world space` from the default orientation.<br>
-`VIEW_MATRIX`: A `4x4` matrix `Mat` instance that represents the `view` matrix, which is responsible for dealing with the camera related transformations/movement.<br>
+1. Calling the empty constructor `Scene()`. In this case the default values are set and the transform axes and light source's mesh/instances would need to be manually loaded.<br><br>
+2. Calling the constructor by passing the models folder `Scene(models_folder)`. This creates an empty scene with the transform axes and the light source properly loaded and setup.<br><br>
+3. Calling the constructor by passing the models folder, rotation orientation, and whether to enable verbose logging (i.e. `Scene(models_folder, rotation_orientation, verbose`). This performs the transform axes and light source setup and additionally adds a cube (the `cube.obj` mesh in the models folder) to the scene, as well as an arrow (`arrow.obj`) for the light source.<br><br>
+4. Calling the constructor by passing the `scene_folder`, `scene_filename`, `models_folder`, `rotation_orientation`, `update_camera_settings`, and `verbose`. This loads the scene from the file `scene_filename` within the folder `scene_folder`, with the models loaded from the folder `models_folder` in the given `rotation_orientation`, using the camera settings given in the scene configuration file if `update_camera_settings` is `true` (resets it to default otherwise), and logs to the console some information if `verbose` is `true`.
 
-The `Scene` can be instantiated by calling the empty constructor `Scene()`, or by indirectly calling the `load_scene` function to load a `json` formatted configuration file, by passing the exact same arguments to the constructor: i.e. `Scene(scenes_folder, scene_filename, models_folder, verbose, camera_position, camera_direction, camera_yaw, camera_pitch, camera_roll, VIEW_MATRIX)`
+A given `Scene` instance can be saved by calling the `save` member function, by passing the folder in which to save it and its filename as arguments.<br>
+> Example: `scene.save("D:\\Scenes\\", "saved_scene.json")`
 
-A default scene is load_default_scene()
-Also cube scene is Scene()
+As it stands, a blank `Scene` is created on program startup. It is up to the user to load any given `Scene` through the menu, or edit the blank scene. An error message warning you will be displayed if your scene file or the models within your scene could not be loaded.
+> There are 3 types of errors handled when attempting to load a scene:
+> 1. `SceneError::ModelLoad`: Occurs when the model couldn't be loaded. It can be due to an invalid format, or more likely due to an incorrect filepath. Can usually be fixed by correctly setting the model folder and the respective model file within it.
+> 2. `SceneError::SceneLoad`: Occurs when the scene couldn't be loaded due to an invalid filepath. Can usually be fixed by correctly setting the scene folder and the respective scene file within it.
+> 3. `SceneError::JSONParsing`: Occurs when the scene couldn't be loaded due to an invalid JSON format when parsing. This is usually caused by extra or missing commas, braces, brackets, quotation marks, etc... Make sure that the JSON is valid.
 
-This is how they are formatted:
+`errored_path`: Holds an string with the path to the file (model or scene) which was attempted to be loaded when an error occurred (empty otherwise).
 
-**scene.json**
+This is an example of how JSON scene configuration files are formatted (this file can be found within the `scenes` folder in this repo):
+
+**cube.json**
 ```
 {
-	"scene": "default_scene",
-	"camera": {
-		"translation": {
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		"direction": {
-			"x": 0,
-			"y": 0,
-			"z": 1
-		},
-		"up": {
-			"x": 0,
-			"y": 1,
-			"z": 0
-		}
-	},
-	"models": {
-		"cube.obj": {
-			"instances": {
-				"cube_001": {
-					"show": true,
-					"translation": {
-						"x": 0.25,
-						"y": 0.25,
-						"z": 0.25
-					},
-					"scale": {
-						"x": 0.3,
-						"y": 0.3,
-						"z": 1
-					},
-					"rotation": {
-						"x": 30,
-						"y": 30,
-						"z": 30
-					},
-					"model-to-world": [
-						0.225,
-						0.0649519,
-						-0.1875,
-						0.25,
-						-0.129904,
-						0.2625,
-						-0.0649519,
-						0.25,
-						0.5,
-						0.433013,
-						0.75,
-						0.25,
-						0,
-						0,
-						0,
-						1
-					]
-				},
-				"cube_002": {
-					"show": true,
-					"translation": {
-						"x": 2.22,
-						"y": 1.5,
-						"z": 3.4
-					},
-					"scale": {
-						"x": 0.5,
-						"y": 0.5,
-						"z": 1
-					},
-					"rotation": {
-						"x": 2,
-						"y": 2,
-						"z": 2
-					}
-				}
-			}
-		},
-		"Cybertruck.obj": {
-			"instances": {
-				"Car": {
-					"show": false,
-					"translation": {
-						"x": 0.25,
-						"y": 0.25,
-						"z": 0.25
-					},
-					"scale": {
-						"x": 0.3,
-						"y": 0.3,
-						"z": 0.3
-					},
-					"rotation": {
-						"x": -5,
-						"y": -5,
-						"z": -5
-					}
-				},
-				"Cybertruck_002": {
-					"show": false,
-					"translation": {
-						"x": 0.25,
-						"y": 0.25,
-						"z": 0.25
-					},
-					"scale": {
-						"x": 0.3,
-						"y": 0.3,
-						"z": 1
-					},
-					"rotation": {
-						"x": 5,
-						"y": 5,
-						"z": 5
-					}
-				}
-			}
-		}
-	}
+    "scene": "cube.json",
+    "camera": {
+        "default_position": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+        },
+        "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+        },
+        "default_direction": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 1.0
+        },
+        "direction": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 1.0
+        },
+        "default_up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+        },
+        "up": {
+            "x": 0.0,
+            "y": 1.0,
+            "z": 0.0
+        },
+        "rotation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+        }
+    },
+    "bg_color": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+    },
+    "line_color": {
+        "r": 0,
+        "g": 255,
+        "b": 0
+    },
+    "fill_color": {
+        "r": 102,
+        "g": 40,
+        "b": 92
+    },
+    "light": {
+        "type": "directional",
+        "enabled": true,
+        "color": {
+            "r": 102,
+            "g": 40,
+            "b": 92
+        },
+        "intensity": 1.0,
+        "minimum_exposure": 0.1,
+        "model": "arrow.obj",
+        "position": {
+            "x": 0.07,
+            "y": 0.15,
+            "z": 0.47000000000000003
+        },
+        "rotation": {
+            "x": -28.82203865457232,
+            "y": 21.741555656980953,
+            "z": 109.75987370009548
+        },
+        "direction": {
+            "x": 0.3245333323392281,
+            "y": 0.4820907072649036,
+            "z": 0.8137976813493758
+        },
+        "up": {
+            "x": -0.8137976813493751,
+            "y": -0.2961981327260267,
+            "z": 0.4999999999999952
+        },
+        "scale": {
+            "x": 1.0,
+            "y": 1.0,
+            "z": 1.0
+        }
+    },
+    "models": {
+        "cube.obj": {
+            "instances": {
+                "1": {
+                    "show": true,
+                    "translation": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 1.0
+                    },
+                    "rotation": {
+                        "y": 0.0,
+                        "x": 0.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "model_to_world": [
+                        [
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            1.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            0.0,
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0
+                        ]
+                    ]
+                }
+            }
+        }
+    }
 }
 ```
 
-`model-to-world`, `translation`, `rotation`, `scale`, `direction` do not need to be explicitly given. In that case, the camera is at the default position, pointing at (0, 0, -1), and the instance(s) has/have no translation, rotation, and a scale factor of `1`.
+Virtually all of these parameters can be ommitted, in which case the values will be set to default. When it comes to the camera and light source, you can provide only the direction vectors, only the rotation parameters (yaw, pitch, and roll), or both.
+> The rotation parameters (yaw, pitch, roll) are described in degrees in the configuration file, but are converted to radians internally
 
-The `translation` can also be understood as the `world coordinate`.
+> Keep in mind that the rotation parameters and direction vectors should match, otherwise there will be a conflict
+> The vectors do not need to be of unit length and the rotation parameters do not need to be within an specific range.
 
-You can manually create a scene pretty easily by following this layout, as long as you have the model files and you properly set the `models_folder` variable to be its `absolute` path.
+The values preceded by `default_` here are better left unchanged. My idea was that the user could have an arbitrary starting point from the world space's origin and/or orientation, and the values would be infered accordingly, I haven't had the time to test this out properly nor implement it as I wanted to due to the time constraints I have and a feature of little relevance that virtually nobody would ever touch, so it should not work as intended currently, although some of its foundation and behavior has been implemented.
 
-### Camera
+The `scene` field is meant to be the name of the scene (not filename), but since no functionality that uses this was implemented it is obsolete.
 
-### Quaternion
+The camera settings are described in [Camera](#Camera).
+The light settings are described in [Light](#Light).
+The instance settings are described in [Instance](#Instance)
 
-#### Rotation
+The `bg_color` setting controls the color of the background.
+The `line_color` setting controls the color of the lines drawn.
+The `fill_color` setting controls the color of the triangles/rasterization. (Irrespective of lighting. This is also called ambient light)
 
-The rotation is described in `degrees` and converted into `pi radians` internally, but still displayed/exposed as `degrees` to the user. The reason for this is because `degrees` are more intuitive for the user to interpret.
+You can manually create a scene by following this layout, as long as you have the model files and you properly set the models folder. Though it would evidently be tiresome for a large scene.
 
-The rotations are defined as counter-clockwise being positive, based on a right-handed coordinate system where z points outward. However, as the camera by default points at the positive z axis, I decided for simplicity to define that the camera rotation parameters (i.e. yaw, pitch, roll) all start at 0. Although depending on the interpretation of the coordinate system this shouldn't be the case, as the z axis is flipped.
-
-Rotation angles are rounded to 3 decimal places. You can change this through the calls to `Utils::round_to`. The following is also the order in which they are applied:
-
-> Yaw: Rotation around the `y` axis
-> Pitch: Rotation around the `x` axis
-> Roll: Rotation around the `z` axis.
-
-If including both a direction and rotation to the camera, they should logically match. When this is the case, I chose to give precedence for the direction vector, meaning that even though the rotation parameters are given, the rotation parameters will be derived from the direction vectors, so that both match regardless. So they may differ slightly even if they're correct.
-
-> `Roll` does not affect the direction vector, so it will not be overridden.
-
-All rotations are restricted to the [0, 2PI] range, if they are smaller or bigger than the range the rotation wraps.
----
-
-You can have as many meshes and instances as you want, and the instances can have any name, but preferably the instance names should be unique.
-
-You are not required to give all of `translation`, `scale` and `rotation`, but at least one of them, though you can have any arbitrary combination. You can, however, give a `model-to-world` matrix which already accounts for all 3 transformations, and ignore the entries.
-
-You can also simply give a `translation` of `0` on all coordinates for every instance and no transformations will be applied to the model.
-
+#### Camera
 You can also give camera information, such as its `position`, and a `direction` vector or a `rotation` amount.
-i.e.
 
-You can only provide either rotations (yaw, pitch, roll) or direction vectors (direction, up), or both. If only one was provided, the other one gets derived at runtime, from the one that was given.
-If you provide both, the rotation parameters get derived at runtime from the given direction vectors, so the given rotation parameters are not directly set. This means that, in the case that both are provided, they should be logically equivalent (i.e. the rotation of the default direction vectors by the respective rotation parameters should end up being virtually the same as the provided direction vectors).
 If none are given, the camera will start in the default position with the default direction vectors (i.e. no translation and the camera points at the center of the positive z-axis. direction: (0, 0, 1), up: (0, 1, 0))
 
 default_direction, default_up, direction, up, default_position, translation
@@ -410,76 +455,72 @@ or
 }
 ```
 
+`camera_position`: A `4x1` vector `Mat` instance that has the position of the camera in `world space`. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th dimension is always `1` and solely used to simplify matrix operations.<br>
+`camera_direction`: A `4x1` vector `Mat` instance that has the direction (vector) of where the camera is pointing toward. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th dimension is always `1` and solely used to simplify matrix operations.<br>
+`camera_yaw`: A `double` representing the camera `yaw` in `world space` from the default orientation.<br>
+`camera_pitch`: A `double` representing the camera `pitch` in `world space` from the default orientation.<br>
+`camera_roll`: A `double` representing the camera `roll` in `world space` from the default orientation.<br>
+`VIEW_MATRIX`: A `4x4` matrix `Mat` instance that represents the `view` matrix, which is responsible for dealing with the camera related transformations/movement.<br>
+
+#### Light
+
+
+
+The arguments for `save_scene` (implemented in `Engine.cpp`) are:
+`scenes_folder`: The folder in which the scene `json` formatted configuration file will be stored.<br>
+`scene_filename`: The name of the output `json` formatted configuration file, excluding the extension.<br>
+`models_folder`: The folder used for the models within the scene. (Where they currently are, not where you want them to be)
+`verbose`: 
+
+The arguments for `load_scene` (implemented in `Engine.cpp`) are:
+`scenes_folder`: The folder where the `Scene` `json` formatted configuration file you will be loading is stored at. It can be relative or absolute.<br>
+`scene_filename`: The filename (including the extension) of the `Scene` configuration file, it must be within the `scenes_folder` folder.<br>
+`models_folder`: The folder where the `obj` formatted models are stored, it can be relative or absolute.<br>
+`verbose`:  Useless as of right now, but can be used for omitting informationg when not debugging through the console.<br>
+
+### Rotation
+> The rotation parameters (yaw, pitch, roll) are described in degrees in the configuration file, but are converted to radians internally. The reason for this is because degrees are more intuitive for the user interpretation.
+
+The rotations are defined as positive when counter-clockwise, based on a right-handed coordinate system where the positive z axis points outward. However, as the camera by default points at the positive z axis, I decided to define that the camera rotation parameters (i.e. yaw, pitch, roll) all start at 0, as if the camera were pointing at (0, 0, -1) instead of (0, 0, 1). Depending on the interpretation of the coordinate system this shouldn't be the case, as I purposefully flipped the z axis during mesh loading for better intuition, as now positive z coordinates are in front of the camera.
+
+The rotation order applied is yaw first, then pitch, then roll.
+
+> Yaw: Rotation around the `y` axis
+> Pitch: Rotation around the `x` axis
+> Roll: Rotation around the `z` axis.
+
+If including both a direction and rotation in the scene file, they should logically match.
 
 ### Quaternion
 
-A `Quaternion` instance holds information about a quaternion. Namely, the `x`, `y`, `z`, and `w` coordinates respectively. As of currently, they are used after the `view space` in the pipeline. 
-
-It is used for -
+A `Quaternion` instance holds information about a quaternion. Namely, the `x`, `y`, `z`, and `w` coordinates respectively. As of right now, they are used after the `view space` in the pipeline and for retrieving the rotation axis and figuring out `yaw`, `pitch`, and `roll` from direction vectors through its `GetAngles` and `GetRoll` member functions. 
 
 A `Quaternion` can be instantiated through an empty constructor `Quaternion()`, in which case the `x`, `y`, and `z` coordinates are `0` and `w` is `1`.
 Or by calling `Quaternion(x, y, z, w)` with the respective coordinate values.
 
 `AngleAxis`
 
-### Light
-
-....
 
 ### Windows/tabs
 
 ## Events
 
-The events are handled in the `Engine` member function `handle_events`.
+The events are handled in the function `handle_events`, which is an `Engine` member function. It is implemented separately in the file `Events.cpp`.
 
-These are the available key shortcuts and actions:
-`1`: Toggles the rendering of each triangle's lines. It is turned off by default.
-`2`: Toggles the rasterization of each triangle. It is turned off by default.
-`3`: Toggles the shading of each triangle. It is turned on by default.
-`4`: Toggles the backface culling of each triangle. It is turned on by default.
-`5`: Toggles the depth testing of each pixel. It is turned on by default.
-`P`: Pauses/resumes the rendering.
-`T`: Prints information about the camera. Namely the camera position, direction and up vectors, rotation parameters.
-`G`: Saves the current scene metadata to a file called `tst.json` that is saved in the `models` folder. Can be modified in the variable `scene_save_name` @ `Engine.h`.
-`Keypad -`: Decreases the `FOV` by `1`.
-`Keypad +`: Increases the `FOV` by `1`.
-`[`: Scales down the `x` and `y` coordinates by the `scale_factor`, which by default is `0.05`.
-`]`: Scales up the `x` and `y` coordinates by the `scale_factor`, which by default is `0.05`.
-`;`: Decreases the `far` plane `z` coordinate by `0.5`. I hardcoded a limit however, that it can never be less than the `near` plane - `0.5`, so that the `far` plane is not in front of the `near` plane.
-`'`: Increases the `far` plane `z` coordinate by `0.5`.
-`,`: Decreases the `near` plane `z` coordinate by `0.01`. I also hardcoded a limit that it can never be lower than `0.01`.
-`.`: Increases the `near`plane `z` coordinate by `0.01`. There is also a limit that it cannot be greater than the `far` plane.
-`J`: Rotates camera around the `y` axis (clockwise/counter-clockwise) (left/right) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
-`K`: Rotates camera around the `x` axis (clockwise/counter-clockwise) (up/down) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
-`I`: Rotates camera around the `x` axis (clockwise/counter-clockwise) (up/down) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
-`L`: Rotates camera around the `y` axis (clockwise/counter-clockwise) (left/right) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
-`Q`: Rotates the camera around the `z` axis (clockwise/counter-clockwise) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
-`E`: Rotates the camera around the `z` axis (clockwise/counter-clockwise) by `rotation_angle_degrees` which by default is `10`. (Gets converted internally into radians)
-`A`: Moves the camera to the left. It decreases the camera's `x` coordinate by `translation_amount`, which by default is `0.01`.
-`D`: Moves the camera to the right. It increases the camera's `x` coordinate by `translation_amount`, which by default is `0.01`.
-`W`: Moves the camera forward. It increases/decreases the camera's `z` coordinate by `translation_amount`, which by default is `0.01`.
-`S`: Moves the camera backward. It decreases/increases the camera's `z` coordinate by `translation_amount`, which by default is `0.01`.
+Here are the implemented key events:
+`1`: Toggles the ImGUI menu.
+`W`: Moves the camera forward
+`S`: Moves the camera backward
+`A`: Moves the camera left
+`D`: Moves the camera right
+`Up arrow`: Moves the camera up
+`Down arrow`: Moves the camera down
 
-* You can quit by clicking on the `X` button in the GUI.
-* You can resize the window by clicking and dragging the edges.
+Mouse motion is also caught here for rotating the camera with respect to mouse movement.
 
-### Engine
+You can resize the window by clicking and dragging the edges.
 
-The `Engine` instance holds everything together and controls the flow of the program, by calling the relevant functions through the `main.cpp` file, which is explained in further detail in the [main.cpp](#main-cpp) section.
-
-Its member variables are:
-`window`: A pointer to an `SDL_Window` instance.
-`renderer`: A pointer to an `SDL_Renderer` instance.
-`texture`: A pointer to an `SDL_Texture` instance.
-`buffer`: A pointer to the 32-bit `RGB` pixel buffer array.
-`title`: Title of the window to be rendered.
-`WIDTH`: Width of the window to be rendered.
-`HEIGHT`: Height of the window to be rendered.
-
-
-> The window is resizeable.
->
-> 
+You can quit by clicking on the `X` button in the GUI.
 
 ## main.cpp
 
@@ -487,60 +528,60 @@ This is where the `main` function is, and where you use the `Engine` instance in
 
 Here's how it goes in a few steps:
 1. Instantiate the `Engine` class, in this case that is the `engine` variable.
-2. Run the `Engine` member function `setup`, in order to setup the `Engine`, which initializes `SDL` and allocates a pixel buffer. i.e. `engine.setup()`
+2. Run the `Engine` member function `setup`, in order to setup the `Engine`, which initializes `SDL` and allocates a pixel buffer.
 3. Set a starting `Scene` to be rendered. You can do so by assigning the `engine.current_scene` variable to a `Scene` instance. The `Scene` constructor variables are explained in [Scene](#scene). i.e. `engine.current_scene = Scene(...)`
 4. Run the main execution loop.
-	> The framerate is calculated here, but I will ommit these variables for clarity.
-	1. The `SDL` events are processed, by calling the `Engine` member function `handle_events`. This is where key presses trigger actions within the program. i.e. engine.handle_events()
-	2. Draws the `Scene` instances, if the engine hasn't been paused by pressing the key `P`.
-	3. Renders the new frame by calling the `Engine` member function `render`. Through `SDL` routines, it clears the `renderer`, updates the `texture` with the new pixel `buffer`, then updates the screen. i.e. `engine.render()`
-	4. If the rendering was too fast, meaning that it took less milliseconds per frame than the given framerate in the should, then the rendering of the next frame is delayed by the difference between the two. You can set the `FPS` in the `Engine` member variable `FPS`. The default value is `60`. The milliseconds per frame is stored in the `Engine` member variable `MSPERFRAME`, and it is calculated using the given `FPS`. i.e. `engine.FPS` and `engine.MSPERFRAME`
-	5. The averaged `FPS` over the given `engine.fps_update_interval` (in milliseconds) is printed to the console.
-	6. Goes back to the beginning of the loop..
+	1. The `SDL` and `ImGUI` events are processed, by calling the `Engine` member function `handle_events`.
+	2. The `Scene` instances (and optionally the transform axes) are drawn to the pixel and depth buffers.
+	3. Starts the `ImGUI` frame, draws some text, and draws the `ImGUI` windows if they are toggled by pressing `1`.
+	4. Renders the new frame by calling the `Engine` member function `render`. Through `SDL` routines, it clears the `renderer`, updates the `texture` with the new pixel buffer, then updates the screen.
+	5. If the rendering was too fast, meaning that it took less milliseconds per frame than the given framerate limit should, then the rendering of the next frame is delayed by the difference between the two values.
+	> You can update these values in the [Settings tab](#settings-tab) in the mnu or in the `SettingsTab.h` file then recompiling.
+	6. The averaged fps over the given update interval (in milliseconds) is updated, then displayed and printed to the console.
+	7. Goes back to the beginning of the loop...
 
 
 
 ## Utils
 
-The file `Utils.h` contains the implementation of utility functions.
+The file `Utils.h` contains the implementation of some utility functions.
 
-`normalize`: Puts a value within some range into another range. So if you have the number `50` within the range from `0` to `100`, and you want to put it in the range `0` to `1`, the function returns `0.5`.
-Example: `Utils::normalize(previous_value, previous_minimum, previous_maximum, new_minimum, new_maximum)`
+`normalize`: Converts a value within some range to some other range. So if you have the number `50` within the range from `0` to `100`, and you want in the range `0` to `1`, the function returns `0.5`. The first argument to the function is the previous value which will be converted, the previous minimum value in that range, the previous maximum value in that range, the new minimum value for the new range, and the new maximum value.
+> Example: `Utils::normalize(50, 0, 100, 0, 1)` returns `0.5`.
 
 `round_to`: Rounds the given number to an arbitrary number of decimal places. It simply multiplies the given number by 10 to the given number of decimal places, runs the `cmath` standard library `round` function, and divides back by 10 to the number of decimal places.
-Example: `Utils::normalize(3.1415, 2)` returns `3.14`
-`Utils::normalize(3.1415, 0)` returns `3`
+> Example: `Utils::normalize(3.1415, 2)` returns `3.14`
+> `Utils::normalize(3.1415, 0)` returns `3`
 
-Currently the only implemented function in this file is `normalize`, which puts a value within some range into another range (i.e. if you have the number `50` in the range `0` to `100` and you want to, in the same scale, leave it in the range `0` to `1`, the function returns the number `0.5`). 
-Example: `Utils::normalize(previous_value, previous_minimum, previous_maximum, new_minimum, new_maximum)`
+`clamp`: Clips a value to a given range. If it is smaller than the minimum value in the range, it gets set to that value, and vice-versa if it is higher than the maximum value. Otherwise it doesn't change.
+> Example: `Utils::clamp(-2, 1, 100)` returns `1`
 
 # Implementation details
 
 The renderer uses 4 coordinate systems, of which only the last one is different.
 
-The first 3 coordinate systems represent 3 dimensional space, are all right-handed. Here, the positive x-axis points to the right, the positive y-axis points up, and the positive z-axis points outward ("out of the screen/toward the viewer").
+The first 3 coordinate systems represent 3 dimensional space, and are all right-handed. Here, the positive x-axis points to the right, the positive y-axis points up, and the positive z-axis points outward (out of the screen/toward the viewer).
 
-Firstly there is `local space`, which is essentially a 3D model's local coordinate system before they are added to the scene. If you have worked with modelling software like Blender for example, you can think of everything within the Blender scene if you were to export it as being in `local space`.
+Firstly there is `local space`, which is essentially a 3D model's local coordinate system before they are added to the scene. If you have worked with modelling software like Blender for example, you can think of everything within the Blender scene as being in `local space`.
 
 Secondly there is `world space`, which, as the name implies, is the space which holds all the 3D models present in the scene, in absolute values. Each model present in the scene has a transformation matrix which transforms all the vertices for that `Instance`'s 3D mesh from `local space` to `world space`, essentially moving it to the scene including the relevant transformations.<br>
-The matrix responsible for this conversion is called `MODEL_TO_WORLD`, and every `Instance` has it. This matrix is a combination of 3 other matrices, first the `SCALING_MATRIX`, secondly the `ROTATION_MATRIX`, then finally the `TRANSLATION_MATRIX`. These matrices are built by the individual values for each `Instance` and finally combined to make the `MODEL_TO_WORLD` matrix.
+The matrix responsible for this conversion is called `MODEL_TO_WORLD` and every `Instance` has it. This matrix is a combination of 3 other matrices, first the `SCALING_MATRIX`, secondly the `ROTATION_MATRIX`, then finally the `TRANSLATION_MATRIX`. These matrices are built by the individual values for each `Instance` and finally combined to make the `MODEL_TO_WORLD` matrix.
 
-> In a right-handed coordinate system the `z` axis points "out of the screen/toward the viewer", this means that for a mesh to be visible it would need to have a negative `z` coordinate in world space. However, during mesh loading I purposefully flip it so that a positive `z` value means "farther", which is more intuitive but less semantically ideal. The coordinate system remains the same however.
+> In a right-handed coordinate system the `z` axis points "out of the screen/toward the viewer", this means that for a mesh to be visible it would need to have a negative `z` coordinate in world space. However, during mesh loading I purposefully flip it so that a positive `z` value means "farther", which is more intuitive but less semantically sound. The coordinate system remains the same however.
 
-Thirdly there is `view space` or `camera space`, as it represents a "view" into the world from the camera's point of view. It essentially contains all transformations relative to the camera. This transformation is stored in the `VIEW_MATRIX`. It can also be seen as a transformation that is the inverse of the camera transform, because, relative to the camera, whenever the it moves to the right for example, the object in front of it appears to move to the left, and this means that whatever happens to a logical camera can be simulated by performing the opposite operations to each vertex. The `VIEW_MATRIX` is constructed from a position and a direction through the `LookAt` function, and it encapsulates the translation and rotation akin to what happens above for instances in `world space`.
+Thirdly, there is `view space` or `camera space`. It represents a "view" into the world from the camera's point of view. It essentially contains all transformations relative to the camera. This transformation is stored in the `VIEW_MATRIX`. It can also be seen as a transformation that is the inverse of the camera transform, because, relative to the camera, whenever it moves to the right, the object in front of it appears to move to the left, which means that whatever happens to a logical camera can be simulated by performing the inverse operations to each vertex. The `VIEW_MATRIX` is constructed from a position vector and a direction vector through the `LookAt` function, and it encapsulates the translation and rotation (akin to what happens above for instances in `world space`).
 
-After this, geometric clipping is performed for each triangle against each of the camera's 6 planes in `view space` (Near, far, left, right, top, bottom planes).
+After this, geometric clipping is performed for each triangle against each of the camera's 6 planes in `view space` (near, far, left, right, top, and bottom planes).
 
-Now perspective projection is applied to the vertices. At this stage the coordinate space is considered to be in `clip space`.
+Now perspective projection is applied to the vertices. At this stage the coordinate system is considered to be in `clip space`.
 > Note that the `z` transformation here is non-linear.
 
 Finally, for the 3-dimensional space, perspective division is performed over all vertices by their `w` (which is simply their `z` coordinate prior to the projection).
-We are now at what is called `NDC (Normalized Device Coordinates) space`, where, theoretically, every point/vertex that made it to this stage is viewable through the camera. This space's boundaries are in the ranges [-1, 1] for the x-axis, [-1, 1] for the y-axis, and [0, 1] for the z-axis.
+We are now at what is called `NDC (Normalized Device Coordinates) space`, where, theoretically, every point/vertex that made it to this stage is viewable through the camera and its boundaries are in the ranges [-1, 1] for the x-axis, [-1, 1] for the y-axis, and [0, 1] for the z-axis.
 
-Here, a vertex whose `z` coordinate is the same as the `near` plane value would have a `z` of 0, and if I were to be the same as the `far` plane, it would have a `z` of 1.
+Here, a vertex whose `z` coordinate is the same as the `near` plane value would have a `z` of 0, and if it were to be the same as the `far` plane, it would have a `z` of 1.
 
-
-We can then start processing the vertices. Here `backface culling` is performed, as well as some `light` shading, if `Flat` shading it is all performed here. If `Gouraud` shading the vertex colors are calculated here for each vertex (they get interpolated at the pixel level later). If `Phong` shading, the vertex normals are calculated for each vertex (these also get interpolated later).
+We can then start processing the vertices. Here `backface culling` is performed, as well as some [Light](#light) shading (if `Flat` shading it is done entirely here). If `Gouraud` shading, the vertex colors are calculated here for each vertex (they get interpolated at the pixel level later). If `Phong` shading, the vertex normals are calculated for each vertex (these also get interpolated later).
 
 The last coordinate system is `screen space` or `framebuffer space`. Here the vertices' `x` and `y` coordinates are flipped and scaled by the camera's `SCALE_MATRIX`. The `y` axis is flipped because the `y` coordinate increases as you go down when it comes to pixels, but in 3D space it increased as it went up. As for the `x` axis, since I flipped the `z` coordinates when loading the meshes, the resulting logically and semantically correct right-handed coordinate system with this configuration has the positive `x` axis to the left (not to the right), which means that going to the right would instead decrease the `x` coordinate for the pixel. Now we are finally in the 2-dimensional space which represents the window coordinates.
 
@@ -549,17 +590,20 @@ The drawing order is counter-clockwise.
 Near plane defaults to `0.01` but can be any value.
 Far plane defaults to `1000` but can be any value.
 
-If drawing the line connections of the vertices (`draw_outline`), the relevant lines are drawn, with the given `outline_color`.
-If filling (`fill`)/rasterizing the triangles, the relevant triangles are filled/rasterized with the given `fill_color`. This is where the vertices and triangle coordinates are interpolated, and where the fragment shader/texturing/coloring should be implemented.
+If drawing the lines between vertices, which can be toggled in the menu `Wireframe` checkbox, or programmatically through the `draw_outline` function parameter, the relevant lines are drawn, with the given `Line color` in the [Scene tab](#scene-tab) or programmatically through the `outline_color` parameter.
+
+If filling/rasterizing triangles, the relevant triangles it is done with the `Fill color` in the [Scene tab](#scene-tab) or programmatically through the `fill_color` parameter. This is where the vertices and triangle coordinates are interpolated, and where the fragment shader/texturing/coloring should be implemented.
 
 # Testing
+Testing is implemented with `Catch2`.
 
-Testing is implemented through `Catch2`.
+I implemented some testing in the beginning, but I forgot about it after a while and implementing the main functionality was too time consuming on itself, and I changed everything multiple times, so I eventually gave up on it.
+
+Currently the test covers only most of the `Mat` matrix class and `Util` utility functions.
+
 `TestMain.cpp` sets up and runs the test, it contains the `main` function.
 `TestMatrix.cpp` contains matrix related tests.
 `TestUtils.cpp` contains utility related tests.
-
-These test files were mostly used for testing/validating the behavior of the matrix operations. It can, and probably should, be expanded to other areas of the code to cover more functionalities.
 
 # Notes
 
@@ -633,4 +677,6 @@ These test files were mostly used for testing/validating the behavior of the mat
 
 - Check that deriving the yaw, pitch, and roll properly work by calling the function `Engine::Euler_GetAnglesFromDirection`
 
-- Properly handle the edge case for when vectors are antiparallel (point in opposite directions) within the 3D cross product function 
+- Properly handle the edge case for when vectors are antiparallel (point in opposite directions) within the 3D cross product function
+
+- Have a configuration file generated/updated whenever the user closes the program so that everything doesn't need to be redone on the next run. Also include a "Reset" button on the menu in order to reset the settings to the default settings.

@@ -27,10 +27,6 @@ public:
 	uint16_t WIDTH = 800;
 	uint16_t HEIGHT = 600;
 
-	// Which coordinate system is the reference orientation for instance transformations (use only world for now, I still need to implement and accomodate for some edge cases, especially when transitioning from one space to another)
-	bool using_instance_world_orientation = false;
-	bool using_instance_local_orientation = true;
-
 	WindowManager window_manager;
 	
 	bool setup();

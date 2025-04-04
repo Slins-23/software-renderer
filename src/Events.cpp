@@ -159,35 +159,6 @@ bool Engine::handle_events() {
 				*/
 
 				break;
-			case SDL_SCANCODE_T:
-				std::cout << "View matrix: " << std::endl;
-				window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX.print();
-
-				std::cout << "Camera direction: " << std::endl;
-				window_manager.general_window.scene_tab.current_scene.camera.direction.print();
-				std::cout << "Camera up: " << std::endl;
-				window_manager.general_window.scene_tab.current_scene.camera.up.print();
-				std::cout << "Camera yaw: " << window_manager.general_window.scene_tab.current_scene.camera.yaw * (180 / M_PI) << std::endl;
-				std::cout << "Camera pitch: " << window_manager.general_window.scene_tab.current_scene.camera.pitch * (180 / M_PI) << std::endl;
-				std::cout << "Camera roll: " << window_manager.general_window.scene_tab.current_scene.camera.roll * (180 / M_PI) << std::endl;
-				/*
-
-				std::cout << "Camera position: " << std::endl;
-				window_manager.general_window.scene_tab.current_scene.camera.position.print();
-
-				std::cout << "Light position: " << std::endl;
-				light_source.position.print();
-
-				std::cout << "Light yaw: " << light_source.yaw << std::endl;
-				std::cout << "Light pitch: " << light_source.pitch << std::endl;
-				std::cout << "Light roll: " << light_source.roll << std::endl;
-				std::cout << "Light direction: " << std::endl;
-				light_source.direction.print();
-				std::cout << "Light up: " << std::endl;
-				light_source.up.print();
-				*/
-
-				break;
 				/*
 			case SDL_SCANCODE_Y:
 				std::cout << "View matrix: " << std::endl;

@@ -11,8 +11,16 @@ Scene::Scene(const char* models_folder) {
 	char axes_model_path[255];
 	std::string axes_mesh_name = "axes.obj";
 	sprintf_s(axes_model_path, 255, "%s%s", models_folder, axes_mesh_name.c_str());
-
-	this->axes_mesh = Mesh(axes_model_path, axes_mesh_name.c_str(), this->total_ever_meshes);
+	
+	try {
+		this->axes_mesh = Mesh(axes_model_path, axes_mesh_name.c_str(), this->total_ever_meshes);
+	}
+	catch (...) {
+		this->load_error = SceneError::ModelLoad;
+		this->errored_path = axes_model_path;
+		return;
+	}
+	
 
 	// Create instance if there is none
 	Instance light_instance = Instance(this->total_ever_instances);
@@ -53,7 +61,17 @@ Scene::Scene(const char* models_folder, Orientation rotation_orientation, bool v
 	sprintf_s(light_model_path, 255, "%s%s", models_folder, light_mesh_name.c_str());
 	sprintf_s(cube_model_path, 255, "%s%s", models_folder, cube_mesh_name.c_str());
 
-	Mesh light_mesh = Mesh(light_model_path, light_mesh_name.c_str(), this->total_ever_meshes);
+	Mesh light_mesh = Mesh();
+
+	try {
+		light_mesh = Mesh(light_model_path, light_mesh_name.c_str(), this->total_ever_meshes);
+	}
+	catch (...) {
+		this->load_error = SceneError::ModelLoad;
+		this->errored_path = light_model_path;
+		return;
+	}
+
 	this->total_instances++;
 	this->scene_meshes.push_back(std::move(light_mesh));
 
@@ -83,7 +101,17 @@ Scene::Scene(const char* models_folder, Orientation rotation_orientation, bool v
 	this->scene_instances.push_back(std::move(light_instance));
 	this->total_instances++;
 
-	Mesh cube_mesh = Mesh(cube_model_path, cube_mesh_name.c_str(), this->total_ever_meshes);
+	Mesh cube_mesh = Mesh();
+
+	try {
+		cube_mesh = Mesh(cube_model_path, cube_mesh_name.c_str(), this->total_ever_meshes);
+	}
+	catch (...) {
+		this->load_error = SceneError::ModelLoad;
+		this->errored_path = cube_model_path;
+		return;
+	}
+
 	this->scene_meshes.push_back(std::move(cube_mesh));
 	this->total_meshes++;
 
@@ -155,16 +183,25 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 
 	// Loads default cube scene if could not load the given file
 	if (file.fail()) {
-		printf("Error: Could not open scene file '%s' at path '%s'.\n", scene_filename, scene_filepath);
-		printf("Defaulting to the cube scene.\n");
-		*this = Scene(models_folder, rotation_orientation, verbose);
-		this->load_error = true;
+		//printf("Error: Could not open scene file '%s' at path '%s'.\n", scene_filename, scene_filepath);
+		//printf("Defaulting to the cube scene.\n");
+		*this = Scene(models_folder);
+		this->load_error = SceneError::SceneLoad;
+		this->errored_path = scene_filepath;
 		return;
 		//throw std::runtime_error("Error: Could not load scene.");
 	}
 
 	this->scene_filepath = scene_filepath;
-	this->scene_data = nlohmann::ordered_json::parse(file);
+
+	try {
+		this->scene_data = nlohmann::ordered_json::parse(file);
+	}
+	catch (...) {
+		this->load_error = SceneError::JSONParsing;
+		this->errored_path = this->scene_filepath;
+		return;
+	}
 
 	bool rotation_given = false;
 	bool direction_given = false;
@@ -285,28 +322,28 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		}
 	}
 
-	if (this->scene_data.contains("Background color")) {
-		uint8_t red = this->scene_data["Background color"]["r"].get<uint8_t>();
-		uint8_t green = this->scene_data["Background color"]["g"].get<uint8_t>();
-		uint8_t blue = this->scene_data["Background color"]["b"].get<uint8_t>();
+	if (this->scene_data.contains("bg_color")) {
+		uint8_t red = this->scene_data["bg_color"]["r"].get<uint8_t>();
+		uint8_t green = this->scene_data["bg_color"]["g"].get<uint8_t>();
+		uint8_t blue = this->scene_data["bg_color"]["b"].get<uint8_t>();
 
 		uint32_t BG_COLOR = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 		this->BG_COLOR = BG_COLOR;
 	}
 
-	if (this->scene_data.contains("Line color")) {
-		uint8_t red = this->scene_data["Line color"]["r"].get<uint8_t>();
-		uint8_t green = this->scene_data["Line color"]["g"].get<uint8_t>();
-		uint8_t blue = this->scene_data["Line color"]["b"].get<uint8_t>();
+	if (this->scene_data.contains("line_color")) {
+		uint8_t red = this->scene_data["line_color"]["r"].get<uint8_t>();
+		uint8_t green = this->scene_data["line_color"]["g"].get<uint8_t>();
+		uint8_t blue = this->scene_data["line_color"]["b"].get<uint8_t>();
 
 		uint32_t LINE_COLOR = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 		this->LINE_COLOR = LINE_COLOR;
 	}
 
-	if (this->scene_data.contains("Fill/ambient color")) {
-		uint8_t red = this->scene_data["Fill/ambient color"]["r"].get<uint8_t>();
-		uint8_t green = this->scene_data["Fill/ambient color"]["g"].get<uint8_t>();
-		uint8_t blue = this->scene_data["Fill/ambient color"]["b"].get<uint8_t>();
+	if (this->scene_data.contains("fill_color")) {
+		uint8_t red = this->scene_data["fill_color"]["r"].get<uint8_t>();
+		uint8_t green = this->scene_data["fill_color"]["g"].get<uint8_t>();
+		uint8_t blue = this->scene_data["fill_color"]["b"].get<uint8_t>();
 
 		uint32_t FILL_COLOR = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 		this->FILL_COLOR = FILL_COLOR;
@@ -326,7 +363,16 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 			std::string light_mesh_name = this->scene_data["light"]["model"].get<std::string>();
 			sprintf_s(model_path, 255, "%s%s", models_folder, light_mesh_name.c_str());
 
-			Mesh light_mesh = Mesh(model_path, light_mesh_name.c_str(), this->total_ever_meshes);
+			Mesh light_mesh = Mesh();
+
+			try {
+				light_mesh = Mesh(model_path, light_mesh_name.c_str(), this->total_ever_meshes);
+			}
+			catch (...) {
+				this->load_error = SceneError::ModelLoad;
+				this->errored_path = model_path;
+				return;
+			}
 
 			this->scene_meshes.push_back(std::move(light_mesh));
 			this->total_meshes++;
@@ -494,7 +540,7 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		Quaternion::GetAnglesFromDirection(Orientation::local, this->camera.default_direction, this->camera.direction, this->camera.yaw, this->camera.pitch, this->camera.roll);
 	}
 
-	if (up_given && !rotation_given) {
+	if ((up_given && !rotation_given)) {
 		// Gets roll representing the rotation from the default camera up to the camera up
 		// Assumes default direction of (0, 0, 1)
 		Quaternion::GetRoll(Orientation::local, this->camera.direction, this->camera.up, this->camera.yaw, this->camera.pitch, this->camera.roll);
@@ -526,36 +572,12 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		Quaternion::GetAnglesFromDirection(rotation_orientation, this->light_source.default_direction, this->light_source.direction, this->light_source.yaw, this->light_source.pitch, this->light_source.roll);
 	}
 
-	/*
-	std::cout << "Light source yaw: " << light_source.yaw << std::endl;
-	std::cout << "Light source pitch: " << light_source.pitch << std::endl;
-	std::cout << "Light source roll: " << light_source.roll << std::endl;
-
-	printf("\n");
-	*/
-
-	std::cout << "Roll before GETROLL: " << this->light_source.roll << std::endl;
-
 
 	if (light_up_given && !light_rotation_given) {
 		// Gets roll representing the rotation from the default camera up to the camera up
 		// Assumes default direction of (0, 0, 1)
 		Quaternion::GetRoll(rotation_orientation, this->light_source.direction, this->light_source.up, this->light_source.yaw, this->light_source.pitch, this->light_source.roll);
 	}
-
-	std::cout << "Roll after GETROLL: " << this->light_source.roll << std::endl;
-
-	/*
-	std::cout << "Light source yaw: " << light_source.yaw << std::endl;
-	std::cout << "Light source pitch: " << light_source.pitch << std::endl;
-	std::cout << "Light source roll: " << light_source.roll << std::endl;
-
-	exit(-1);
-	*/
-
-	//this->camera.orientation.GetAngles(this->camera.yaw, this->camera.pitch, this->camera.roll);
-
-
 
 	this->light_source.orientation = Quaternion::FromYawPitchRoll(rotation_orientation, this->light_source.yaw, this->light_source.pitch, this->light_source.roll, default_world_right, default_world_up, default_world_forward);
 
@@ -566,8 +588,6 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		Quaternion::RotatePoint(this->light_source.orientation, this->light_source.direction, false);
 		Quaternion::RotatePoint(this->light_source.orientation, this->light_source.up, false);
 	}
-
-	//light_source.orientation.GetAngles(light_source.yaw, light_source.pitch, light_source.roll);
 
 	if (this->light_source.has_model) {
 		this->light_source.instance->yaw = this->light_source.yaw;
@@ -586,7 +606,17 @@ Scene::Scene(const char* scene_folder, const char* scene_filename, const char* m
 		const char* model_filename = model.key().c_str();
 		char model_path[255];
 		sprintf_s(model_path, 255, "%s%s", models_folder, model_filename);
-		Mesh current_model = Mesh(model_path, model_filename, this->total_ever_meshes);
+		Mesh current_model = Mesh();
+
+		try {
+			current_model = Mesh(model_path, model_filename, this->total_ever_meshes);
+		}
+		catch (...) {
+			this->load_error = SceneError::ModelLoad;
+			this->errored_path = model_path;
+			return;
+		}
+
 		this->scene_meshes.push_back(std::move(current_model));
 		this->total_meshes++;
 
@@ -781,6 +811,7 @@ Scene& Scene::operator=(Scene&& original_scene) noexcept {
 		std::swap(this->axes_mesh, original_scene.axes_mesh);
 
 		std::swap(this->load_error, original_scene.load_error);
+		std::swap(this->errored_path, original_scene.errored_path);
 
 		std::swap(this->BG_COLOR, original_scene.BG_COLOR);
 		std::swap(this->LINE_COLOR, original_scene.LINE_COLOR);
@@ -827,17 +858,17 @@ void Scene::save(const char* scene_folder, const char* scene_filename) const {
 	json_object["camera"]["rotation"]["y"] = this->camera.yaw * (180 / M_PI);
 	json_object["camera"]["rotation"]["z"] = this->camera.roll * (180 / M_PI);
 
-	json_object["Background color"]["r"] = (uint8_t)(this->BG_COLOR >> 24);
-	json_object["Background color"]["g"] = (uint8_t)(this->BG_COLOR >> 16);
-	json_object["Background color"]["b"] = (uint8_t)(this->BG_COLOR >> 8);
+	json_object["bg_color"]["r"] = (uint8_t)(this->BG_COLOR >> 24);
+	json_object["bg_color"]["g"] = (uint8_t)(this->BG_COLOR >> 16);
+	json_object["bg_color"]["b"] = (uint8_t)(this->BG_COLOR >> 8);
 
-	json_object["Line color"]["r"] = (uint8_t)(this->LINE_COLOR >> 24);
-	json_object["Line color"]["g"] = (uint8_t)(this->LINE_COLOR >> 16);
-	json_object["Line color"]["b"] = (uint8_t)(this->LINE_COLOR >> 8);
+	json_object["line_color"]["r"] = (uint8_t)(this->LINE_COLOR >> 24);
+	json_object["line_color"]["g"] = (uint8_t)(this->LINE_COLOR >> 16);
+	json_object["line_color"]["b"] = (uint8_t)(this->LINE_COLOR >> 8);
 
-	json_object["Fill/ambient color"]["r"] = (uint8_t)(this->FILL_COLOR >> 24);
-	json_object["Fill/ambient color"]["g"] = (uint8_t)(this->FILL_COLOR >> 16);
-	json_object["Fill/ambient color"]["b"] = (uint8_t)(this->FILL_COLOR >> 8);
+	json_object["fill_color"]["r"] = (uint8_t)(this->FILL_COLOR >> 24);
+	json_object["fill_color"]["g"] = (uint8_t)(this->FILL_COLOR >> 16);
+	json_object["fill_color"]["b"] = (uint8_t)(this->FILL_COLOR >> 8);
 
 	if (this->light_source.lighting_type == LightType::point) {
 		json_object["light"]["type"] = "point";

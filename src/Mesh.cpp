@@ -262,8 +262,8 @@ Mesh::Mesh(const char* model_path, const char* mesh_filename, uint32_t& total_ev
 		this->mesh_id = total_ever_meshes;
 	}
 	else {
-		printf("Error: Could not open mesh file to load model '%s' at path '%s'.", mesh_filename, model_path);
-		throw std::runtime_error("Error: Could not load model.");
+		printf("Error: Could not open mesh file to load model '%s' at path '%s'. Make sure that the given model folder is correct and the given model file can be found within it!", mesh_filename, model_path);
+		throw std::runtime_error("Error: Could not load model. Make sure that the given model folder is correct and the given model file can be found within it!");
 	}
 
 	/*

@@ -8,6 +8,13 @@
 #include "Camera.h"
 #include "Quaternion.h"
 
+enum SceneError {
+	None,
+	SceneLoad,
+	ModelLoad,
+	JSONParsing
+};
+
 
 class Scene {
 private:
@@ -52,7 +59,8 @@ public:
 	// Rasterization color
 	uint32_t FILL_COLOR = 0x66285CFF;
 
-	bool load_error = false;
+	SceneError load_error = SceneError::None;
+	std::string errored_path = "";
 
 	Scene() {};
 

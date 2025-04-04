@@ -176,10 +176,6 @@ void SceneTab::draw() {
 		load_scene();
 	}
 
-	if (this->current_scene.load_error) {
-		ImGui::TextColored(ImVec4(1.0, 0, 0, 1.0), "Error: Scene file could not be loaded.\nCheck if the given scene folder and filename are set correctly.");
-	}
-
 	ImGui::Separator();
 
 	ImGui::Spacing();
