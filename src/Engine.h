@@ -86,7 +86,7 @@ public:
 
 	static void Euler_GetAnglesFromDirection(const Mat& default_direction_vector, const Mat& direction_vector, double& yaw, double& pitch);
 
-	static void Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll);
+	static void Euler_FromMatrix(const Orientation orientation, const Mat& rotation_matrix, double& yaw, double& pitch, double& roll);
 
 	void close();
 };

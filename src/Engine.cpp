@@ -516,10 +516,12 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 					double distance = normalized_light_source.norm();
 					normalized_light_source /= distance;
 
-					double world_similarity = Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, world_normal);
+					//double world_similarity = Mat::dot(window_manager.general_window.scene_tab.current_scene.light_source.direction, world_normal);
 					//double view_similarity = Mat::dot(normalized_light_source, triangle_normal);
 
-					double similarity = -world_similarity;
+					//double similarity = -world_similarity;
+					double similarity = 0;
+
 
 					// If the triangle faces the light source (and the triangle is not part of the light source model), interpolate the fill color (the default color for all models) with the light source color, proportional to the light intensity for the given triangle
 					if (window_manager.general_window.scene_tab.current_scene.light_source.lighting_type == LightType::point) {
@@ -1996,16 +1998,35 @@ void Engine::Euler_GetAnglesFromDirection(const Mat& default_direction_vector, c
 }
 
 // Sets yaw, pitch, and roll from a rotation matrix
-void Engine::Euler_FromMatrix(const Mat& rotation_matrix, double& yaw, double& pitch, double& roll) {
-	pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
+void Engine::Euler_FromMatrix(const Orientation orientation, const Mat& rotation_matrix, double& yaw, double& pitch, double& roll) {
+	// Intrinsic rotation
+	if (orientation == Orientation::local) {
 
-	if (abs(rotation_matrix.get(2, 3) < 0.9999999)) {
-		yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
-		roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
+		//pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
+		pitch = asin(-rotation_matrix.get(2, 3));
+
+		if (abs(pitch) < 0.9999999) {
+			yaw = atan2(rotation_matrix.get(1, 3), rotation_matrix.get(3, 3));
+			roll = atan2(rotation_matrix.get(2, 1), rotation_matrix.get(2, 2));
+		}
+		else {
+			yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
+			roll = 0;
+		}
 	}
-	else {
-		yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
-		roll = 0;
+
+	// For extrinsic/world orientation, we need to adjust the angles
+	if (orientation == Orientation::world) {
+		//pitch = asin(-Utils::clamp(rotation_matrix.get(2, 3), -1, 1));
+		pitch = asin(rotation_matrix.get(3, 2));
+
+		if (abs(pitch) < 0.9999999) {
+			yaw = atan2(rotation_matrix.get(3, 1), rotation_matrix.get(3, 3));
+		}
+		else {
+			yaw = atan2(-rotation_matrix.get(3, 1), rotation_matrix.get(1, 1));
+			roll = 0;
+		}
 	}
 }
 

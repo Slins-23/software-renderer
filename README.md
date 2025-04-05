@@ -79,21 +79,58 @@ Similarly, you can get the 3-dimensional cross product by calling the `CrossProd
 > Example: `Matrix:CrossProduct3D(v1, v2)`
 
 ## Engine
-The `Engine` class is a singleton which is responsible for handling the setup, SDL for direct rendering (pixel wise through buffers), the drawing routines, as well as some math related functions, event handling, storing and managing the window manager, and cleaning everything. It holds everything together and controls the flow of the program, which is explained further in the [main.cpp](#main-cpp) section.
+The `Engine` class is a singleton which is responsible for handling the setup, SDL for direct rendering (pixel wise through buffers), the drawing routines, as well as some math related functions (such as clipping), event handling, storing and managing the window manager, and cleaning everything. It holds everything together and controls the flow of the program, which is explained further in the [main.cpp](#main-cpp) section.
 
 Its member variables are:
 `window`: A pointer to an `SDL_Window` instance.
 `renderer`: A pointer to an `SDL_Renderer` instance.
 `texture`: A pointer to an `SDL_Texture` instance.
 `event`: An `SDL_Event` instance.
-`buffer`: A pointer to the 32-bit `RGB` pixel buffer array.
+`pixel_buffer`: A pointer to the 32-bit `RGBA` pixel buffer array.
+`depth_buffer`: A pointer to the `double` depth buffer array, which stores the `view space` depth values for each pixel in the scene.
 `CLEAR_COLOR`: The `SDL_RenderClear` color.
 `title`: Title of the window to be rendered.
+> Default is "Renderer"
 `WIDTH`: Width of the window to be rendered.
+> Default is `800`
 `HEIGHT`: Height of the window to be rendered.
+> Default is `600`
 `window_manager`: The window manager.
 
-### Triangle
+The `setup` member function initializes `SDL`, the [Window manager](#window-manager), and `pixel` and `depth` buffers.
+The `handle_events` member function handles the events and is further explained in the [Events](#events) section.
+The `draw` member function starts the drawing process. It resets the pixel and depth buffers, goes through each [Instance](#instance) in the scene, and draws them if they are supposed to be shown, by calling the subsequent functions, starting with the `draw_instance` function for the gien [Instance](#instance). It also draws the transform axes here if the given [Instance](#instance) has one attached to it.
+The `draw_instance` function simply calls the `draw_mesh` function in order to draw the [Mesh](#mesh).
+The `draw_mesh` function gets the [Mesh](#mesh) goes through all of the [Mesh](#mesh)'s faces, gets their indices, normals, and vertices, then calls `draw_quad` if the face is a [Quad](#quad) (has 4 vertices), or `draw_triangle` if the face is a [Triangle](#triangle) (has 3 vertices).
+The `draw_quad` function simply calls `draw_triangle` twice, by splitting the [Quad](#quad) as 2 [Triangle](#triangle)s.
+The `draw_triangle` function handles most of the graphics logic:
+    1. Converts the vertices into `world space`
+    2. Convers them to `view space`
+    3. Clips them against all of the frustum's 6 planes
+    4. Applies the perspective projection transformation
+    5. Performs perspective division
+    6. Performs backface culling
+    7. Handles lighting logic, which is explained in more detail at the [Light](#light) section
+    8. Flips the `x` and `y` coordinates to match SDL's window coordinates
+    9. Transforms the vertices to `screen space`/`framebuffer space`, at which point they can be drawn in window coordinates.
+    10. Any out of bound coordinates get clipped
+    11. If `rasterization` is enabled, the given [triangle](#triangle) is rasterized by calling the `fill_triangle` function.
+    12. If `wireframe` is enabled, the lines between the vertices are drawn by calling the `draw_line` function for each line.
+The `draw_line` function draws a line between two given points (x1, y1) and (x2, y2). If the change in `y` is less than the change in `x`, this means that the slope is between `0` and `1`, making the line more horizontal than vertical. In this scenario, it's easier to iterate over the `y` value because it always gives a point on the line with a distinct `x` value, whereas iterating over `x` could give multiple points that share the same `y` value. On the other hand, if the change in `y` is higher than the change in `x`, this means that the line is more vertical than horizontal, and changing `y` not necessarily results in a point on the line that "sits" on a new `x` value (keep in mind that these values are discrete), so in this case it's better to iterate over the `x` values, which will always give a point at a distinct `y` value. Each of these pixels are colored, and all pixels in between are also colored, taking into account whether `dy` is greater than `dx` or vice-versa.
+> Depth testing is also performed here, if enabled.
+> If the absolute difference between `x1` and `x2` is less than `0.5`, a vertical line is drawn at `x1`, iterating over the pixels from the top (lowest `y` value) to the bottom (highest `y` value).
+
+The `fill_triangle` function is responsible for rasterization:
+    1. Creates and iterates over a bounding box which outlines the given [triangle](#triangle) for each pixel within it.
+    2. Using barycentric coordinates, it is checked whether the pixel is within the [triangle](#triangle)
+    3. If the pixel is within the [triangle](#triangle), depth testing is performed (if enabled), and the pixels are colored accordingly.
+> More information on the lighting calculations can be found in the [light](#light) section.
+> If lighting is disabled, all pixels within a [triangle](#triangle) have the same color (the ambient/fill color, which can be seen/modified in the [scene tab](#scene-tab)).
+
+The `render` function clears the screen, updates the texture with the `pixel_buffer`, then updates the `renderer`, which is subsequently updated by `ImGUI`, and finally updated through `SDL_RenderPresent(renderer)`.
+
+
+## Triangle
 The smallest logical geometric figure is a triangle. A `Triangle` is simply an object that holds 3 vertices, which in this context are 3 `4x1` vectors. (`Mat` instances)
 
 The `4x1` dimension is for, respectively, the `x`, `y`, and `z` 2D/3D space coordinates of the vertex. The `w` 4th dimension is used for storing values before transforms as well as allowing for a 1-step translation through matrix vector multiplication. These are formally called homogeneous coordinates.
@@ -102,7 +139,7 @@ There are 2 ways in which you can instantiate a `Triangle`:
 1. Calling the constructor `Triangle(vertex_a, vertex_b, vertex_c)`, where `vertex_a` is the `Mat` instantiated vector, and so on for the other vertices.<br>
 2. Calling the constructor `Triangles(vertices)`, where `vertices` is an array of `3` vertex (`Mat`) instances (i.e. `const Mat[3] vertices`).
 
-### Quad
+## Quad
 
 The second smallest logical geometric figure is a quad, which is implemented as the struct `Quad`. A `Quad` is a figure which consists of 4 vertices, which can be broken down as 2 triangles (or vice-versa).
 
@@ -112,7 +149,7 @@ There are 4 ways in which you can instantiate a `Quad`:
 3. Calling the constructor `Quad(vertex_a, vertex_b, vertex_c, vertex_d)`, where each one is a vertex `Mat` vector.<br>
 4. Calling the constructor `Quad(vertices)`, where `vertices` is a `Mat` array of size `4`.
 
-### Mesh
+## Mesh
 
 The largest geometric figure is a `Mesh`. It holds information about an arbitrary 3D mesh which can be loaded from an `.obj` file or hardcoded (by, for example, manually defining the vertex array and the face indices).
 A face can be made up of either `3` or `4` vertices, so both triangles and quads are considered faces.
@@ -144,7 +181,7 @@ There are 2 ways in which you should instantiate a `Mesh`:
 	> `model_path` is the relative or absolute path to the `obj` formatted file<br>
 	> `mesh_filename` is the actual mesh's filename, including the extension<br>
 	
-### Instance
+## Instance
 
 An instance is pretty self-explanatory. It is simply an `Instance` of some loaded `Mesh`. This is done so that each rendered object in the scene gets its own parameters independent of any other while also discarding the need to duplicate the same mesh's data over and over when placing the same mesh in distinct settings within the scene.
 > The instances can have any name, but preferably they should be unique.
@@ -175,7 +212,7 @@ Its member variables are the following:<br><br>
 There are so many ways in which you can instantiate an `Instance` (and they are not that much different) that it would be better if you look at the `Instance.h` header yourself. In summary, they revolve around different combinations of the instance's name, `Mesh`, translation, rotation, scaling parameters, and/or their respective transformation matrices.
 > One thing that should almost always should be present in the constructor is the `current_scene.total_ever_instances` in order to create a unique ID for that instance.
 
-### Scene
+## Scene
 > The `Scene` configuration file must be in a valid `json` format and within the given `scene_folder`. The `scene_filename` must be a valid file within the folder as well.<br><br>
 > The `scene_filename` must include the file extension.<br><br>
 > The `scenes_folder` must have a `/` at the end if preferably an `absolute` path. Otherwise you need to figure out the correct file tree for relative indexing.
@@ -214,8 +251,11 @@ Its member variables are:<br><br>
 `scene_data`: The scene `JSON` data will be stored here. This JSON parser is nlohmann's `nlohmann::json`, which is an external library.
 
 `default_world_up`: The vector that represents the default world up axis.
+> Default is (0, 1, 0, 0)
 `default_world_right`: The vector that represents the default world right axis.
+> Default is (1, 0, 0, 0)
 `default_world_forward`: The vector that represents the default world forward axis.
+> Default is (0, 0, 1, 0)
 
 `camera`: An instance of the [Camera](#Camera).<br>
 `light_source`: The scene's light source, which is represented by a [Light](#Light) instance. As of right now, there can only be a single light source in the scene, which is managed through this variable, regardless of whether lighting is enabled for the scene.
@@ -226,8 +266,11 @@ Its member variables are:<br><br>
 > This object is a 3D axes that gets rendered at the same position and orientation as the select model in the scene, so it serves as a reference point to which scene object is selected as well as for the transformations and orientation.
 
 `BG_COLOR`: An hexadecimal value representing the scene's background color.
+> Default is 0x000000FF
 `LINE_COLOR`: An hexadecimal value representing the scene's line drawing color.
+> Default is 0x00FF00FF
 `FILL_COLOR`: An hexadecimal value representing the scene's triangle fill/rasterization color.
+> Default is 0x66285CFF
 
 The `Scene` instances can be saved to and loaded from configuration files in `json` format. This can be done through the `Scene` tab in the menus or programmatically through the `Scene` member functions `save_scene` and `load_scene`, respectively.
 
@@ -417,68 +460,137 @@ The `fill_color` setting controls the color of the triangles/rasterization. (Irr
 
 You can manually create a scene by following this layout, as long as you have the model files and you properly set the models folder. Though it would evidently be tiresome for a large scene.
 
-#### Camera
-You can also give camera information, such as its `position`, and a `direction` vector or a `rotation` amount.
+> The first instance in a scene is always the light source.
 
-If none are given, the camera will start in the default position with the default direction vectors (i.e. no translation and the camera points at the center of the positive z-axis. direction: (0, 0, 1), up: (0, 1, 0))
+## Camera
+The `Camera` is a logical object which stores the camera parameters, transformations, and related functions.
 
-default_direction, default_up, direction, up, default_position, translation
-```
-"camera": {
-	"translation": {
-		"x": -0.5,
-		"y": 0.25,
-		"z": -0.1
-	},
-	"direction": {
-		"x": 3,
-		"y": 2,
-		"z", -2
-	}
-}
-```
+`position`: A `4x1` vector `Mat` instance that stores the position of the camera in `world space`. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th component is always `1` and solely used to simplify matrix operations.<br>
+> Default value is (0, 0, 0, 1)
+`default_position`: The default position before any translation.
+> Default value is (0, 0, 0, 1)
+`direction`: A `4x1` vector `Mat` instance that stores the forward direction of where the camera is pointing. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th dimension is always `0`.<br>
+> Default value is (0, 0, 1, 0)
+`default_direction`:  The default direction before any rotation.
+> Default value is (0, 0, 1, 0)
+`up`: Same as the direction vector, except that it represents the vector orthogonal to the direction vector that points up.
+> Default value is (0, 1, 0, 0)
+`default_up`: The default up vector before any rotation.
+> Default value is (0, 1, 0, 0)
+`default_right`: The default right vector (orthogonal to both direction and up vectors) before any rotation.
+> Default value is (1, 0, 0, 0)
+`orientation`: A `Quaternion` which stores the `orientation` of the camera, which is essentially the accumulated rotation.
+`yaw`: A `double` representing the camera `yaw` in `world space`, as the deviation from the default orientation.<br>
+`pitch`: A `double` representing the camera `pitch` in `world space`, as the deviation from the default orientation.<br>
+`roll`: A `double` representing the camera `roll` in `world space`, as the deviation from the default orientation.<br>
+`VIEW_MATRIX`: A `4x4` matrix `Mat` instance that represents the view matrix. This matrix "converts" the coordinate system from `world space` to `view space` or `camera space`, where objects are seen from the perspective of the camera. It is the opposite of the `MODEL_TO_WORLD` matrix for [instances](#instance).<br>
+`VIEW_INVERSE`: A `4x4` matrix `Mat` instances which stores the inverse of the view matrix. It is used to convert vertices from `view space` to `world space` in the pipeline.
+`PROJECTION_MATRIX`: A `4x4` matrix `Mat` instance that stores the perspective projection.
+`SCALE_MATRIX`: A `4x4` matrix `Mat` instance which is used for converting models from `NDC (Normalized device coordinate) space` into `Screen space`/`Framebuffer space`, which essentially takes the models from 3D space into 2D space window coordinates.
+`AR`: The aspect ratio.
+> It's set to window width / window height. As the default width is `800` and height is `600`, it is `4/3`.
+`near`: The position of the `near` plane relative to the camera.
+> Default is `0.01`
+`far`: The position of the `far` plane relative to the camera.
+> Default is `1000`
+`FOV`: The field of view in degrees.
+> Default is `60`
+`FOVr`: The field of view in radians.
+> `FOVr` is dependent on `FOV`, so it is always re-calculated when `FOV` is updated.
 
-or
+The `Camera` can be instantiated with its default values by ommitting the parameters, or you could pass any or all of `WIDTH` (window width), `HEIGHT` (window height), `near`, `far`, `FOV` in degrees.
 
-```
-"camera": {
-	"translation": {
-		"x": -0.5,
-		"y": 0.25,
-		"z": -0.1
-	},
-	"rotation": {
-		"yaw": 3,
-		"pitch": 2,
-		"roll", -2
-	}
-}
-```
+When the window is resized, the function `update_window_resize` is called in order to update the aspect ratio `AR` and the updates the projection matrix and scale matrix.
 
-`camera_position`: A `4x1` vector `Mat` instance that has the position of the camera in `world space`. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th dimension is always `1` and solely used to simplify matrix operations.<br>
-`camera_direction`: A `4x1` vector `Mat` instance that has the direction (vector) of where the camera is pointing toward. The first 3 components are the `x`, `y`, and `z` coordinates, respectively. The 4th dimension is always `1` and solely used to simplify matrix operations.<br>
-`camera_yaw`: A `double` representing the camera `yaw` in `world space` from the default orientation.<br>
-`camera_pitch`: A `double` representing the camera `pitch` in `world space` from the default orientation.<br>
-`camera_roll`: A `double` representing the camera `roll` in `world space` from the default orientation.<br>
-`VIEW_MATRIX`: A `4x4` matrix `Mat` instance that represents the `view` matrix, which is responsible for dealing with the camera related transformations/movement.<br>
+When parameters used in the projection matrix are updated, the function `update_projection_matrix` is called in order to update it.
 
-#### Light
+Whenever the view matrix is updated, the function `update_view_inverse` is also called in order to update its inverse.
+
+The function `lookat` with no parameters is called in order to update the view matrix whenever there is a change to the camera, namely the position and/or direction vector(s).
+
+If called with the `target_vector` parameter, it updates the view matrix to look at the given target vector.
+
+If called with the `position`, `direction`, and `up` parameters, it returns a view matrix which looks at the `direction` vector, with the given `up` vector, at the given `position`.
+
+If called with the `position`, `direction`, `up`, and `target` parameters, it returns a view matrix which looks at the given `target` vector, at the given `position`, and updates the given `direction` and `up` vectors.
+
+## Light
+
+A `Light` object represents a light source. Currently, every scene always has one unique light source, which can be enabled or disabled.
+
+`lighting_type`: The light source type
+> Default value is `LightType::directional`
+`shading_type`: The shading type
+> Default value is `ShadingType::Flat`
+`position`: A 4x1 vector representing the position of the light source
+> Default value is `(0, 0, 0, 1)`
+`direction`: A 4x1 vector representing the forward axis of the light source
+> Default value is `(0, 0, 1, 0)`
+`up`: A 4x1 vector representing the vertical axis of the light source
+> Default value is `(0, 1, 0, 0)`
+`default_direction`: The light source's forward axis before any rotation.
+`default_up`: The light source's vertical axis before any rotation.
+`default_right`: The light source's horizontal axis before any rotation.
+> Default value is a 3D cross product between the `default_direction` and `default_up`
+`tx`: Translation along the horizontal axis.
+`ty`: Translation along the vertical axis.
+`tz`: Translation along the forward axis.
+`yaw`: Rotation around the vertical axis.
+`pitch`: Rotation around the horizontal axis.
+`roll`: Rotation around the forward axis.
+`orientation`: A `Quaternion` representing the orientation/accumulated rotation of the light source.
+`intensity`: The light source's base light intensity. The higher the brighter the light will be and vice-versa.
+> Default value is `1`
+`minimum_exposure`: The minimum treshold after which the light is considered to not reach the point. If the final intensity value in the pipeline is less than this value, the final color is set to the scene's ambient/fill color.
+> Default values is `0.1`
+`color`: The color emitted by the light source.
+> Default value is `0x66285CFF`
+`enabled`: Whether the light source is enabled.
+> Default value is `true`
+`has_model`: Whether the light source has a 3D model (this can also be used to hide/show the 3D model without disabling the light source).
+> Default value is `false`
+`mesh`: A [Mesh](#mesh) representing the light source.
+> Default value is `nullptr`
+`instance`: An [Instance](#instance) representing the light source. This is a scene object.
+> Default value is `nullptr`
+> If you want a scene object representing the light source, you should click the "Has model" checkbox, then choose/load a [Mesh](#mesh) for the light source.
 
 
+A light source can be of 3 different types: a `directional`, `point`, or `spotlight`. They are defined in the `LightType` enum.
+`LightType::directional`: Only the direction of the light source is taken into account. The position is irrelevant.
+`LightType::point`: Only the position of the light source is taken into account. The direction is irrelevant.
+`LightType::spotlight`: Both the light source position and direction are taken into account. This is not properly implemented, though.
 
-The arguments for `save_scene` (implemented in `Engine.cpp`) are:
-`scenes_folder`: The folder in which the scene `json` formatted configuration file will be stored.<br>
-`scene_filename`: The name of the output `json` formatted configuration file, excluding the extension.<br>
-`models_folder`: The folder used for the models within the scene. (Where they currently are, not where you want them to be)
-`verbose`: 
+The light function is `intensity(similarity, base_intensity, attenuation) = similarity * base_intensity * attenuation`.
+> `similarity`: The angle between the light source and a surface normal.
+> `base_intensity`: A base value for the light intensity, which the user can control through the [light menu](#light-tab).
+> `attenuation`: A function for adjusting light according to the distance between the light source and a vertex.
 
-The arguments for `load_scene` (implemented in `Engine.cpp`) are:
-`scenes_folder`: The folder where the `Scene` `json` formatted configuration file you will be loading is stored at. It can be relative or absolute.<br>
-`scene_filename`: The filename (including the extension) of the `Scene` configuration file, it must be within the `scenes_folder` folder.<br>
-`models_folder`: The folder where the `obj` formatted models are stored, it can be relative or absolute.<br>
-`verbose`:  Useless as of right now, but can be used for omitting informationg when not debugging through the console.<br>
+The attenuation function is `attenuation(distance) = 1 / (distance * distance)`.
+> `distance`: The distance between the light source and the vertex.
 
-### Rotation
+The attenuation function is ignored if the light type is `directional`, as the position of the light source does not influence the light intensity. In this scenario, the `similarity` value is calculated as the angle between light direction and a vertex's `world space` normal.
+
+If it's a `point` light, `similarity` is calculated as the angle between a vertex in `world space` and the vector from the light source to the given triangle.
+
+If it's a `spotlight`, both are calculated and multiplied together.
+
+The color is interpolated between the light color and the ambient light color for the scene, while taking into account the light intensity.
+
+If the final light intensity is below the `minimum_exposure` treshold, which can be controlled through the [light tab](#light-tab), or it does not face the light source, then the color is set to the ambient light for that triangle/vertex/pixel (not the light source's color).
+
+The `world space` normals are calculated with the `Mat` `CrossProduct3D` function, by getting the line vectors for each side of the triangle.
+
+There are 3 different types of shading: `Flat`, `Gouraud`, and `Phong` shading. They are defined in the `ShadingType` enum.
+`ShadingType::Flat`: The simplest, fastest, and least accurate shading. The same color is calculated for the entire triangle, and its `world space` normal is calculated from any of its 3 vertices.
+`ShadingType::Gouraud`: A good shading type, not too slow, but not too accurate. A color is calculated for each vertex separately and interpolated over all pixels within that triangle when rasterizing.
+`ShadingType::Phong`: The most accurate, but also slowest shading type. An interpolated normal is calculated for each vertex separately during mesh loading, interpolated for each pixel, then the color is calculated for that pixel, for all pixels within that triangle.
+
+The normals, pixels, and depth values are interpolated using barycentric coordinates.
+
+A `Light` can be instantiated with no arguments.
+
+## Rotation
 > The rotation parameters (yaw, pitch, roll) are described in degrees in the configuration file, but are converted to radians internally. The reason for this is because degrees are more intuitive for the user interpretation.
 
 The rotations are defined as positive when counter-clockwise, based on a right-handed coordinate system where the positive z axis points outward. However, as the camera by default points at the positive z axis, I decided to define that the camera rotation parameters (i.e. yaw, pitch, roll) all start at 0, as if the camera were pointing at (0, 0, -1) instead of (0, 0, 1). Depending on the interpretation of the coordinate system this shouldn't be the case, as I purposefully flipped the z axis during mesh loading for better intuition, as now positive z coordinates are in front of the camera.
@@ -491,17 +603,86 @@ The rotation order applied is yaw first, then pitch, then roll.
 
 If including both a direction and rotation in the scene file, they should logically match.
 
-### Quaternion
+There are a few implementations for rotation around each axis, as well as rotation matrices, in the [Engine](#engine) class. These are currently unused and legacy as I have since implemented and used [Quaternion](#quaternion) for rotation.
 
-A `Quaternion` instance holds information about a quaternion. Namely, the `x`, `y`, `z`, and `w` coordinates respectively. As of right now, they are used after the `view space` in the pipeline and for retrieving the rotation axis and figuring out `yaw`, `pitch`, and `roll` from direction vectors through its `GetAngles` and `GetRoll` member functions. 
+Rotations can be done with respect to `local` space or `world` space. Every time you see `orientation` in the code or this README, it must be one of `Orientation::local` or `Orientation::world`. `local` orientation has been more extensively tested and seems to work without issues, whereas while `world` orientation works, it might not be as consistent.
 
-A `Quaternion` can be instantiated through an empty constructor `Quaternion()`, in which case the `x`, `y`, and `z` coordinates are `0` and `w` is `1`.
-Or by calling `Quaternion(x, y, z, w)` with the respective coordinate values.
+## Quaternion
+> Some functionalities do not need to be within this class since they are not related to a quaternion at all, but since they represent a rotation and this is an isolated class, it makes sense to leave them here instead of creating a separate file or class for them.
 
-`AngleAxis`
+A `Quaternion` holds information about a quaternion as well as methods related to it. Namely, the `x`, `y`, `z`, and `w` coordinates respectively.
 
+A `Quaternion` with `x`, `y`, and `z` equal to `0` and `w` equal to `1` is known as the identity quaternion, which represents no rotation. These are the default values.
 
-### Windows/tabs
+Quaternions are used for representing orientations and rotations, encapsulating every change to an object's orientation. They are also used for rotating points, optionally around an arbitrary axis and angle measure.
+
+Each quaternion can also be converted into a rotation matrix.
+
+It is also used for deriving the rotation axis between two points, which helps in identifying the difference between two vectors in terms of angles, which is how, for example, given a default vector and a rotated version of that vector, the `yaw`, `pitch`, and `roll` can be extracted from the resulting `Quaternion`'s rotation matrix. This can be done through its static member function `GetAnglesFromDirection`.
+> Example: `Quaternion::GetAnglesFromDirection(Orientation::local, default_vector, rotated_vector, result_yaw, result_pitch, result_roll)`
+
+It can also derive `yaw`, `pitch`, and `roll` from its own rotation matrix through its `GetAngles` member function.
+> Example: `quaternion.GetAngles(Orientation::local, result_yaw, result_pitch, result_roll)`
+
+You can get a given `Quaternion`'s rotation matrix by calling its member function `get_rotationmatrix`. This returns the 4x4 rotation matrix represented by that `Quaternion`.
+> Example: `quaternion.get_rotationmatrix()`
+
+You can get the `Quaternion`'s complex conjugate (essentially its inverse) by calling the member function `get_complexconjugate`.
+> Example: `quaternion.get_complexconjugate()`
+
+You can create a quaternion which represents a rotation around an arbitrary axis and arbitrary angle by calling the static member function `AngleAxis`.
+> Example: `Quaternion::AngleAxis(axis_x, axis_y, axis_z, angle)`
+
+You can create a quaternion from `yaw`, `pitch`, and `roll` angles by calling the static member function `FromYawPitchRoll`.
+> Example: `Quaternion::FromYawPitchRoll(orientation, yaw, pitch, roll, default_x_axis, default_y_axis, default_z_axis)`
+> Note: The "default" axes here are the values for each axis in your coordinate system before any rotation is applied to them.
+> In the code, they are pretty much always the same as the default world space axes.
+> So, usually:
+> `default_x_axis`: (1, 0, 0, 0)
+> `default_y_axis`: (0, 1, 0, 0)
+> `default_z_axis`: (0, 0, 1, 0)
+
+You can rotate points using `Quaternion`s in many ways, but you will need either a point, an axis, and an angle to rotate around, or a `Quaternion` representing the desired rotation and a point to be rotated.
+In order to rotate using an axis and an angle, you can call the one of the static member functions `RotatePoint` with the relevant parameters.
+> Example: `Quaternion::RotatePoint(point, axis, angle, is_position)`
+> `Quaternion::RotatePoint(rotation, point, is_position)`
+> Note: `is_position` should be `false` if the 4th dimension of the resulting vector should be `0` (which is always the case for direction vectors, or `true` otherwise)
+
+You can get the `Quaternion` as a 4-dimensional vector by calling the member function `get_4dvector`.
+> Example: `quaternion.get_4dvector()`
+
+You can also get only the `x`, `y`, and `z` components by calling the member function `get_3dvector`.
+> Example: `quaternion.get_3dvector(is_position)`
+> Note: The 4th component will be `1` if `is_position` is `true` and `0` otherwise.
+
+You can get the angle of rotation around the arbitrary rotation axis by calling the member function `get_angle`.
+> Example: `quaternion.get_angle()`
+
+You can get the norm/magnitude of the quaternion by calling the member function `get_magnitude`.
+> Example: `quaternion.get_magnitude()`
+
+You can normalize the `Quaternion` by making it into a unit quaternion by calling the member function `normalize` (divides all components by the magnitude).
+> Example: `quaternion.normalize()`
+
+`Quaternion`s can be added `+`, subtracted `-`, and multiplied `*` by each other.
+
+A `Quaternion` can be instantiated through an empty constructor `Quaternion()`, in which case the `x`, `y`, and `z` coordinates are `0` and `w` is `1`, which is an identity quaternion.
+
+It can also be instantiated by calling `Quaternion(x, y, z, w)` with the respective values.
+
+## Windows/tabs
+
+#### Window manager
+
+#### Settings tab
+
+#### Scene tab
+
+#### Instances tab
+
+#### Light tab
+
+#### Camera tab
 
 ## Events
 
@@ -523,6 +704,8 @@ You can resize the window by clicking and dragging the edges.
 You can quit by clicking on the `X` button in the GUI.
 
 ## main.cpp
+> The default variables, objects, and values are mostly set through the [Window manager](#window-manager)
+
 
 This is where the `main` function is, and where you use the `Engine` instance in order to control the flow of the program.
 
@@ -557,6 +740,7 @@ The file `Utils.h` contains the implementation of some utility functions.
 > Example: `Utils::clamp(-2, 1, 100)` returns `1`
 
 # Implementation details
+> The default variables, objects, and values are mostly set through the [Window manager](#window-manager)
 
 The renderer uses 4 coordinate systems, of which only the last one is different.
 
@@ -592,7 +776,7 @@ Far plane defaults to `1000` but can be any value.
 
 If drawing the lines between vertices, which can be toggled in the menu `Wireframe` checkbox, or programmatically through the `draw_outline` function parameter, the relevant lines are drawn, with the given `Line color` in the [Scene tab](#scene-tab) or programmatically through the `outline_color` parameter.
 
-If filling/rasterizing triangles, the relevant triangles it is done with the `Fill color` in the [Scene tab](#scene-tab) or programmatically through the `fill_color` parameter. This is where the vertices and triangle coordinates are interpolated, and where the fragment shader/texturing/coloring should be implemented.
+If filling/rasterizing triangles, it uses the `Fill color` in the [Scene tab](#scene-tab) or programmatically through the `fill_color` parameter. This is where the vertices and triangle coordinates are interpolated, and where the fragment shader/texturing/coloring should be implemented.
 
 # Testing
 Testing is implemented with `Catch2`.
@@ -680,3 +864,5 @@ Currently the test covers only most of the `Mat` matrix class and `Util` utility
 - Properly handle the edge case for when vectors are antiparallel (point in opposite directions) within the 3D cross product function
 
 - Have a configuration file generated/updated whenever the user closes the program so that everything doesn't need to be redone on the next run. Also include a "Reset" button on the menu in order to reset the settings to the default settings.
+
+- Add index to README

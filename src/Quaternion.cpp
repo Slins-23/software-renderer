@@ -177,7 +177,7 @@ Mat Quaternion::get_4dvector() const {
 		}
 	, 4, 1);
 
-	return std::move(vector_form);
+	return vector_form;
 }
 
 Mat Quaternion::get_rotationmatrix() const {

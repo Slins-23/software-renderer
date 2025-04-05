@@ -115,54 +115,19 @@ public:
 		initialize(WIDTH, HEIGHT, near, far, FOV_degrees);
 	}
 
-	void initialize(double WIDTH = 800, double HEIGHT = 600, double near = 0.01, double far = 1000, double FOV_degrees = 60) {
-		this->near = near;
-		this->far = far;
-		this->FOV = FOV_degrees;
-		this->FOVr = FOV_degrees * (M_PI / 180);
+	void initialize(double WIDTH = 800, double HEIGHT = 600, double near = 0.01, double far = 1000, double FOV_degrees = 60);
 
-		update_window_resized(WIDTH, HEIGHT);
-	}
+	void update_window_resized(double WIDTH = 800, double HEIGHT = 600);
 
-	void update_window_resized(double WIDTH = 800, double HEIGHT = 600) {
-		this->AR = (double)WIDTH / (double)HEIGHT;
-
-		this->PROJECTION_MATRIX = Mat(
-			{
-				{(1 / (tan(FOVr / 2))), 0, 0, 0},
-				{0, AR * (1 / (tan(FOVr / 2))), 0, 0},
-				{0, 0, far / (far - near), (far * -near) / (far - near)},
-				{0, 0, 1, 0}
-			}
-		, 4, 4);
-
-		this->SCALE_MATRIX = Mat(
-			{
-				{WIDTH / 2., 0, 0, WIDTH / 2.},
-				{0, HEIGHT / 2., 0, HEIGHT / 2.},
-				{0, 0, 1, 0},
-				{0, 0, 0, 1}
-			}, 4, 4);
-	}
-
-	void update_projection_matrix() {
-		this->PROJECTION_MATRIX = Mat(
-			{
-				{(1 / (tan(this->FOVr / 2))), 0, 0, 0},
-				{0, this->AR * (1 / (tan(this->FOVr / 2))), 0, 0},
-				{0, 0, this->far / (this->far - this->near), (this->far * -this->near) / (this->far - this->near)},
-				{0, 0, 1, 0}
-			}
-		, 4, 4);
-	}
+	void update_projection_matrix();
 
 	void update_view_inverse();
 
 	void LookAt();
 	void LookAt(const Mat& target_vector);
 
-	static Mat LookAt(const Mat& camera_position, const Mat& camera_direction, const Mat& camera_up);
-	static Mat LookAt(const Mat& camera_position, Mat& camera_direction, const Mat& target_vector, Mat& camera_up);
+	static Mat LookAt(const Mat& position, const Mat& direction, const Mat& up);
+	static Mat LookAt(const Mat& position, Mat& direction, const Mat& target_vector, Mat& up);
 
 
 };

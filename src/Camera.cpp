@@ -1,4 +1,44 @@
 #include "Camera.h"
+void Camera::initialize(double WIDTH, double HEIGHT, double near, double far, double FOV_degrees) {
+	this->near = near;
+	this->far = far;
+	this->FOV = FOV_degrees;
+	this->FOVr = FOV_degrees * (M_PI / 180);
+
+	update_window_resized(WIDTH, HEIGHT);
+}
+
+void Camera::update_window_resized(double WIDTH, double HEIGHT) {
+	this->AR = (double)WIDTH / (double)HEIGHT;
+
+	this->PROJECTION_MATRIX = Mat(
+		{
+			{(1 / (tan(FOVr / 2))), 0, 0, 0},
+			{0, AR * (1 / (tan(FOVr / 2))), 0, 0},
+			{0, 0, far / (far - near), (far * -near) / (far - near)},
+			{0, 0, 1, 0}
+		}
+	, 4, 4);
+
+	this->SCALE_MATRIX = Mat(
+		{
+			{WIDTH / 2., 0, 0, WIDTH / 2.},
+			{0, HEIGHT / 2., 0, HEIGHT / 2.},
+			{0, 0, 1, 0},
+			{0, 0, 0, 1}
+		}, 4, 4);
+}
+
+void Camera::update_projection_matrix() {
+	this->PROJECTION_MATRIX = Mat(
+		{
+			{(1 / (tan(this->FOVr / 2))), 0, 0, 0},
+			{0, this->AR * (1 / (tan(this->FOVr / 2))), 0, 0},
+			{0, 0, this->far / (this->far - this->near), (this->far * -this->near) / (this->far - this->near)},
+			{0, 0, 1, 0}
+		}
+	, 4, 4);
+}
 
 /// <summary>
 /// Updates the view matrix to look at the current camera direction vector in the current camera position, with the current camera up vector.
@@ -6,10 +46,10 @@
 void Camera::LookAt() {
 
 	// Setting 4th dimension to 0 for dot product
-	Mat camera_position = this->position;
-	camera_position.set(0, 4, 1);
+	Mat position = this->position;
+	position.set(0, 4, 1);
 
-	Mat cam_z_axis = ((this->direction + camera_position) - camera_position);
+	Mat cam_z_axis = ((this->direction + position) - position);
 	cam_z_axis.set(0, 4, 1);
 	Mat cam_x_axis = Mat::CrossProduct3D(this->up, cam_z_axis);
 	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
@@ -28,9 +68,9 @@ void Camera::LookAt() {
 	this->VIEW_MATRIX.set(cam_z_axis.get(2, 1), 3, 2);
 	this->VIEW_MATRIX.set(cam_z_axis.get(3, 1), 3, 3);
 
-	this->VIEW_MATRIX.set(-Mat::dot(cam_x_axis, camera_position), 1, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_y_axis, camera_position), 2, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_z_axis, camera_position), 3, 4);
+	this->VIEW_MATRIX.set(-Mat::dot(cam_x_axis, position), 1, 4);
+	this->VIEW_MATRIX.set(-Mat::dot(cam_y_axis, position), 2, 4);
+	this->VIEW_MATRIX.set(-Mat::dot(cam_z_axis, position), 3, 4);
 
 	this->VIEW_MATRIX.set(0, 4, 1);
 	this->VIEW_MATRIX.set(0, 4, 2);
@@ -45,13 +85,13 @@ void Camera::LookAt() {
 void Camera::LookAt(const Mat& target_vector) {
 
 	// Setting 4th dimension to 0 for dot product
-	Mat camera_position = this->position;
-	camera_position.set(0, 4, 1);
+	Mat position = this->position;
+	position.set(0, 4, 1);
 
 	Mat tmp_target_vector = target_vector;
 	tmp_target_vector.set(0, 4, 1);
 
-	Mat cam_z_axis = target_vector - camera_position;
+	Mat cam_z_axis = target_vector - position;
 	cam_z_axis.set(0, 4, 1);
 	cam_z_axis.normalize();
 	this->direction = cam_z_axis;
@@ -72,9 +112,9 @@ void Camera::LookAt(const Mat& target_vector) {
 	this->VIEW_MATRIX.set(cam_z_axis.get(2, 1), 3, 2);
 	this->VIEW_MATRIX.set(cam_z_axis.get(3, 1), 3, 3);
 
-	this->VIEW_MATRIX.set(-Mat::dot(cam_x_axis, camera_position), 1, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_y_axis, camera_position), 2, 4);
-	this->VIEW_MATRIX.set(-Mat::dot(cam_z_axis, camera_position), 3, 4);
+	this->VIEW_MATRIX.set(-Mat::dot(cam_x_axis, position), 1, 4);
+	this->VIEW_MATRIX.set(-Mat::dot(cam_y_axis, position), 2, 4);
+	this->VIEW_MATRIX.set(-Mat::dot(cam_z_axis, position), 3, 4);
 
 	this->VIEW_MATRIX.set(0, 4, 1);
 	this->VIEW_MATRIX.set(0, 4, 2);
@@ -85,20 +125,20 @@ void Camera::LookAt(const Mat& target_vector) {
 /// <summary>
 /// Returns a view matrix which looks at the given camera direction vector in the given camera position, with the given camera up vector.
 /// </summary>
-/// <param name="camera_position">Camera position vector</param>
-/// <param name="camera_direction">Camera direction vector</param>
-/// <param name="camera_up">Camera up vector</param>
+/// <param name="position">Camera position vector</param>
+/// <param name="direction">Camera direction vector</param>
+/// <param name="up">Camera up vector</param>
 /// <returns>A 4x4 view matrix looking at the camera direction in the camera position, with the camera up vector.</returns>
-Mat Camera::LookAt(const Mat& camera_position, const Mat& camera_direction, const Mat& camera_up) {
+Mat Camera::LookAt(const Mat& position, const Mat& direction, const Mat& up) {
 
 	// Setting 4th dimension to 0 for dot product
-	Mat tmp_camera_position = camera_position;
+	Mat tmp_camera_position = position;
 	tmp_camera_position.set(0, 4, 1);
 
-	Mat cam_z_axis = ((camera_direction + camera_position) - tmp_camera_position);
+	Mat cam_z_axis = ((direction + position) - tmp_camera_position);
 
 	cam_z_axis.set(0, 4, 1);
-	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
+	Mat cam_x_axis = Mat::CrossProduct3D(up, cam_z_axis);
 	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
 
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
@@ -130,15 +170,15 @@ Mat Camera::LookAt(const Mat& camera_position, const Mat& camera_direction, cons
 /// <summary>
 /// Returns a view matrix which looks at the given target vector, and updates the camera direction and camera up vectors accordingly.
 /// </summary>
-/// <param name="camera_position">Camera position vector</param>
-/// <param name="camera_direction">Camera direction vector</param>
+/// <param name="position">Camera position vector</param>
+/// <param name="direction">Camera direction vector</param>
 /// <param name="target_vector">Vector to look at</param>
-/// <param name="camera_up">Camera up vector</param>
+/// <param name="up">Camera up vector</param>
 /// <returns>A 4x4 view matrix looking at the camera direction in the camera position, with the camera up vector.</returns>
-Mat Camera::LookAt(const Mat& camera_position, Mat& camera_direction, const Mat& target_vector, Mat& camera_up) {
+Mat Camera::LookAt(const Mat& position, Mat& direction, const Mat& target_vector, Mat& up) {
 
 	// Setting 4th dimension to 0 for dot product
-	Mat tmp_camera_position = camera_position;
+	Mat tmp_camera_position = position;
 	tmp_camera_position.set(0, 4, 1);
 	Mat tmp_target_vector = target_vector;
 	tmp_target_vector.set(0, 4, 1);
@@ -147,11 +187,11 @@ Mat Camera::LookAt(const Mat& camera_position, Mat& camera_direction, const Mat&
 
 	cam_z_axis.set(0, 4, 1);
 	cam_z_axis.normalize();
-	camera_direction = cam_z_axis;
+	direction = cam_z_axis;
 
-	Mat cam_x_axis = Mat::CrossProduct3D(camera_up, cam_z_axis);
+	Mat cam_x_axis = Mat::CrossProduct3D(up, cam_z_axis);
 	Mat cam_y_axis = Mat::CrossProduct3D(cam_z_axis, cam_x_axis);
-	camera_up = cam_y_axis;
+	up = cam_y_axis;
 
 	Mat VIEW_MATRIX = Mat::identity_matrix(4);
 
