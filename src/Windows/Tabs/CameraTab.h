@@ -28,5 +28,6 @@ public:
 
 	void UpdateCameraTranslation(bool display_only);
 	void UpdateCameraRotation(uint8_t rotation_type, bool display_only);
+	void ResetCamera();
 	void draw();
 };

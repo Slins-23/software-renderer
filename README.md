@@ -2,7 +2,13 @@
 
 A 3D software renderer implemented from "scratch", on Windows. More specifically everything that is directly related to rendering other than SDL.
 
+**This started as a proof of concept, and as such, intuition is prioritized over performance.**
+
 **Make sure to update the scene folder and models folder in the menu to where you downloaded or intend to store scenes and models. You can also change the default values in `SceneTab.h` and recompile.**
+
+**A transform axis is, by default (can be disabled in the menu), drawn over the selected instance/light source. The mesh for that transform axes is called `axes.obj`. The one I used can be found in this repo's `models` folder. This mesh NEEDS to be in your models folder. You could use another mesh to represent the transform axes, but in that case you would need to rename that mesh to "axes.obj" and place it within your models folder.**
+
+Depth testing and shading is purposefully disabled for the transform axes, so that it can be seen in front of other objects and with a distinct, consistent color.
 
 <h3>Libraries used</h3>
 
@@ -16,8 +22,40 @@ A 3D software renderer implemented from "scratch", on Windows. More specifically
 
 # Examples
 
+# Table of contents
+- [Introduction](#introduction)
+- [Examples](#examples)
+- [Table of contents](#table-of-contents)
+- [Details and how to use](#details-and-how-to-use)
+  - [Matrix](#matrix)
+  - [Engine](#engine)
+  - [Triangle](#triangle)
+  - [Quad](#quad)
+  - [Mesh](#mesh)
+  - [Instance](#instance)
+  - [Scene](#scene)
+  - [Camera](#camera)
+  - [Light](#light)
+  - [Rotation](#rotation)
+  - [Quaternion](#quaternion)
+  - [Windows and tabs (menus)](#windows-and-tabs-menus)
+      - [Window manager](#window-manager)
+    - [Window](#window)
+    - [General window](#general-window)
+      - [Settings tab](#settings-tab)
+      - [Scene tab](#scene-tab)
+        - [Camera tab](#camera-tab)
+        - [Instances tab](#instances-tab)
+        - [Light tab](#light-tab)
+  - [Events](#events)
+  - [main.cpp](#maincpp)
+  - [Utils](#utils)
+  - [Implementation details](#implementation-details)
+- [Testing](#testing)
+- [Notes](#notes)
+- [Todo](#todo)
 
-# Details on implementation and how to use
+# Details and how to use
 
 ## Matrix
 
@@ -170,6 +208,8 @@ Its member variables are the following:<br><br>
 > The `models_folder` must end with a `\`
 
 You are able to get the number of vertices from a `Mesh` by calling the member function `total_vertices`, or `total_faces` in the case of faces.
+
+Only the vertex coordinates and normals are loaded from the model file. If not given, each vertex normal is derived at runtime as the sum of the normals for the faces that share that vertex. This produces incorrect lighting for `Gouraud` and `Phong` shading, so it's preferred to use the included normals. Still, it works fine for non-sharp meshes such as a cube.
 
 There are 2 ways in which you should instantiate a `Mesh`:
 
@@ -597,9 +637,9 @@ The rotations are defined as positive when counter-clockwise, based on a right-h
 
 The rotation order applied is yaw first, then pitch, then roll.
 
-> Yaw: Rotation around the `y` axis
-> Pitch: Rotation around the `x` axis
-> Roll: Rotation around the `z` axis.
+> Yaw: Rotation around the `y` axis. (z-to-x axis)
+> Pitch: Rotation around the `x` axis. (y-to-z axis) 
+> Roll: Rotation around the `z` axis. (x-to-y axis)
 
 If including both a direction and rotation in the scene file, they should logically match.
 
@@ -670,19 +710,104 @@ A `Quaternion` can be instantiated through an empty constructor `Quaternion()`, 
 
 It can also be instantiated by calling `Quaternion(x, y, z, w)` with the respective values.
 
-## Windows/tabs
+## Windows and tabs (menus)
+Most settings are controlled, set by, and retrieved from the menus.
 
 #### Window manager
 
+The `WindowManager` is a singleton which manages all `Window`s. It can, theoretically, hold multiple `Window` instances, and set one target window to be drawn (only one can be drawn at a time) through the `target_window` member variable. It also is responsible for initializing some `ImGUI` related routines and eventually cleaning them.
+
+Since there is only one [window](#window) - the [general window](#general-window) - the `target_window` is always the `general_window`.
+
+### Window
+A `Window` is a class which represents an `ImGUI` window, or tab. It is a base class which gets inherited by every window/tab.
+
+All share 3 variables:
+`window_alpha`: The alpha/opacity/transparency value for the given `Window`.
+`zero`: A constant value of `0`. This is used solely for the minimum value treshold on certain `ImGUI` widgets, as it expects an `lvalue` (pointer).
+`one`: Same as `zero`, except it is a constant value of `1`.
+
+All `Window` objects have a `draw` function. This is the function that gets called for all existing visible `Window`s and tabs, in order to draw them.
+
+### General window
+
+Currently, there is only one `Window` in the program, which is called `GeneralWindow`. Despite that, as mentioned above, tabs within that `Window` also inherit from the `Window` base class despite not actually being windows, since the base functionality is the same.
+
+The `GeneralWindow` is the `Window` in which most variables are stored and shared between the menus/user interface and the other parts of the program.
+
+It has two member variables:
+`settings_tab`: The `SettingsTab`, which is the settings tab and is explained in more detail in the [Settings tab](#settings-tab) section.
+`scene_tab`: The `SceneTab`, which is the scene tab and is explained in more detail in the [Scene tab](#scene-tab) section.
+
+Its `draw` function creates both tabs in the menu and draws them if they are opened (by calling the respective tab(s) `draw` function).
+
+[general window](general_window.png)
+
 #### Settings tab
+The `SettingsTab` is a tab with some settings which are more closely related to the graphics engine as "global" settings than the scene, which is why I separated them.
+
+These are its member variables:
+`wireframe_render`: Enables/disables line drawing between the vertices in a [triangle](#triangle).
+`rasterize`: Whether to rasterize/fill the triangles/pixels with color.
+`shade`: When enabled alongside `rasterize`, rasterization is done by taking into account the user given scene's ambient/fill color and the light and its shading (if enabled as well).
+`depth_test`: Enables/disables depth testing.
+`backface_cull`: Enables/disables backface culling.
+`FPS_LIMIT`: The FPS gets capped (rendering is delayed by the timing difference) if it goes above this value.
+`MSPERFRAME`: Milliseconds that should be taken in order to render 1 frame at the given `FPS_LIMIT`.
+`framerate`: The current framerate (this gets averaged at runtime).
+`fps_update_interval`: How often, in milliseconds, does the `framerate` get averaged and updated.
+`z_fighting_tolerance`: Tolerance value for avoiding z-fighting.
+> Default is `0.994` and from my tests seems to work well.
+`general_window_opacity`: A pointer to the [general window](#general-window)'s opacity in order to be controlled here by the user.
+
+The `draw` function draws all of this data in an accessible way to the user for interpretation and management.
+
+The menus are pretty self-explanatory and some settings have a tooltip if you hover over them, but you can also reference the above description of the member variables for clarification.
 
 #### Scene tab
+The `SceneTab` contains the [scene](#scene) as well as metadata directly related to it. It also contains the [camera tab](#camera-tab), [instances tab](#instances-tab), and [light tab](#light-tab).
 
-#### Instances tab
+Most variables are placeholders for displaying text and controlling certain `ImGUI` behavior.
 
-#### Light tab
+You can create a new blank [scene](#scene) by clicking the "New" button.
+You can choose your scene folder (where your scene configuration file is) and models folder (where the 3D `obj` formatted model files for the given [scene](#scene) are), by clicking the `Browse` buttons next to them.
+You can load a [scene](#scene) within your scene folder by typing its filename into the text box next to the `Load` button, then click it.
+Similarly, you can save the current [scene](#scene) to your scene folder by typing the filename in the textbox then clicking the `Save` button.
 
-#### Camera tab
+The `Background color` picker controls the color of the background.
+The `Line/wireframe color` picker controls the color of the lines drawn.
+The `Fill/ambient color` picker controls the color of the triangles/pixels (irrespective of the light color, this is essentially the object's "real" color).
+
+[scene tab](scene_tab.png)
+
+##### Camera tab
+This tab controls/displays the [camera](#camera) settings. Most of its members are placeholders for displaying things. It also has a pointer to the `SceneTab`, in order to access other settings.
+
+The menu settings are pretty self-explanatory.
+
+[camera tab](camera_tab.png)
+
+##### Instances tab
+This tab controls/displays the [instance](#instance)s in the scene.
+
+You can add a new [instance](#instance) to the [scene](#scene), add a new [mesh](#mesh), and transform any existing [instance](#instance) as you desire. You can, for example, delete instances, make them invisible/visible, translate them, rotate them, scale them, etc.
+
+If you want to modify any [instance](#instance), you first have to select it in the list of instances.
+
+The menu is pretty self-explanaroty here.
+
+If enabled, the transform axes are rendered over the instance in the scene once this tab is opened.
+
+[instance tab 01](instance_tab1.png)
+[instance tab 02](instance_tab2.png)
+
+##### Light tab
+This tab controls/display the [light](#light) settings. Most of its member are placeholders for displaying things. It also has a pointer to the `SceneTab`, in order to access other settings.
+
+If enabled, the transform axes are rendered over the light in the scene once this tab is opened.
+
+[light tab 01](light_tab1.png)
+[light tab 02](light_tab2.png)
 
 ## Events
 
@@ -739,7 +864,7 @@ The file `Utils.h` contains the implementation of some utility functions.
 `clamp`: Clips a value to a given range. If it is smaller than the minimum value in the range, it gets set to that value, and vice-versa if it is higher than the maximum value. Otherwise it doesn't change.
 > Example: `Utils::clamp(-2, 1, 100)` returns `1`
 
-# Implementation details
+## Implementation details
 > The default variables, objects, and values are mostly set through the [Window manager](#window-manager)
 
 The renderer uses 4 coordinate systems, of which only the last one is different.
@@ -791,9 +916,9 @@ Currently the test covers only most of the `Mat` matrix class and `Util` utility
 
 # Notes
 
-# Features
-
 - Window is resizeable and the renderer is updated accordingly
+
+- Models are expected to be right-handed, y-up and positive z toward the viewer (out of the screen/negative coordinates)
 
 # Todo
 
@@ -809,7 +934,7 @@ Currently the test covers only most of the `Mat` matrix class and `Util` utility
 
 - Improve exception handling
 
-- Include sub-meshes found in meshes (`.obj` files can have multiple different parts that make the mesh, for example if modeling a house, you might have separate meshes for the walls called `Wall_0` or `Floor_2` and so on. Should I create sub-meshes for them? Or just ignore them and only load the rendering information?)
+- Include sub-meshes found in meshes (`.obj` files can have multiple different parts that comprise the mesh. For example, if modeling a house, you might have separate meshes for the walls called `Wall_0` or `Floor_2` and so on.)
 
 - Fix spotlight light type behavior
 
@@ -823,19 +948,17 @@ Currently the test covers only most of the `Mat` matrix class and `Util` utility
 
 - Make sure it works cross-platform and create a proper environment for easy setup
 
-- Remove or decrease redundancies
+- Remove and/or decrease redundancies
 
-- Broader testing coverage
+- Broader test coverage
 
 - Optimize and refactor the code in general
 
-- Allow user to see the normals (similar to how it's done with the transform axes)
+- Allow user to visually see the normals on the scene (similar to how it's done with the transform axes)
 
 - Implement SIMD instructions
 
-- Run a performance profile to find and improve the pipeline bottlenecks
-
-- Add option to attach camera to an instance (i.e. to a character or a scene object)
+- Add option to attach the camera to an [instance](#instance) (i.e. to a character or a scene object)
 
 - Implement particles and particle simulation (i.e. water and/or waves simulation, sparks, fire, etc...)
 
@@ -843,26 +966,28 @@ Currently the test covers only most of the `Mat` matrix class and `Util` utility
 
 - Implement multi-threading
 
-- Swap division for multiplication where applicable and intuitive, as it is a less expensive operation
+- Swap division for multiplication where applicable and intuitive, as it is a less expensive operation in terms of clock cycles
 
-- Combine view and perspective projection matrices for less overhead and wherever else possible
+- Combine view and perspective projection matrices for less overhead and wherever possible
 
-- Include and allow user to load/save quaternion into/from scene configuration file
+- Include and allow user to load/save quaternions into/from scene configuration file
 
 - Write a helper function to decompose matrices (i.e. rotation matrix -> yaw, pitch, roll or translation matrix -> tx, ty, tz or view matrix -> everything, etc...)
 
-- Account for non-default default values (i.e. what would be considered the absolute 0) for vectors and other values, and describe their utility.
+- Properly deal with default values different than the default ones. (i.e. axes which don't start at the pre-defined values)
 
-- Unflip the z when loading the meshes an instead set the default camera direction to (0, 0, -1) instead of flipping the z during mesh loading and the default camera direction to (0, 0, 1). This would be more semantically accurate to the coordinate system and possibly avoid confusion if manipulating vertices, but also less intuitive for the users.
-
-- Describe, in this README, the keys for rotating some given mesh instance at runtime
-
-- Fix the lighting implementation as it is not properly implemented currently. Some triangles that shouldn't be visible are, and looking in the opposite camera direction makes models invisible.
-
-- Check that deriving the yaw, pitch, and roll properly work by calling the function `Engine::Euler_GetAnglesFromDirection`
+- Unflip the z when loading the meshes and instead set the default camera direction to (0, 0, -1) instead of flipping the z during mesh loading and the default camera direction to (0, 0, 1). This would be more semantically accurate to the coordinate system and possibly avoid confusion if manipulating vertices, but also less intuitive for the users.
 
 - Properly handle the edge case for when vectors are antiparallel (point in opposite directions) within the 3D cross product function
 
-- Have a configuration file generated/updated whenever the user closes the program so that everything doesn't need to be redone on the next run. Also include a "Reset" button on the menu in order to reset the settings to the default settings.
+- Have a configuration file generated/updated whenever the user closes the program so that everything doesn't need to be re-set on the next run. Also include a "Reset" button on the menu in order to reset the settings to the default settings.
 
-- Add index to README
+- Add a color attribute to each [instance](#instance) so that they can have their individual colors
+
+- Implement a scene graph for attaching multiple instances/meshes to a single instance/mesh (i.e. a character instance may have arms, legs, and so on...). This can be used for grouping instances/meshes into one, and can also be useful for animations.
+
+- Move drawing and graphics related functions to a separate file `Graphics.cpp`?
+
+- Properly track [scene](#scene) metadata such as number of loaded meshes, instances, as well as rendered triangles, lines, etc...
+
+- Camera and world axes are sometimes used interchangeably in the code, but they are different in theory (although not in practice, since the coordinate systems are the same with the default values). I should rename such variables to properly reflect this distinction.

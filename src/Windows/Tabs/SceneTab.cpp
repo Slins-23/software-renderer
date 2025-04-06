@@ -158,7 +158,7 @@ void SceneTab::draw() {
 	ImGui::Checkbox("##load_camera", &this->update_camera_settings);
 	ImGui::SetItemTooltip("Enabled: Camera starts at the camera position and orientation within the file.\nDisabled: Camera starts at the default position and orientation.");
 
-	if (ImGui::Button("New")) {
+	if (ImGui::Button("New scene")) {
 		load_empty_scene();
 	}
 	ImGui::SetItemTooltip("Creates and empty scene.");
@@ -171,7 +171,7 @@ void SceneTab::draw() {
 
 	ImGui::SameLine();
 
-	if (ImGui::Button("Load")) {
+	if (ImGui::Button("Load scene")) {
 		//load_scene(this->scene_folder, this->scene_load_name, this->models_folder, this->update_camera_settings, true);
 		load_scene();
 	}
@@ -186,7 +186,7 @@ void SceneTab::draw() {
 	ImGui::SetItemTooltip("Filename of the scene configuration file. (Including the extension)\nIt will be saved in the given scene folder");
 	ImGui::SameLine();
 
-	if (ImGui::Button("Save")) {
+	if (ImGui::Button("Save scene")) {
 		current_scene.save(this->scene_folder, this->scene_save_name);
 	}
 

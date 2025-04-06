@@ -314,10 +314,16 @@ void LightTab::draw() {
 			for (uint8_t rotation_orientation = 0; rotation_orientation < 2; rotation_orientation++) {
 				Orientation orientation = (Orientation)rotation_orientation;
 
-				const bool is_selected = orientation == rotation_orientation;
+				const bool is_selected = orientation == this->scene_tab->rotation_orientation;
 
 				char label[255] = "";
-				sprintf_s(label, sizeof(label), "##orientation_%d", rotation_orientation);
+
+				if (orientation == Orientation::local) {
+					sprintf_s(label, sizeof(label), "Local##orientation_%d", rotation_orientation);
+				}
+				else if (orientation == Orientation::world) {
+					sprintf_s(label, sizeof(label), "World##orientation_%d", rotation_orientation);
+				}
 
 				if (ImGui::Selectable(label, is_selected)) {
 					switch (orientation) {
@@ -366,6 +372,7 @@ void LightTab::draw() {
 			}
 
 		}
+		ImGui::SetItemTooltip("If enabled, you can choose a mesh to be rendered at the light source position and orientation.");
 		ImGui::SameLine();
 		ImGui::Text("Attach model");
 
@@ -383,7 +390,7 @@ void LightTab::draw() {
 		ImGui::Text("Color");
 
 
-
+		ImGui::PushItemWidth(100);
 		if (ImGui::BeginCombo("##Lighting type", this->current_lighting_type, ImGuiComboFlags_None)) {
 			for (uint8_t lighting_type = 0; lighting_type < sizeof(this->lighting_types) / sizeof(const char*); lighting_type++) {
 
@@ -456,10 +463,12 @@ void LightTab::draw() {
 		ImGui::PushItemWidth(50);
 
 		ImGui::DragScalar("##Intensity", ImGuiDataType_Double, &this->scene_tab->current_scene.light_source.intensity, 0.005, &zero, nullptr, "%.3lf", ImGuiSliderFlags_None);
+		ImGui::SetItemTooltip("The light intensity, the higher the brighter it is and vice-versa.");
 		ImGui::SameLine();
 		ImGui::Text("Intensity");
 
 		ImGui::DragScalar("##Minimum exposure", ImGuiDataType_Double, &this->scene_tab->current_scene.light_source.minimum_exposure, 0.005, &zero, &one, "%.3lf", ImGuiSliderFlags_None);
+		ImGui::SetItemTooltip("If the final light intensity (within the program) is lower than this\nSets the triangle/vertex/pixel color to the scene's ambient/fill color.\nThis is essentially the 'minimum' color treshold so that it isn't invisible.");
 		ImGui::SameLine();
 		ImGui::Text("Minimum exposure");
 

@@ -187,9 +187,51 @@ void CameraTab::UpdateCameraRotation(uint8_t rotation_type, bool display_only) {
 	this->scene_tab->current_scene.camera.update_view_inverse();
 }
 
+void CameraTab::ResetCamera() {
+	this->scene_tab->current_scene.camera.direction = this->scene_tab->current_scene.camera.default_direction;
+	this->scene_tab->current_scene.camera.up = this->scene_tab->current_scene.camera.default_up;
+	this->scene_tab->current_scene.camera.position = this->scene_tab->current_scene.camera.default_position;
+
+	this->scene_tab->current_scene.camera.orientation = Quaternion();
+	this->scene_tab->current_scene.camera.near = 0.01;
+	this->scene_tab->current_scene.camera.far = 1000.0;
+	this->scene_tab->current_scene.camera.FOV = 60;
+	this->scene_tab->current_scene.camera.FOVr = this->scene_tab->current_scene.camera.FOV * (M_PI / 180);
+	this->scene_tab->current_scene.camera.update_window_resized();
+	this->scene_tab->current_scene.camera.LookAt();
+	this->scene_tab->current_scene.camera.update_view_inverse();
+
+	this->camera_display_dir_x = this->scene_tab->current_scene.camera.default_direction.get(1, 1);
+	this->camera_display_dir_y = this->scene_tab->current_scene.camera.default_direction.get(2, 1);
+	this->camera_display_dir_z = this->scene_tab->current_scene.camera.default_direction.get(3, 1);
+
+	this->camera_display_up_x = this->scene_tab->current_scene.camera.default_up.get(1, 1);
+	this->camera_display_up_y = this->scene_tab->current_scene.camera.default_up.get(2, 1);
+	this->camera_display_up_z = this->scene_tab->current_scene.camera.default_up.get(3, 1);
+
+	this->camera_display_tx = 0;
+	this->camera_display_ty = 0;
+	this->camera_display_tz = 0;
+
+	this->camera_display_qx = 0;
+	this->camera_display_qy = 0;
+	this->camera_display_qz = 0;
+	this->camera_display_qw = 1;
+
+	this->scene_tab->current_scene.camera.yaw = 0;
+	this->scene_tab->current_scene.camera.pitch = 0;
+	this->scene_tab->current_scene.camera.roll = 0;
+}
+
 void CameraTab::draw() {
 
 	ImGui::PushItemWidth(60);
+
+	if (ImGui::Button("Reset")) {
+		ResetCamera();
+	}
+
+	ImGui::SetItemTooltip("Resets the camera to its default settings.");
 
 	ImGui::DragScalar("##CTranslation speed (keyboard)", ImGuiDataType_Double, &this->scene_tab->real_translation_speed, 0.005, &zero, nullptr, "%.4f",
 		ImGuiSliderFlags_None);
