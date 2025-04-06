@@ -731,6 +731,8 @@ All `Window` objects have a `draw` function. This is the function that gets call
 
 ### General window
 
+![general_window](https://github.com/user-attachments/assets/d42a79bb-3911-4367-a7bc-b343cf6107ab)
+
 Currently, there is only one `Window` in the program, which is called `GeneralWindow`. Despite that, as mentioned above, tabs within that `Window` also inherit from the `Window` base class despite not actually being windows, since the base functionality is the same.
 
 The `GeneralWindow` is the `Window` in which most variables are stored and shared between the menus/user interface and the other parts of the program.
@@ -741,9 +743,11 @@ It has two member variables:
 
 Its `draw` function creates both tabs in the menu and draws them if they are opened (by calling the respective tab(s) `draw` function).
 
-[general window](general_window.png)
+
 
 #### Settings tab
+![settings_tab](https://github.com/user-attachments/assets/609caf0b-f731-44c6-a1af-a2da163c52dd)
+
 The `SettingsTab` is a tab with some settings which are more closely related to the graphics engine as "global" settings than the scene, which is why I separated them.
 
 These are its member variables:
@@ -765,6 +769,8 @@ The `draw` function draws all of this data in an accessible way to the user for 
 The menus are pretty self-explanatory and some settings have a tooltip if you hover over them, but you can also reference the above description of the member variables for clarification.
 
 #### Scene tab
+![scene_tab](https://github.com/user-attachments/assets/1dc308b1-4896-4d62-9be9-322c8ded0001)
+
 The `SceneTab` contains the [scene](#scene) as well as metadata directly related to it. It also contains the [camera tab](#camera-tab), [instances tab](#instances-tab), and [light tab](#light-tab).
 
 Most variables are placeholders for displaying text and controlling certain `ImGUI` behavior.
@@ -778,16 +784,21 @@ The `Background color` picker controls the color of the background.
 The `Line/wireframe color` picker controls the color of the lines drawn.
 The `Fill/ambient color` picker controls the color of the triangles/pixels (irrespective of the light color, this is essentially the object's "real" color).
 
-[scene tab](scene_tab.png)
+
 
 ##### Camera tab
+![camera_tab](https://github.com/user-attachments/assets/397ac8a2-c057-4c4b-b70c-f42212eaac8b)
+
 This tab controls/displays the [camera](#camera) settings. Most of its members are placeholders for displaying things. It also has a pointer to the `SceneTab`, in order to access other settings.
 
 The menu settings are pretty self-explanatory.
 
-[camera tab](camera_tab.png)
-
 ##### Instances tab
+![instances_tab1](https://github.com/user-attachments/assets/7fd506c7-bffd-4116-add3-c0498550f2ea)
+
+![instances_tab2](https://github.com/user-attachments/assets/8385545a-1efa-4161-bda4-e07451d56b56)
+
+
 This tab controls/displays the [instance](#instance)s in the scene.
 
 You can add a new [instance](#instance) to the [scene](#scene), add a new [mesh](#mesh), and transform any existing [instance](#instance) as you desire. You can, for example, delete instances, make them invisible/visible, translate them, rotate them, scale them, etc.
@@ -798,16 +809,15 @@ The menu is pretty self-explanaroty here.
 
 If enabled, the transform axes are rendered over the instance in the scene once this tab is opened.
 
-[instance tab 01](instance_tab1.png)
-[instance tab 02](instance_tab2.png)
-
 ##### Light tab
+
+![light_tab1](https://github.com/user-attachments/assets/520d15a1-a86f-4952-996c-f09fa16c1989)
+
+![light_tab2](https://github.com/user-attachments/assets/3b04dabc-b4ec-45ed-93d9-9e9c82039653)
+
 This tab controls/display the [light](#light) settings. Most of its member are placeholders for displaying things. It also has a pointer to the `SceneTab`, in order to access other settings.
 
 If enabled, the transform axes are rendered over the light in the scene once this tab is opened.
-
-[light tab 01](light_tab1.png)
-[light tab 02](light_tab2.png)
 
 ## Events
 
