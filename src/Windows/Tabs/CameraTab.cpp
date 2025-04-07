@@ -197,7 +197,7 @@ void CameraTab::ResetCamera() {
 	this->scene_tab->current_scene.camera.far = 1000.0;
 	this->scene_tab->current_scene.camera.FOV = 60;
 	this->scene_tab->current_scene.camera.FOVr = this->scene_tab->current_scene.camera.FOV * (M_PI / 180);
-	this->scene_tab->current_scene.camera.update_window_resized();
+	this->scene_tab->current_scene.camera.update_window_resized(*this->scene_tab->WIDTH, *this->scene_tab->HEIGHT);
 	this->scene_tab->current_scene.camera.LookAt();
 	this->scene_tab->current_scene.camera.update_view_inverse();
 

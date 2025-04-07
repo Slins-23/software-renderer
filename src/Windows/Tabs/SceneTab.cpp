@@ -119,6 +119,14 @@ void SceneTab::load_scene() {
 }
 
 void SceneTab::load_empty_scene() {
+	double old_AR = this->current_scene.camera.AR;
+	double old_near = this->current_scene.camera.near;
+	double old_far = this->current_scene.camera.far;
+	double old_FOV = this->current_scene.camera.FOV;
+	double old_FOVr = this->current_scene.camera.FOVr;
+	Mat old_PROJECTION_MATRIX = this->current_scene.camera.PROJECTION_MATRIX;
+	Mat old_SCALE_MATRIX = this->current_scene.camera.SCALE_MATRIX;
+
 	delete light_tab;
 	delete instances_tab;
 	delete camera_tab;
@@ -139,6 +147,14 @@ void SceneTab::load_empty_scene() {
 	this->display_FILL_COLOR[1] = static_cast<float>(((this->current_scene.FILL_COLOR >> 16) & 0x000000FF) / 255.0);
 	this->display_FILL_COLOR[2] = static_cast<float>(((this->current_scene.FILL_COLOR >> 8) & 0x000000FF) / 255.0);
 	this->display_FILL_COLOR[3] = static_cast<float>((this->current_scene.FILL_COLOR & 0x000000FF) / 255.0);
+
+	this->current_scene.camera.AR = old_AR;
+	this->current_scene.camera.near = old_near;
+	this->current_scene.camera.far = old_far;
+	this->current_scene.camera.FOV = old_FOV;
+	this->current_scene.camera.FOVr = old_FOVr;
+	this->current_scene.camera.PROJECTION_MATRIX = old_PROJECTION_MATRIX;
+	this->current_scene.camera.SCALE_MATRIX = old_SCALE_MATRIX;
 
 	camera_tab = new CameraTab(this);
 	instances_tab = new InstancesTab(this);

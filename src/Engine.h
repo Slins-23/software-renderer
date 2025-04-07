@@ -27,7 +27,7 @@ public:
 	uint16_t WIDTH = 800;
 	uint16_t HEIGHT = 600;
 
-	WindowManager window_manager;
+	WindowManager window_manager = WindowManager(&WIDTH, &HEIGHT);
 	
 	bool setup();
 	bool handle_events();

@@ -677,7 +677,7 @@ void InstancesTab::draw() {
 				std::cout << "No mesh was chosen. The instance will be added but not rendered, since there is no mesh." << std::endl;
 			}
 
-			if (this->chosen_instance_name != "") {
+			if (this->target_instance->instance_name != "") {
 				this->chosen_instance_name = this->target_instance->instance_name;
 			}
 			else {

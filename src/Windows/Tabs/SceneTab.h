@@ -49,6 +49,9 @@ public:
 	InstancesTab* instances_tab = nullptr;
 	LightTab* light_tab = nullptr;
 
+	uint16_t* WIDTH = nullptr;
+	uint16_t* HEIGHT = nullptr;
+
 	float display_BG_COLOR[4] = { static_cast<float>(((this->current_scene.BG_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.BG_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.BG_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((this->current_scene.BG_COLOR & 0x000000FF) / 255.0) };
 
 	float display_LINE_COLOR[4] = { static_cast<float>(((this->current_scene.LINE_COLOR >> 24) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.LINE_COLOR >> 16) & 0x000000FF) / 255.0), static_cast<float>(((this->current_scene.LINE_COLOR >> 8) & 0x000000FF) / 255.0), static_cast<float>((this->current_scene.LINE_COLOR & 0x000000FF) / 255.0) };

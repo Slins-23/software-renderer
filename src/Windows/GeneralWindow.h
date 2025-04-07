@@ -8,6 +8,9 @@ public:
 	SettingsTab settings_tab = SettingsTab(&this->window_alpha);
 	SceneTab scene_tab;
 
+	uint16_t* WIDTH = nullptr;
+	uint16_t* HEIGHT = nullptr;
+
 	GeneralWindow() {};
 
 	void draw() {

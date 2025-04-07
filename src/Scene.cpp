@@ -920,9 +920,6 @@ void Scene::save(const char* scene_folder, const char* scene_filename) const {
 
 		std::string mesh_filename = instance->mesh->mesh_filename;
 
-		// Ignore if instance represents light source
-		if (mesh_filename == this->light_source.mesh->mesh_filename) continue;
-
 		bool model_already_included = false;
 		for (size_t model_n = 0; model_n < models.size(); model_n++) {
 			std::string model_string = models[model_n];
@@ -945,6 +942,9 @@ void Scene::save(const char* scene_folder, const char* scene_filename) const {
 		std::vector<std::string> instance_ids;
 		for (size_t n_instance = 0; n_instance < this->total_instances; n_instance++) {
 			const Instance* instance = &this->scene_instances[n_instance];
+
+			if (instance->is_light_source) continue;
+
 			std::string mesh_filename = instance->mesh->mesh_filename;
 
 			if (mesh_filename == *model) {
