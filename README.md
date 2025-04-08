@@ -2,9 +2,9 @@
 
 A 3D software renderer implemented from "scratch", on Windows. More specifically everything that is directly related to rendering other than SDL.
 
-**This started as a proof of concept, and as such, intuition is prioritized over performance.**
-
-**Make sure to update the [scene](#scene) folder and models folder in the menu to where you downloaded or intend to store [scenes](#scene) and models. You can also change the default values in `SceneTab.h` and recompile.**
+**This started as a proof of concept, without me copying standard implementations/algorithms/functions, and intuition was prioritized over performance. As a byproduct of this, the renderer only works smoothly with very low polygon counts, which is also why `Flat` shading is the default option for [light](#light) shading over `Gouraud` and `Phong` shading, otherwise you often would be unable to do anything due to extremely low FPS. You can change the shading type in the [light tab](#light-tab). You can also try making the window smaller by resizing it.**
+ 
+**Make sure to update the [scene](#scene) folder and models folder in the menu to where you downloaded or intend to store [scenes](#scene) and models. You can see an example video on how it's done at the section [Updating scene and model folders](#updating-scene-and-model-folders). You can also change the default values in `SceneTab.h` and recompile.**
 
 **A transform axis is, by default (can be disabled in the menu), drawn over the selected [instance](#instance)/[light source](#light). The [mesh](#mesh) for that transform axes is called `axes.obj`. The one I used can be found in this repo's `models` folder. This [mesh](#mesh) NEEDS to be in your models folder. You could use another [mesh](#mesh) to represent the transform axes, but in that case you would need to rename that [mesh](#mesh) to "axes.obj" and place it within your models folder.**
 
@@ -21,11 +21,67 @@ Depth testing and shading is purposefully disabled for the transform axes, so th
 | Nativefiledialog   |   116   |   Windows file dialogs        | https://github.com/mlabbe/nativefiledialog/releases/tag/release_116      |
 
 # Examples
+> The videos are sped up and the quality is not the best due to GitHub's 10MB file limit.
+
+## Lighting
+
+https://github.com/user-attachments/assets/1a2aa3cd-cffe-4fa4-a9d4-34ec3d63f956
+
+## Camera
+
+https://github.com/user-attachments/assets/1cf5010c-1034-43ce-8cc9-aba36a9f05d8
+
+## Scene editing
+
+https://github.com/user-attachments/assets/57838ede-8113-4c9c-af6e-c8be609580ee
+
+## Scene loading
+
+https://github.com/user-attachments/assets/5a662674-1898-435d-b98c-8c73a31e21eb
+
+## Creating a scene within the renderer
+
+
+**<h2>Part 1/2</h2>**
+
+https://github.com/user-attachments/assets/04061dc5-9c95-4505-b231-3657f18fe05b
+
+
+**<h2>Part 2/2</h2>**
+
+https://github.com/user-attachments/assets/140846a2-51cc-425f-bf6f-501e04a37186
+
+
+## Creating a scene from a json file
+
+
+https://github.com/user-attachments/assets/7de72ded-9071-476d-9c69-95ff55d56355
+
+
+## Updating scene and model folders
+
+https://github.com/user-attachments/assets/52bd4d7a-54f3-4973-93e8-652a013050ef
+
+
+## Creating a blank scene
+
+https://github.com/user-attachments/assets/b991f7ed-b429-4ce4-8438-995679e479a0
+
+
+> On the showcases which [instances](#instance) are added to the [scene](#scene), sometimes the names in the [instance](#instance) list were not correct, but this has been fixed. More specifically, the name on the list should be the name you gave it in the "instance name" text box, whereas if it was empty, its name should become `mesh_id`, where "mesh" is the name of its mesh, and `id` is the [instance's](#instance) id. This has been corrected, and it is the case now.
+
 
 # Table of contents
 - [Introduction](#introduction)
 - [Examples](#examples)
-- [Table of contents](#table-of-contents)
+  - [Lighting](#lighting)
+  - [Camera](#camera)
+  - [Scene editing](#scene-editing)
+  - [Scene loading](#scene-loading)
+  - [Creating a scene within the renderer](#creating-a-scene-within-the-renderer)
+  - [Creating a scene from a json file](#creating-a-scene-from-a-json-file)
+  - [Updating scene and model folders](#updating-scene-and-model-folders)
+  - [Creating a blank scene](#creating-a-blank-scene) 
 - [Matrix](#matrix)
 - [Engine](#engine)
 - [Triangle](#triangle)
@@ -779,7 +835,7 @@ All [`Window`](#window) objects have a `draw` function. This is the function tha
 
 ## General window
 
-![general_window](https://github.com/user-attachments/assets/d42a79bb-3911-4367-a7bc-b343cf6107ab)
+![general_window](https://github.com/user-attachments/assets/b3640816-7d28-4dcd-b54b-3bf023ee7b0d)
 
 Currently, there is only one [`Window`](#window) in the program, which is called [`GeneralWindow`](#general-window). Despite that, as mentioned above, tabs within that [`Window`](#window) also inherit from the [`Window`](#window) base class despite not actually being windows, since the base functionality is the same.
 
@@ -794,6 +850,7 @@ Its `draw` function creates both tabs in the menu and draws them if they are ope
 It can be initialized with no arguments.
 
 ### Settings tab
+
 ![settings_tab](https://github.com/user-attachments/assets/609caf0b-f731-44c6-a1af-a2da163c52dd)
 
 The [`SettingsTab`](#settings-tab) is a tab with some settings that are more closely related to the graphics engine as "global" settings than the [scene](#scene), which is why I separated them.
@@ -858,7 +915,8 @@ The `Fill/ambient color` picker controls the color of the [triangles](#triangle)
 The [scene](#scene) tab can be initialized with no parameters, and it initializes on its own the [camera tab](#camera-tab), [instances tab](#instances-tab) and [light tab](#light-tab).
 
 #### Camera tab
-![camera_tab](https://github.com/user-attachments/assets/397ac8a2-c057-4c4b-b70c-f42212eaac8b)
+
+![camera_tab](https://github.com/user-attachments/assets/eec5179d-daf0-42cb-924e-835ae7e8d63f)
 
 This tab controls/displays the [camera](#camera) settings. Most of its members are placeholders for displaying things. It also has a pointer to the [`SceneTab`](#scene-tab), in order to access other settings.
 
@@ -867,10 +925,10 @@ The menu settings are pretty self-explanatory.
 It can be initialized by passing the [scene tab](#scene-tab) pointer.
 
 #### Instances tab
-![instances_tab1](https://github.com/user-attachments/assets/7fd506c7-bffd-4116-add3-c0498550f2ea)
 
-![instances_tab2](https://github.com/user-attachments/assets/8385545a-1efa-4161-bda4-e07451d56b56)
+![instances_tab1](https://github.com/user-attachments/assets/e64f2639-27b6-40ed-b141-b420e44284db)
 
+![instances_tab2](https://github.com/user-attachments/assets/2aaa7f9b-16b5-4a72-a425-ade157107238)
 
 This tab controls/displays the [instances](#instance) in the scene.
 
@@ -884,9 +942,9 @@ If enabled, the transform axes are rendered over the [instance](#instance) in th
 
 #### Light tab
 
-![light_tab1](https://github.com/user-attachments/assets/520d15a1-a86f-4952-996c-f09fa16c1989)
+![light_tab1](https://github.com/user-attachments/assets/2471aef9-aae8-4c89-8847-eaa52a876563)
 
-![light_tab2](https://github.com/user-attachments/assets/3b04dabc-b4ec-45ed-93d9-9e9c82039653)
+![light_tab2](https://github.com/user-attachments/assets/b20e4998-4809-4506-876d-ebb12034cb2c)
 
 This tab controls/displays the [light](#light) settings. Most of its member variables are placeholders for displaying things. It also has a pointer to the [`SceneTab`](#scene-tab), in order to access other settings.
 
