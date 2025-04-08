@@ -2,8 +2,8 @@
 
 A 3D software renderer implemented from "scratch", on Windows. More specifically everything that is directly related to rendering other than SDL.
 
-**This started as a proof of concept, and as such, intuition is prioritized over performance.**
-
+**This started as a proof of concept, without me copying standard implementations/algorithms/functions, and intuition was prioritized over performance. As a byproduct of this, the renderer only works smoothly with very low polygon counts, which is also why `Flat` shading is the default option for [light](#light) shading over `Gouraud` and `Phong` shading, otherwise you often would be unable to do anything due to extremely low FPS. You can change the shading type in the [light tab](#light-tab). You can also try making the window smaller by resizing it.**
+ 
 **Make sure to update the [scene](#scene) folder and models folder in the menu to where you downloaded or intend to store [scenes](#scene) and models. You can also change the default values in `SceneTab.h` and recompile.**
 
 **A transform axis is, by default (can be disabled in the menu), drawn over the selected [instance](#instance)/[light source](#light). The [mesh](#mesh) for that transform axes is called `axes.obj`. The one I used can be found in this repo's `models` folder. This [mesh](#mesh) NEEDS to be in your models folder. You could use another [mesh](#mesh) to represent the transform axes, but in that case you would need to rename that [mesh](#mesh) to "axes.obj" and place it within your models folder.**
@@ -21,6 +21,10 @@ Depth testing and shading is purposefully disabled for the transform axes, so th
 | Nativefiledialog   |   116   |   Windows file dialogs        | https://github.com/mlabbe/nativefiledialog/releases/tag/release_116      |
 
 # Examples
+> The videos are sped up and the quality is not the best due to GitHub's 10MB file limit.
+
+> On the showcases which [instances](#instance) are added to the [scene](#scene), sometimes the names in the [instance](#instance) list were not correct, but this has been fixed. More specifically, the name on the list should be the name you gave it in the "instance name" text box, whereas if it was empty, its name should become `mesh_id`, where "mesh" is the name of its mesh, and `id` is the [instance's](#instance) id. This has been corrected, and it is the case now.
+
 
 # Table of contents
 - [Introduction](#introduction)
