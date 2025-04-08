@@ -835,7 +835,7 @@ All [`Window`](#window) objects have a `draw` function. This is the function tha
 
 ## General window
 
-![general_window](https://github.com/user-attachments/assets/d42a79bb-3911-4367-a7bc-b343cf6107ab)
+![general_window](https://github.com/user-attachments/assets/b3640816-7d28-4dcd-b54b-3bf023ee7b0d)
 
 Currently, there is only one [`Window`](#window) in the program, which is called [`GeneralWindow`](#general-window). Despite that, as mentioned above, tabs within that [`Window`](#window) also inherit from the [`Window`](#window) base class despite not actually being windows, since the base functionality is the same.
 
@@ -850,6 +850,7 @@ Its `draw` function creates both tabs in the menu and draws them if they are ope
 It can be initialized with no arguments.
 
 ### Settings tab
+
 ![settings_tab](https://github.com/user-attachments/assets/609caf0b-f731-44c6-a1af-a2da163c52dd)
 
 The [`SettingsTab`](#settings-tab) is a tab with some settings that are more closely related to the graphics engine as "global" settings than the [scene](#scene), which is why I separated them.
@@ -914,7 +915,8 @@ The `Fill/ambient color` picker controls the color of the [triangles](#triangle)
 The [scene](#scene) tab can be initialized with no parameters, and it initializes on its own the [camera tab](#camera-tab), [instances tab](#instances-tab) and [light tab](#light-tab).
 
 #### Camera tab
-![camera_tab](https://github.com/user-attachments/assets/397ac8a2-c057-4c4b-b70c-f42212eaac8b)
+
+![camera_tab](https://github.com/user-attachments/assets/eec5179d-daf0-42cb-924e-835ae7e8d63f)
 
 This tab controls/displays the [camera](#camera) settings. Most of its members are placeholders for displaying things. It also has a pointer to the [`SceneTab`](#scene-tab), in order to access other settings.
 
@@ -923,10 +925,10 @@ The menu settings are pretty self-explanatory.
 It can be initialized by passing the [scene tab](#scene-tab) pointer.
 
 #### Instances tab
-![instances_tab1](https://github.com/user-attachments/assets/7fd506c7-bffd-4116-add3-c0498550f2ea)
 
-![instances_tab2](https://github.com/user-attachments/assets/8385545a-1efa-4161-bda4-e07451d56b56)
+![instances_tab1](https://github.com/user-attachments/assets/e64f2639-27b6-40ed-b141-b420e44284db)
 
+![instances_tab2](https://github.com/user-attachments/assets/2aaa7f9b-16b5-4a72-a425-ade157107238)
 
 This tab controls/displays the [instances](#instance) in the scene.
 
@@ -940,9 +942,9 @@ If enabled, the transform axes are rendered over the [instance](#instance) in th
 
 #### Light tab
 
-![light_tab1](https://github.com/user-attachments/assets/520d15a1-a86f-4952-996c-f09fa16c1989)
+![light_tab1](https://github.com/user-attachments/assets/2471aef9-aae8-4c89-8847-eaa52a876563)
 
-![light_tab2](https://github.com/user-attachments/assets/3b04dabc-b4ec-45ed-93d9-9e9c82039653)
+![light_tab2](https://github.com/user-attachments/assets/b20e4998-4809-4506-876d-ebb12034cb2c)
 
 This tab controls/displays the [light](#light) settings. Most of its member variables are placeholders for displaying things. It also has a pointer to the [`SceneTab`](#scene-tab), in order to access other settings.
 
