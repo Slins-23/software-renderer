@@ -42,7 +42,7 @@ https://github.com/user-attachments/assets/5a662674-1898-435d-b98c-8c73a31e21eb
 ## Creating a scene within the renderer
 
 
-<h2>**Part 1/2**</h2>
+**<h2>Part 1/2</h2>**
 
 https://github.com/user-attachments/assets/04061dc5-9c95-4505-b231-3657f18fe05b
 
