@@ -23,6 +23,49 @@ Depth testing and shading is purposefully disabled for the transform axes, so th
 # Examples
 > The videos are sped up and the quality is not the best due to GitHub's 10MB file limit.
 
+## Lighting
+
+https://github.com/user-attachments/assets/1a2aa3cd-cffe-4fa4-a9d4-34ec3d63f956
+
+## Camera
+
+https://github.com/user-attachments/assets/1cf5010c-1034-43ce-8cc9-aba36a9f05d8
+
+## Scene editing
+
+https://github.com/user-attachments/assets/57838ede-8113-4c9c-af6e-c8be609580ee
+
+## Scene loading
+
+https://github.com/user-attachments/assets/5a662674-1898-435d-b98c-8c73a31e21eb
+
+## Creating a scene within the renderer
+
+
+<h2>**Part 1/2**</h2>
+https://github.com/user-attachments/assets/04061dc5-9c95-4505-b231-3657f18fe05b
+
+
+<h2>**Part 2/2**</h2>
+https://github.com/user-attachments/assets/140846a2-51cc-425f-bf6f-501e04a37186
+
+
+## Creating a scene from a json file
+
+
+https://github.com/user-attachments/assets/7de72ded-9071-476d-9c69-95ff55d56355
+
+
+## Updating scene and model folders
+
+https://github.com/user-attachments/assets/52bd4d7a-54f3-4973-93e8-652a013050ef
+
+
+## Creating a blank scene
+
+https://github.com/user-attachments/assets/b991f7ed-b429-4ce4-8438-995679e479a0
+
+
 > On the showcases which [instances](#instance) are added to the [scene](#scene), sometimes the names in the [instance](#instance) list were not correct, but this has been fixed. More specifically, the name on the list should be the name you gave it in the "instance name" text box, whereas if it was empty, its name should become `mesh_id`, where "mesh" is the name of its mesh, and `id` is the [instance's](#instance) id. This has been corrected, and it is the case now.
 
 
