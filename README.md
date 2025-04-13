@@ -14,7 +14,7 @@ Depth testing and shading is purposefully disabled for the transform axes, so th
 
 | Library      | Version | Usage | URL     |
 | :---       |  :----:       |   :----:   |          ---: |
-| SDL2        | 2.28.1 | Rendering | https://github.com/libsdl-org/SDL/tree/release-2.28.1 |
+| SDL2        | 2.28.1 | Window, drawing & events | https://github.com/libsdl-org/SDL/tree/release-2.28.1 |
 | Catch2      |  3.4.0  |  Testing       | https://github.com/catchorg/Catch2/releases/tag/v3.4.0   |
 | Nlohmann JSON   |   3.11.2   |   JSON parsing        | https://github.com/nlohmann/json/releases/tag/v3.11.2      |
 | ImGUI      |  1.91.9  |  Menus/user interface       | https://github.com/ocornut/imgui/releases/tag/v1.91.9   |
