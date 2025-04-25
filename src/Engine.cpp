@@ -1020,7 +1020,6 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 			double total_length = sqrt(pow(direction_x, 2) + pow(direction_y, 2));
 
-			#pragma omp parallel
 			for (x; x < (uint16_t) round(fmax(x1, x2)); x++) {
 
 				// Check and update depth buffer, or only do so when rasterizing?
@@ -1080,7 +1079,6 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 			double total_length = sqrt(pow(direction_x, 2) + pow(direction_y, 2));
 
-			#pragma omp parallel
 			for (y; y != round(target_y); y += dy > 0 ? 1 : -1) {
 
 				// Check and update depth buffer, or only do so when rasterizing?
