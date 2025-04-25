@@ -2,6 +2,7 @@
 #include "Windows/Tabs/CameraTab.h"
 #include "Windows/Tabs/InstancesTab.h"
 #include "Windows/Tabs/LightTab.h"
+#include <omp.h>
 
 #include <cassert>
 bool Engine::setup() {
@@ -64,10 +65,13 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 	uint32_t total_normals_count = 0;
 
 	if (mesh.has_normals) {
-		total_normals_count = mesh.total_normals() ;
+		total_normals_count = mesh.total_normals();
 	}
 
-	for (uint32_t face = 0; face < mesh.total_faces(); face++) {
+	//bool uses_flat_shading = ;
+
+	#pragma omp parallel for schedule(static)
+	for (int32_t face = 0; face < mesh.total_faces(); face++) {
 		uint32_t idx_a = mesh.faces_indices[face][0] - 1;
 		uint32_t idx_b = mesh.faces_indices[face][1] - 1;
 		uint32_t idx_c = mesh.faces_indices[face][2] - 1;
@@ -141,6 +145,7 @@ void Engine::draw_mesh(const Mesh& mesh, const Mat& MODEL_TO_WORLD, bool draw_ou
 			}
 			
 		}
+
 
 		// Draw quad if face is rectangular
 		if (mesh.faces_indices[face].size() == 4) {
@@ -388,7 +393,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				}
 			}
 
-			for (Triangle current_triangle : sub_clipped_triangles) {
+			for (const Triangle& current_triangle : sub_clipped_triangles) {
+
 				Mat v0 = current_triangle.vertices[0];
 				Mat v1 = current_triangle.vertices[1];
 				Mat v2 = current_triangle.vertices[2];
@@ -496,9 +502,11 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				Mat clipped_v1_color = Mat({ {0}, {0}, {0}, {255} }, 4, 1);
 				Mat clipped_v2_color = Mat({ {0}, {0}, {0}, {255} }, 4, 1);
 
+
+
 				// Triangle lighting/shading happens here
 				// Using world vertices for entire triangle instead of clipped triangles since flat shading is the same for the entire triangle despite subdivisions, since the surface normal is the same for the entire triangle
-				if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Flat) {
+				if (fill && !is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Flat) {
 					Mat a_vec_a = world_v0 - world_v1;
 					a_vec_a.normalize();
 					Mat a_vec_b = world_v2 - world_v1;
@@ -607,8 +615,8 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				}
 
 				// Calculate and store vertex colors and/or normals in order to interpolate them depending on Gouraud or Phong shading
-				else if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx != ShadingType::Flat) {
-					for (uint8_t vertex = 0; vertex < 3; vertex++) {
+				else if (fill && !is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx != ShadingType::Flat) {
+					for (int8_t vertex = 0; vertex < 3; vertex++) {
 						const Mat* current_clipped_vertex = &clipped_world_v0;
 						if (vertex == 0) {
 							current_clipped_vertex = &clipped_world_v0;
@@ -828,7 +836,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 					}
 				}
 				// If shading but light source is disabled, use default fill color
-				else if (!is_light_source && shade && !window_manager.general_window.scene_tab.current_scene.light_source.enabled) {
+				else if (fill && !is_light_source && shade && !window_manager.general_window.scene_tab.current_scene.light_source.enabled) {
 					uint8_t fill_color_red = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 24) & 0x000000FF;
 					uint8_t fill_color_green = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 16) & 0x000000FF;
 					uint8_t fill_color_blue = (window_manager.general_window.scene_tab.current_scene.FILL_COLOR >> 8) & 0x000000FF;
@@ -836,7 +844,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 					fill_color = 0x000000FF | (fill_color_red << 24) | (fill_color_green << 16) | (fill_color_blue << 8);
 				}
 				// Light source model is always lit up to the maximum
-				else if (is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled) {
+				else if (fill && is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled) {
 					uint8_t red = window_manager.general_window.scene_tab.current_scene.light_source.color >> 24;
 					uint8_t green = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 16) & 0x000000FF;
 					uint8_t blue = (window_manager.general_window.scene_tab.current_scene.light_source.color >> 8) & 0x000000FF;
@@ -906,7 +914,7 @@ void Engine::draw_triangle(Mat v0, Mat v1, Mat v2, Mat v0_normal, Mat v1_normal,
 				if ((fill)) {
 					// Ignore triangle rasterization if 2 of the vertices are the same (meaning the triangle is basically a line, which is already handled when the lines are drawn)
 					if (is_v0_equal_v1 || is_v0_equal_v2 || is_v1_equal_v2) {
-						return;
+						continue;
 					}
 
 					fill_triangle(v0, v1, v2, clipped_v0_normal, clipped_v1_normal, clipped_v2_normal, clipped_world_v0, clipped_world_v1, clipped_world_v2, clipped_v0_color, clipped_v1_color, clipped_v2_color, fill_color, shade, is_light_source, is_axes);
@@ -1012,8 +1020,8 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 			double total_length = sqrt(pow(direction_x, 2) + pow(direction_y, 2));
 
-			for (x;
-				x < (uint16_t) round(fmax(x1, x2)); x++) {
+			#pragma omp parallel
+			for (x; x < (uint16_t) round(fmax(x1, x2)); x++) {
 
 				// Check and update depth buffer, or only do so when rasterizing?
 
@@ -1072,8 +1080,8 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 
 			double total_length = sqrt(pow(direction_x, 2) + pow(direction_y, 2));
 
-			for (y;
-				y != round(target_y); y += dy > 0 ? 1 : -1) {
+			#pragma omp parallel
+			for (y; y != round(target_y); y += dy > 0 ? 1 : -1) {
 
 				// Check and update depth buffer, or only do so when rasterizing?
 
@@ -1171,7 +1179,6 @@ void Engine::draw_line(double x1, double y1, double x2, double y2, const Mat& ve
 }
 
 void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Mat& world_v0_normal, const Mat& world_v1_normal, const Mat& world_v2_normal, const Mat& world_v0, const Mat& world_v1, const Mat& world_v2, const Mat& v0_color, const Mat& v1_color, const Mat& v2_color, uint32_t fill_color, bool shade, bool is_light_source, bool is_axes) {
-
 	Mat view_v0 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v0;
 	Mat view_v1 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v1;
 	Mat view_v2 = window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * world_v2;
@@ -1208,10 +1215,14 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 	Mat view_light_position = (window_manager.general_window.scene_tab.current_scene.camera.VIEW_MATRIX * window_manager.general_window.scene_tab.current_scene.light_source.position);
 
-	for (uint16_t pixel_y = bounding_box_top_y; pixel_y <= bounding_box_bottom_y; pixel_y++) {
-		if (pixel_y >= this->HEIGHT || pixel_y < 0) return;
-		for (uint16_t pixel_x = bounding_box_left_x; pixel_x <= bounding_box_right_x; pixel_x++) {
-			if (pixel_x >= this->WIDTH || pixel_x < 0) return;
+	#pragma omp parallel for
+	for (int16_t pixel_y = bounding_box_top_y; pixel_y <= bounding_box_bottom_y; pixel_y++) {
+		if (pixel_y >= this->HEIGHT || pixel_y < 0) continue;
+		
+		for (int16_t pixel_x = bounding_box_left_x; pixel_x <= bounding_box_right_x; pixel_x++) {
+			if (pixel_x >= this->WIDTH || pixel_x < 0) continue;
+
+			uint32_t final_color = fill_color;
 			// C = V1 (Red) 
 			// A = V0 (Green)
 			// B = V2 (Blue)
@@ -1241,7 +1252,7 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 			double division = (((v0_x - v1_x) * (v2_y - v1_y)) - ((v0_y - v1_y) * (v2_x - v1_x)));
 
 			if (division == 0) {
-				return;
+				continue;
 				throw std::runtime_error("Error: Division by 0 during barycentric coordinates calculation (rasterization).");
 			}
 
@@ -1274,13 +1285,13 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 					uint8_t red = c * 0xFF; // v1
 					uint8_t green = a * 0xFF; // v0 (when v2 at same height as v1 swaps with v2)
 					uint8_t blue = b * 0xFF; // v2 (when at same height as v1 swaps with v0)
-					fill_color = (red << 24) | (green << 16) | (blue << 8) | alpha;
+					final_color = (red << 24) | (green << 16) | (blue << 8) | alpha;
 				}
 
 
 				if (pixel_y < this->HEIGHT && pixel_y >= 0 && pixel_x >= 0 && pixel_x < this->WIDTH) {
 					if (is_axes) {
-						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = final_color;
 						continue;
 					}
 
@@ -1302,12 +1313,14 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 						*/
 
 						if (interpolated_z <= this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
-							if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
+							if (interpolated_z < this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x]) {
+								this->depth_buffer[(this->WIDTH * pixel_y) + pixel_x] = interpolated_z;
+							}
 
 							if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Gouraud) {
 								Mat color = ((v0_color * a) + (v1_color * c) + (v2_color * b));
 
-								fill_color = (uint8_t)color.get(1, 1) << 24 | (uint8_t)color.get(2, 1) << 16 | (uint8_t)color.get(3, 1) << 8 | (uint8_t)color.get(4, 1);
+								final_color = (uint8_t)color.get(1, 1) << 24 | (uint8_t)color.get(2, 1) << 16 | (uint8_t)color.get(3, 1) << 8 | (uint8_t)color.get(4, 1);
 							}
 							else if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Phong) {
 								// Vertex lighting/shading happens here
@@ -1377,7 +1390,7 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 									uint8_t green = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_green, light_color_green);
 									uint8_t blue = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_blue, light_color_blue);
 
-									fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+									final_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 								}
 
 								// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
@@ -1390,11 +1403,11 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 									uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
 									uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
-									fill_color = 0x000000FF | (minimum_red << 24) | (minimum_green << 16) | (minimum_blue << 8);
+									final_color = 0x000000FF | (minimum_red << 24) | (minimum_green << 16) | (minimum_blue << 8);
 								}
 							}
 
-							this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+							this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = final_color;
 						}
 						
 					}
@@ -1402,7 +1415,7 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 						if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Gouraud) {
 							Mat color = ((v0_color * a) + (v1_color * c) + (v2_color * b));
 
-							fill_color = (uint8_t)color.get(1, 1) << 24 | (uint8_t)color.get(2, 1) << 16 | (uint8_t)color.get(3, 1) << 8 | (uint8_t)color.get(4, 1);
+							final_color = (uint8_t)color.get(1, 1) << 24 | (uint8_t)color.get(2, 1) << 16 | (uint8_t)color.get(3, 1) << 8 | (uint8_t)color.get(4, 1);
 						}
 						else if (!is_light_source && shade && window_manager.general_window.scene_tab.current_scene.light_source.enabled && window_manager.general_window.scene_tab.light_tab->shading_selected_idx == ShadingType::Phong) {
 							// Vertex lighting/shading happens here
@@ -1472,7 +1485,7 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 								uint8_t green = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_green, light_color_green);
 								uint8_t blue = (uint8_t)Utils::normalize(light_intensity, 0, 1, minimum_blue, light_color_blue);
 
-								fill_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
+								final_color = 0x000000FF | (red << 24) | (green << 16) | (blue << 8);
 							}
 
 							// If the triangle does not face the light source (and is not part of the light source model itself) set it to the minimum light exposure
@@ -1485,13 +1498,11 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 								uint8_t minimum_green = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_green);
 								uint8_t minimum_blue = (uint8_t)(window_manager.general_window.scene_tab.current_scene.light_source.minimum_exposure * fill_color_blue);
 
-								fill_color = 0x000000FF | (minimum_red << 24) | (minimum_green << 16) | (minimum_blue << 8);
+								final_color = 0x000000FF | (minimum_red << 24) | (minimum_green << 16) | (minimum_blue << 8);
 							}
 						}
 
-
-						
-						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = fill_color;
+						this->pixel_buffer[(this->WIDTH * pixel_y) + pixel_x] = final_color;
 					}
 				}
 			}
@@ -1507,6 +1518,7 @@ void Engine::fill_triangle(const Mat& v0, const Mat& v1, const Mat& v2, const Ma
 
 void Engine::draw() {
 	// Clears pixel buffer to the background/clear color
+
 	for (int i = 0; i < this->WIDTH * this->HEIGHT; i++) {
 		this->pixel_buffer[i] = window_manager.general_window.scene_tab.current_scene.BG_COLOR;
 		this->depth_buffer[i] = std::numeric_limits<double>::max();
