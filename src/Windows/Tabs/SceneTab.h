@@ -9,8 +9,8 @@ class LightTab;
 
 class SceneTab : public Window {
 public:
-	char models_folder[255] = "D:\\Programming\\Graphics\\Prototyping\\models\\";
-	char scene_folder[255] = "D:\\Programming\\Graphics\\Prototyping\\scenes\\";
+	char models_folder[255] = "";
+	char scene_folder[255] = "";
 	char scene_load_name[255] = "hallway.json";
 	char scene_save_name[255] = "saved_scene.json";
 
@@ -30,7 +30,8 @@ public:
 	double menu_scaling_speed = 0.003;
 
 	//Scene current_scene = Scene(scene_folder, scene_load_name, models_folder, rotation_orientation, update_camera_settings, true);
-	Scene current_scene = Scene(models_folder);
+	//Scene current_scene = Scene(models_folder);
+	Scene current_scene = Scene();
 
 	Orientation rotation_orientation = Orientation::local;
 

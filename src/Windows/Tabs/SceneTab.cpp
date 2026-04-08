@@ -219,8 +219,7 @@ void SceneTab::draw() {
 
 		}
 		else {
-			std::cout << "NFD loading scene folder error: " << NFD_GetError() << std::endl;
-			exit(-1);
+			std::cout << "Native file dialog loading scene folder error: " << NFD_GetError() << std::endl;
 		}
 
 		free(scenes_path);
@@ -234,6 +233,7 @@ void SceneTab::draw() {
 
 	if (ImGui::Button("Browse##models_folder")) {
 		nfdchar_t* models_path = nullptr;
+
 		nfdresult_t result = NFD_PickFolder(this->models_folder, &models_path);
 
 		if (result == NFD_OKAY) {
@@ -243,8 +243,7 @@ void SceneTab::draw() {
 
 		}
 		else {
-			std::cout << "NFD loading models folder error: " << NFD_GetError() << std::endl;
-			exit(-1);
+			std::cout << "Native file dialog loading models folder error: " << NFD_GetError() << std::endl;
 		}
 
 		free(models_path);
